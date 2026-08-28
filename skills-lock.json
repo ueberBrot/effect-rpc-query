@@ -25,6 +25,12 @@
       "skillPath": "skills/engineering/diagnosing-bugs/SKILL.md",
       "computedHash": "37b5e9c624513551da790b52864dc8c84bff996a6d03a380cc6facdcc0a88354"
     },
+    "documentation-writer": {
+      "source": "github/awesome-copilot",
+      "sourceType": "github",
+      "skillPath": "skills/documentation-writer/SKILL.md",
+      "computedHash": "ee53d65b163cd7eb953a930c95841cfe398cc2c0bd24c06508bbaa07c432be35"
+    },
     "domain-modeling": {
       "source": "mattpocock/skills",
       "sourceType": "github",
@@ -132,6 +138,12 @@
       "sourceType": "github",
       "skillPath": "skills/engineering/wizard/SKILL.md",
       "computedHash": "dee7f1a523994a1e063c69fe09c2f5b4da97a41ad68107722664e6e472cb2423"
+    },
+    "writing-clearly-and-concisely": {
+      "source": "obra/the-elements-of-style",
+      "sourceType": "github",
+      "skillPath": "skills/writing-clearly-and-concisely/SKILL.md",
+      "computedHash": "c702d9db967bc320da26630c1bb2b6794ec7d058bc535818f72e2d3301c2448a"
     },
     "writing-for-agents": {
       "source": "mattpocock/skills",
