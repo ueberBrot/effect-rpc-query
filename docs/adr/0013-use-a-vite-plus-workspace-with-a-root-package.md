@@ -1,0 +1,3 @@
+# Use a Vite+ workspace with a root package
+
+The repository begins as a Vite+ pnpm workspace with the publishable `effect-rpc-query` package permanently at the root. Private packages under `examples/` provide shared RPC contracts, one standalone HTTP RPC server, a plain Vite React client, and a TanStack Start application; both clients use the same server, and Start server functions and WebSocket transport remain outside the initial scope. Future public packages may live under `packages/`, but examples remain private; this accepts Vite+'s beta status to gain one task graph without creating a speculative core package or later moving the root release path.

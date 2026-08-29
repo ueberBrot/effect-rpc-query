@@ -1,0 +1,3 @@
+# Build core-shaped options and certify React first
+
+Generated options use static TanStack Query Core shapes and pass unchanged to React Query hooks, `QueryClient`-driven TanStack Router loaders, and TanStack Start. Applications still own providers, router context, and SSR integration; the library owns `queryKey`, `queryFn`, `mutationKey`, `mutationFn`, and per-call `queryKeyHashFn` while accepting every other applicable Query Core option. The package imports no framework adapter and certifies React Query and TanStack Start first, leaving dedicated adapter entry points for a future reactive contract that requires them.

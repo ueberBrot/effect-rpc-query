@@ -1,0 +1,3 @@
+# Project dotted RPC tags into utility paths
+
+The literal Effect RPC tag is the sole source of its public utility path: dot-separated segments become nested properties. The factory rejects empty segments, the utility names `key`, `queryKey`, `mutationKey`, `queryOptions`, and `mutationOptions`, the unsafe names `__proto__`, `prototype`, and `constructor`, and every leaf–branch collision. It accepts all other string segments, including those that require bracket notation, but provides neither escaping nor a separate path map; this trades a small set of tag restrictions for deterministic, string-free access.

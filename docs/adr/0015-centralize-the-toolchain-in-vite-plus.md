@@ -1,0 +1,3 @@
+# Centralize the toolchain in Vite+
+
+The workspace centralizes formatting, linting, type checking, tests, and ESM packaging in Vite+'s `vite.config.ts`, using its integrated Oxfmt, Oxlint, Vitest, and package builder instead of parallel configuration stacks. Development pins TypeScript 7 and a matching `@effect/tsgo`, runs Effect diagnostics as a separate gate, and verifies packed declarations with TypeScript 5.9 and current TypeScript; strict Publint, Are The Types Wrong, unused-dependency checks, and Fallow protect the package, while Taze remains deferred. Separate tools cover only capabilities Vite+ does not own, including Effect-aware test helpers, full-process Playwright tests, and release management.

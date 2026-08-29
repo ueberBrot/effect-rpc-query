@@ -1,0 +1,3 @@
+# Preserve the Cause in one error wrapper
+
+Only a failed RPC `Exit` becomes an `EffectRpcQueryError<E>`, which preserves the untouched Effect `Cause<E>` together with the literal RPC tag and query-or-mutation operation. Configuration and key-generation failures use `EffectRpcQueryConfigError` and `EffectRpcQueryKeyError`; user and TanStack callbacks, and runner rejections that produce no `Exit`, remain untouched. Public errors expose discriminants and relevant tag or path metadata without retaining raw input or encoder output; query preparation fails synchronously before execution, while failures inside the RPC Effect remain in its Cause.

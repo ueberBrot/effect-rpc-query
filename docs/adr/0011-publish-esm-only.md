@@ -1,0 +1,3 @@
+# Publish ESM only
+
+The package publishes side-effect-free ES2022 ESM through one root export and offers no CommonJS build. Every public barrel enumerates named exports and avoids `export *`, preventing accidental internals or upstream growth from entering the API; framework and internal subpaths appear only when they become genuine public modules. Because Effect 4 is ESM-only, a CommonJS adapter would require a separate interop contract; the package instead uses no Node-only APIs, publishes no invented Node engine floor, and lets application bundlers transform the complete graph when necessary.

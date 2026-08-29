@@ -1,0 +1,3 @@
+# Reuse TanStack Query Core as a peer
+
+`@tanstack/query-core` is an external peer whose actual runtime values and types flow through generated objects and declarations. The package tests its declared v5 lower bound and current v5, re-exports only primitives required by its own API—including the exact `skipToken` and `SkipToken` bindings—and lets consumers import the same bindings or broader Query APIs from their TanStack installation. `skipToken` applies only to payload-bearing query options, and React, React Query, and TanStack Start remain outside the peer set until a public entry point imports them directly.
