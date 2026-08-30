@@ -47,6 +47,23 @@ const Watch = Rpc.make('events.watch', {
   success: Schema.String,
   stream: true,
 })
+const AuditWatch = Rpc.make('events.audit.watch', {
+  success: Schema.String,
+  stream: true,
+})
+const FindProject = Rpc.make('projects.by-id.find', {
+  payload: { id: Schema.String },
+  success: Schema.Struct({ id: Schema.String }),
+})
+const ProjectHealth = Rpc.make('projects.health.ping', { success: Schema.Void })
+const ProjectWatch = Rpc.make('projects.watch', {
+  success: Schema.String,
+  stream: true,
+})
+const BracketOnly = Rpc.make('billing-history.list all', {
+  payload: { accountId: Schema.String },
+  success: Schema.Array(Schema.String),
+})
 
 class EncodingService extends Context.Service<EncodingService, { readonly suffix: string }>()(
   'EncodingService',
@@ -67,7 +84,17 @@ const Secret = Rpc.make('secrets.read', {
   success: Schema.String,
 })
 
-const group = RpcGroup.make(GetUser, Ping, Secure, Watch)
+const group = RpcGroup.make(
+  GetUser,
+  Ping,
+  Secure,
+  Watch,
+  AuditWatch,
+  FindProject,
+  ProjectHealth,
+  ProjectWatch,
+  BracketOnly,
+)
 type Rpcs = RpcGroup.Rpcs<typeof group>
 
 declare const client: RpcClient.RpcClient.Flat<Rpcs>
@@ -80,6 +107,24 @@ const options: CreateRpcQueryUtilsOptions<typeof group, typeof keyPrefix> = {
 const utils = createRpcQueryUtils(group, options)
 const typedUtils: RpcQueryUtils<typeof group, typeof keyPrefix> = utils
 void typedUtils
+
+type Equal<Left, Right> =
+  (<Value>() => Value extends Left ? 1 : 2) extends <Value>() => Value extends Right ? 1 : 2
+    ? true
+    : false
+type Assert<Condition extends true> = Condition
+type ExpectedLeafInterface = 'key' | 'mutationKey' | 'mutationOptions' | 'queryKey' | 'queryOptions'
+type ExactLeafInterface = Assert<
+  Equal<keyof (typeof utils)['projects']['by-id']['find'], ExpectedLeafInterface>
+>
+
+const exactLeafInterface: ExactLeafInterface = true
+const projectKey = utils.projects['by-id'].find.queryKey({ id: 'project-1' })
+const projectPing = utils.projects.health.ping.queryOptions()
+const bracketOnly = utils['billing-history']['list all'].queryOptions({
+  input: { accountId: 'account-1' },
+})
+void [exactLeafInterface, projectKey, projectPing, bracketOnly]
 
 const jsonValue: JsonValue = { nested: [true, null, 1, 'value'] }
 const keyEncoder: KeyEncoder<typeof GetUser> = (payload) => ({ id: payload.id })
@@ -180,7 +225,11 @@ utils.users.get.queryOptions({})
 // @ts-expect-error payloadless queries do not accept an input field
 utils.health.ping.queryOptions({ input: undefined })
 // @ts-expect-error streaming RPCs are omitted from the utility tree
-void utils.events.watch
+void utils.projects.watch
+// @ts-expect-error branches emptied by stream omission are absent
+void utils.events
+// @ts-expect-error leaves expose no direct execution helper
+void utils.projects['by-id'].find.call
 
 if (skipToken !== queryCoreSkipToken) {
   throw new Error('skipToken must preserve Query Core identity')

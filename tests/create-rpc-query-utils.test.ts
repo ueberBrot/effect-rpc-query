@@ -4,11 +4,12 @@ import {
   QueryClient,
   skipToken as queryCoreSkipToken,
 } from '@tanstack/query-core'
-import { Effect } from 'effect'
+import { Effect, Schema, Stream } from 'effect'
+import { Rpc, RpcGroup } from 'effect/unstable/rpc'
 
 import { createRpcQueryUtils, skipToken } from '#effect-rpc-query'
 
-import { group, makeClient } from './fixtures/effect-rpc'
+import { group, makeClient, makeRpcTestClient } from './fixtures/effect-rpc'
 
 describe('createRpcQueryUtils', () => {
   it.effect('creates frozen nested utilities and semantic keys', () =>
@@ -96,6 +97,97 @@ describe('createRpcQueryUtils', () => {
         queryKey: ['app', 'users', 'get', 'query'],
       })
       expect(skipped.queryKeyHashFn(skipped.queryKey)).toBe(JSON.stringify(skipped.queryKey))
+    }),
+  )
+
+  it.effect('projects ordinary reflected objects with only the documented leaf interface', () =>
+    Effect.gen(function* () {
+      const Status = Rpc.make('status', { success: Schema.Void })
+      const BracketOnly = Rpc.make('billing-history.list all', { success: Schema.Void })
+      const reflectedGroup = RpcGroup.make(Status, BracketOnly)
+      const client = yield* makeRpcTestClient(reflectedGroup, {
+        'billing-history.list all': () => Effect.void,
+        status: () => Effect.void,
+      })
+      const utils = createRpcQueryUtils(reflectedGroup, {
+        client,
+        keyPrefix: ['app'] as const,
+      })
+
+      expect(Object.getPrototypeOf(utils)).toBe(Object.prototype)
+      expect(Reflect.ownKeys(utils)).toEqual(['key', 'status', 'billing-history'])
+      expect(Object.keys(utils['billing-history']['list all']).sort()).toEqual([
+        'key',
+        'mutationKey',
+        'mutationOptions',
+        'queryKey',
+        'queryOptions',
+      ])
+      expect(utils['billing-history']['list all'].key()).toEqual([
+        'app',
+        'billing-history',
+        'list all',
+      ])
+      expect(yield* Effect.promise(() => Promise.resolve(utils))).toBe(utils)
+    }),
+  )
+
+  it.effect('freezes the owned tree without freezing fresh options or caller values', () =>
+    Effect.gen(function* () {
+      const client = yield* makeClient()
+      const utils = createRpcQueryUtils(group, {
+        client,
+        keyPrefix: ['app'] as const,
+      })
+      const queryMeta = { source: 'caller' }
+      const mutationMeta = { source: 'caller' }
+
+      const firstQuery = utils.users.get.queryOptions({ input: { id: 1 }, meta: queryMeta })
+      const secondQuery = utils.users.get.queryOptions({ input: { id: 1 }, meta: queryMeta })
+      const firstMutation = utils.users.get.mutationOptions({ meta: mutationMeta })
+      const secondMutation = utils.users.get.mutationOptions({ meta: mutationMeta })
+
+      expect(Object.isFrozen(utils)).toBe(true)
+      expect(Object.isFrozen(utils.users)).toBe(true)
+      expect(Object.isFrozen(utils.users.get)).toBe(true)
+      expect(Object.isFrozen(firstQuery)).toBe(false)
+      expect(Object.isFrozen(firstMutation)).toBe(false)
+      expect(firstQuery).not.toBe(secondQuery)
+      expect(firstMutation).not.toBe(secondMutation)
+      expect(firstQuery.meta).toBe(queryMeta)
+      expect(firstMutation.meta).toBe(mutationMeta)
+      expect(Object.isFrozen(queryMeta)).toBe(false)
+      expect(Object.isFrozen(mutationMeta)).toBe(false)
+    }),
+  )
+
+  it.effect('omits streams before projecting paths and collisions', () =>
+    Effect.gen(function* () {
+      const ListReports = Rpc.make('reports.list', { success: Schema.String })
+      const ReportsStream = Rpc.make('reports', { success: Schema.String, stream: true })
+      const NestedStream = Rpc.make('events.audit.watch', {
+        success: Schema.String,
+        stream: true,
+      })
+      const ReservedStream = Rpc.make('ignored.key', { success: Schema.String, stream: true })
+      const mixedGroup = RpcGroup.make(ListReports, ReportsStream, NestedStream, ReservedStream)
+      const client = yield* makeRpcTestClient(mixedGroup, {
+        'events.audit.watch': () => Stream.empty,
+        'ignored.key': () => Stream.empty,
+        reports: () => Stream.empty,
+        'reports.list': () => Effect.succeed('report'),
+      })
+
+      const utils = createRpcQueryUtils(mixedGroup, {
+        client,
+        keyPrefix: ['app'] as const,
+      })
+
+      expect(Object.keys(utils).sort()).toEqual(['key', 'reports'])
+      expect(Object.keys(utils.reports).sort()).toEqual(['key', 'list'])
+      expect(utils.reports.list.key()).toEqual(['app', 'reports', 'list'])
+      expect('events' in utils).toBe(false)
+      expect('ignored' in utils).toBe(false)
     }),
   )
 })

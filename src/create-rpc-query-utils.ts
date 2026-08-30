@@ -127,6 +127,7 @@ const normalizePrefix = (prefix: readonly [JsonValue, ...JsonValue[]]): readonly
 
 // Parse and validate every path before allocation so configuration failure stays atomic.
 const planRpcPaths = (rpcs: ReadonlyArray<AdaptedUnaryRpc>) => {
+  const branchPaths = new Set<string>()
   const leafPaths = new Set<string>()
   const plan: Array<ValidatedRpcPath> = []
 
@@ -143,24 +144,34 @@ const planRpcPaths = (rpcs: ReadonlyArray<AdaptedUnaryRpc>) => {
     }
     const segments = parsedSegments as [string, ...string[]]
 
-    for (let index = 1; index < segments.length; index += 1) {
-      if (leafPaths.has(segments.slice(0, index).join('.'))) {
-        throw new EffectRpcQueryConfigError(
-          'RpcPathCollision',
-          `RPC tag ${rpc.tag} collides with another utility path`,
-          { rpcTag: rpc.tag },
-        )
-      }
+    if (leafPaths.has(rpc.tag)) {
+      throw new EffectRpcQueryConfigError(
+        'RpcPathCollision',
+        `RPC tag ${rpc.tag} duplicates another utility path`,
+        { rpcTag: rpc.tag },
+      )
     }
 
-    const prefix = `${rpc.tag}.`
-    if ([...leafPaths].some((path) => path.startsWith(prefix))) {
+    if (branchPaths.has(rpc.tag)) {
       throw new EffectRpcQueryConfigError(
         'RpcPathCollision',
         `RPC tag ${rpc.tag} collides with another utility path`,
         { rpcTag: rpc.tag },
       )
     }
+
+    for (let index = 1; index < segments.length; index += 1) {
+      const branchPath = segments.slice(0, index).join('.')
+      if (leafPaths.has(branchPath)) {
+        throw new EffectRpcQueryConfigError(
+          'RpcPathCollision',
+          `RPC tag ${rpc.tag} collides with another utility path`,
+          { rpcTag: rpc.tag },
+        )
+      }
+      branchPaths.add(branchPath)
+    }
+
     leafPaths.add(rpc.tag)
     plan.push({ rpc, segments })
   }
