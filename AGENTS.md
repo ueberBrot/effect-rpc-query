@@ -15,3 +15,11 @@ This repository uses a single-context domain-doc layout. See `docs/agents/domain
 ### Testing
 
 Don't write tests for what the type system already guarantees. Use compile-time fixtures to verify the published type contract; reserve runtime tests for behavior that can fail at runtime.
+
+## Learning more about Effect
+
+This repository uses the Effect TypeScript library.
+
+Before writing any Effect code, read `node_modules/effect/AGENTS.md` completely and follow its links when required.
+
+If a particular Effect API or concept is not covered there, search the source in `node_modules/effect/src`.

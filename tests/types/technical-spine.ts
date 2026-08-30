@@ -1,3 +1,5 @@
+// fallow-ignore-file code-duplication
+// This fixture stays self-contained because the packed-consumer verifier copies it alone.
 import {
   MutationObserver,
   QueryClient,

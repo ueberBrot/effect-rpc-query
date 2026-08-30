@@ -68,7 +68,7 @@ export const extractUnaryRpcs = <Rpcs extends Rpc.Any, ClientError>(
     }
 
     unaryRpcs.push({
-      payloadless: definition.payloadSchema === Schema.Void,
+      payloadless: SchemaAST.isVoid(definition.payloadSchema.ast),
       requiresKeyEncoder: containsUnsafeKeySchema(definition.payloadSchema.ast),
       tag: definition._tag,
       invoke: (input) => client(definition._tag as never, input as never),
