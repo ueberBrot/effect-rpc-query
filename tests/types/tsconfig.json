@@ -1,7 +1,7 @@
 {
   "compilerOptions": {
     "target": "ES2022",
-    "lib": ["ES2022", "DOM", "DOM.Iterable"],
+    "lib": ["ES2022", "DOM", "DOM.Iterable", "ESNext.Disposable"],
     "module": "NodeNext",
     "moduleResolution": "NodeNext",
     "strict": true,
@@ -9,9 +9,10 @@
     "noUncheckedIndexedAccess": true,
     "noEmit": true,
     "skipLibCheck": false,
+    "types": ["node"],
     "paths": {
       "#effect-rpc-query": ["../../dist/index.d.mts"]
     }
   },
-  "include": ["packed-package.ts"]
+  "include": ["*.ts"]
 }

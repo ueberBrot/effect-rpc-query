@@ -21,6 +21,10 @@
   },
 
   "rules": {
-    "private-type-leaks": "error"
+    "private-type-leaks": "error",
+
+    // Public-entry suppressions are valid in the entry audit but necessarily
+    // look stale in production mode, where package entry exports are exempt.
+    "stale-suppressions": "off"
   }
 }
