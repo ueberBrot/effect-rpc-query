@@ -30,6 +30,18 @@ const ObjectNamed = Rpc.make('toString.child', { success: Schema.Void })
 
 export const group = RpcGroup.make(GetUser, Ping, Fail, Watch, ObjectNamed)
 
+// The stateless handlers and their layer are shared; each test gets a fresh scoped
+// transport.
+const handlers = group.of({
+  'diagnostics.fail': () => Effect.fail('declared-failure' as const),
+  'events.watch': () => Stream.empty,
+  'health.ping': () => Effect.void,
+  'toString.child': () => Effect.void,
+  'users.get': (payload) =>
+    Effect.succeed({ id: payload.id, locale: payload.locale ?? 'en', name: 'Ada' }),
+})
+const handlersLayer = group.toLayer(handlers)
+
 /** Acquires an official in-memory flat client for an RPC group and its handlers. */
 export const makeRpcTestClient = Effect.fn('TestRpc.makeRpcTestClient')(function* <
   Rpcs extends Rpc.Any,
@@ -39,15 +51,7 @@ export const makeRpcTestClient = Effect.fn('TestRpc.makeRpcTestClient')(function
   )
 })
 
-/** Acquires the shared test group's official in-memory client. */
+/** Acquires a fresh scoped client backed by the shared test handlers. */
 export const makeClient = Effect.fn('TestRpc.makeClient')(function* () {
-  const handlers = group.of({
-    'diagnostics.fail': () => Effect.fail('declared-failure' as const),
-    'events.watch': () => Stream.empty,
-    'health.ping': () => Effect.void,
-    'toString.child': () => Effect.void,
-    'users.get': (payload) =>
-      Effect.succeed({ id: payload.id, locale: payload.locale ?? 'en', name: 'Ada' }),
-  })
-  return yield* makeRpcTestClient(group, handlers)
+  return yield* RpcTest.makeClient(group, { flatten: true }).pipe(Effect.provide(handlersLayer))
 })
