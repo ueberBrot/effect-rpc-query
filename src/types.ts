@@ -2,6 +2,7 @@ import type {
   DataTag,
   MutationOptions,
   QueryFunction,
+  QueryKey,
   QueryObserverOptions,
   SkipToken,
 } from '@tanstack/query-core'
@@ -136,7 +137,7 @@ export type RpcQueryOptions<
   /** The concrete, data-tagged key for this normalized payload. */
   readonly queryKey: ConcreteQueryKey<Prefix, R, ClientError>
   /** Query Core's stable hash for the canonical semantic key. */
-  readonly queryKeyHashFn: typeof import('@tanstack/query-core').hashKey
+  readonly queryKeyHashFn: (queryKey: QueryKey) => string
 }
 
 /** Query input whose initial value is known to be present. */
@@ -156,7 +157,10 @@ export type UndefinedQueryInputOptions<
   ClientError,
   Selected,
 > = Omit<QueryInputOptions<R, Prefix, ClientError, Selected>, 'initialData'> & {
-  readonly initialData?: undefined | (() => QueryData<Rpc.Success<R>> | undefined)
+  readonly initialData?:
+    | QueryData<Rpc.Success<R>>
+    | undefined
+    | (() => QueryData<Rpc.Success<R>> | undefined)
 }
 
 /** Generated options whose initial value remains visibly required. */
@@ -175,7 +179,7 @@ export type SkippedRpcQueryOptions<R extends Rpc.Any, Prefix extends readonly Js
   /** The operation prefix, which contains no unconstructed payload. */
   readonly queryKey: QueryOperationKey<Prefix, R>
   /** Query Core's stable hash for the operation key. */
-  readonly queryKeyHashFn: typeof import('@tanstack/query-core').hashKey
+  readonly queryKeyHashFn: (queryKey: QueryKey) => string
 }
 
 /** Mutation options generated for one unary RPC. */

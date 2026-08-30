@@ -112,6 +112,17 @@ const possiblyUndefinedInitialData:
   | undefined = possiblyInitialized.initialData
 void possiblyUndefinedInitialData
 
+declare const directInitialData: QueryData<Rpc.Success<typeof GetUser>> | undefined
+const possiblyDirectlyInitialized = utils.users.get.queryOptions({
+  input: { id: 1 },
+  initialData: directInitialData,
+})
+const possiblyDirectInitialData:
+  | { readonly id: number; readonly name: string }
+  | (() => { readonly id: number; readonly name: string } | undefined)
+  | undefined = possiblyDirectlyInitialized.initialData
+void possiblyDirectInitialData
+
 const encoderGroup = RpcGroup.make(Serviceful, Secret)
 type EncoderRpcs = RpcGroup.Rpcs<typeof encoderGroup>
 declare const encoderClient: RpcClient.RpcClient.Flat<EncoderRpcs>

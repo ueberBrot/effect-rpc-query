@@ -7,7 +7,7 @@ export interface AdaptedUnaryRpc {
   /** Whether callers omit constructor input for this RPC. */
   readonly payloadless: boolean
 
-  /** Whether default key encoding could expose an explicit redacted value. */
+  /** Whether runtime Schema metadata requires a custom key encoder. */
   readonly requiresKeyEncoder: boolean
 
   /** The literal RPC tag used for paths and diagnostics. */
@@ -23,12 +23,17 @@ export interface AdaptedUnaryRpc {
   readonly encodePayload: (payload: unknown) => unknown
 }
 
-// Redaction is runtime Schema metadata; encoding-service requirements are type-only.
-const containsRedactedSchema = (value: unknown, seen = new WeakSet<object>()): boolean => {
+// Schema middleware does not expose its Effect services at runtime. Treating every
+// middleware as unsafe makes encoder validation atomic even for untyped callers.
+const containsUnsafeKeySchema = (value: unknown, seen = new WeakSet<object>()): boolean => {
   if (typeof value !== 'object' || value === null || seen.has(value)) {
     return false
   }
   seen.add(value)
+
+  if ((value as { readonly _tag?: unknown })._tag === 'Middleware') {
+    return true
+  }
 
   if (SchemaAST.isAST(value)) {
     const representation = value.annotations?.['representation'] as
@@ -41,8 +46,8 @@ const containsRedactedSchema = (value: unknown, seen = new WeakSet<object>()): b
 
   return Object.values(value).some((child) =>
     Array.isArray(child)
-      ? child.some((element) => containsRedactedSchema(element, seen))
-      : containsRedactedSchema(child, seen),
+      ? child.some((element) => containsUnsafeKeySchema(element, seen))
+      : containsUnsafeKeySchema(child, seen),
   )
 }
 
@@ -64,7 +69,7 @@ export const extractUnaryRpcs = <Rpcs extends Rpc.Any, ClientError>(
 
     unaryRpcs.push({
       payloadless: definition.payloadSchema === Schema.Void,
-      requiresKeyEncoder: containsRedactedSchema(definition.payloadSchema.ast),
+      requiresKeyEncoder: containsUnsafeKeySchema(definition.payloadSchema.ast),
       tag: definition._tag,
       invoke: (input) => client(definition._tag as never, input as never),
       makePayload: (input) => definition.payloadSchema.make(input),

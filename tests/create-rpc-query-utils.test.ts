@@ -1,10 +1,9 @@
 import {
-  hashKey,
   MutationObserver,
   QueryClient,
   skipToken as queryCoreSkipToken,
 } from '@tanstack/query-core'
-import { Cause, Effect, Exit, Schema } from 'effect'
+import { Cause, Context, Effect, Exit, Schema } from 'effect'
 import { Rpc, RpcClient, RpcGroup, RpcMiddleware } from 'effect/unstable/rpc'
 import { describe, expect, it } from 'vite-plus/test'
 
@@ -100,7 +99,8 @@ describe('createRpcQueryUtils', () => {
     expect(Object.isFrozen(utils.users)).toBe(true)
     expect(Object.isFrozen(utils.users.get.queryKey({ id: 1 }))).toBe(true)
     expect(Object.isFrozen(utils.users.get.queryKey({ id: 1 }).at(-1))).toBe(true)
-    expect(utils.users.get.queryOptions({ input: { id: 1 } }).queryKeyHashFn).toBe(hashKey)
+    const options = utils.users.get.queryOptions({ input: { id: 1 } })
+    expect(options.queryKeyHashFn(options.queryKey)).toBe(JSON.stringify(options.queryKey))
   })
 
   it('executes queries and mutations through Query Core', async () => {
@@ -215,11 +215,12 @@ describe('createRpcQueryUtils', () => {
     })
 
     expect(skipToken).toBe(queryCoreSkipToken)
-    expect(utils.users.get.queryOptions(skipToken)).toEqual({
+    const skipped = utils.users.get.queryOptions(skipToken)
+    expect(skipped).toMatchObject({
       queryFn: queryCoreSkipToken,
       queryKey: ['app', 'users', 'get', 'query'],
-      queryKeyHashFn: hashKey,
     })
+    expect(skipped.queryKeyHashFn(skipped.queryKey)).toBe(JSON.stringify(skipped.queryKey))
   })
 
   it('reports invalid utility paths with a stable configuration error', () => {
@@ -282,6 +283,33 @@ describe('createRpcQueryUtils', () => {
     )
   })
 
+  it('requires a custom key encoder for Schema encoding middleware', () => {
+    class EncodingService extends Context.Service<EncodingService, { readonly suffix: string }>()(
+      'EncodingService',
+    ) {}
+    const Payload = Schema.Struct({ value: Schema.String }).pipe(
+      Schema.middlewareEncoding((encoding) => Effect.flatMap(EncodingService, () => encoding)),
+    )
+    const Serviceful = Rpc.make('encoding.serviceful', {
+      payload: Payload,
+      success: Schema.String,
+    })
+    const servicefulGroup = RpcGroup.make(Serviceful)
+    type ServicefulRpcs = RpcGroup.Rpcs<typeof servicefulGroup>
+    type ServicefulOptions = CreateRpcQueryUtilsOptions<typeof servicefulGroup, readonly ['app']>
+    const unsafeOptions = {
+      client: makeReadyClient() as unknown as RpcClient.RpcClient.Flat<ServicefulRpcs>,
+      keyPrefix: ['app'] as const,
+    } as unknown as ServicefulOptions
+
+    expect(() => createRpcQueryUtils(servicefulGroup, unsafeOptions)).toThrow(
+      expect.objectContaining<Partial<EffectRpcQueryConfigError>>({
+        code: 'MissingKeyEncoder',
+        rpcTag: 'encoding.serviceful',
+      }),
+    )
+  })
+
   it('preserves an own __proto__ property in canonical payload keys', () => {
     const encoded = Object.defineProperty({}, '__proto__', {
       enumerable: true,
@@ -297,5 +325,11 @@ describe('createRpcQueryUtils', () => {
 
     expect(Object.hasOwn(canonical as object, '__proto__')).toBe(true)
     expect((canonical as Record<string, JsonValue>)['__proto__']).toBe('semantic-value')
+
+    const options = utils.users.get.queryOptions({ input: { id: 1 } })
+    const emptyPayloadKey = [...options.queryKey.slice(0, -1), {}]
+    expect(options.queryKeyHashFn(options.queryKey)).not.toBe(
+      options.queryKeyHashFn(emptyPayloadKey),
+    )
   })
 })

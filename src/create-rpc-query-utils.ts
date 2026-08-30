@@ -1,4 +1,5 @@
-import { hashKey, skipToken } from '@tanstack/query-core'
+import { skipToken } from '@tanstack/query-core'
+import type { QueryKey } from '@tanstack/query-core'
 import { Effect, Exit } from 'effect'
 import type { Rpc, RpcClient, RpcGroup } from 'effect/unstable/rpc'
 
@@ -96,6 +97,9 @@ const canonicalize = (value: unknown, seen: WeakSet<object> = new WeakSet()): Js
 }
 
 const freezeKey = (parts: ReadonlyArray<JsonValue | string>) => Object.freeze([...parts])
+
+// JSON.stringify observes own "__proto__" properties that Query Core's object reducer drops.
+const hashCanonicalKey = (queryKey: QueryKey): string => JSON.stringify(queryKey)
 
 const normalizePrefix = (prefix: readonly [JsonValue, ...JsonValue[]]): readonly JsonValue[] => {
   if (!Array.isArray(prefix) || prefix.length === 0) {
@@ -244,7 +248,11 @@ const createQueryOptionsBuilder =
   ) =>
   (argument?: unknown) => {
     if (!rpc.payloadless && argument === skipToken) {
-      return { queryFn: skipToken, queryKey: queryOperationKey, queryKeyHashFn: hashKey }
+      return {
+        queryFn: skipToken,
+        queryKey: queryOperationKey,
+        queryKeyHashFn: hashCanonicalKey,
+      }
     }
 
     const suppliedOptions =
@@ -262,7 +270,7 @@ const createQueryOptionsBuilder =
       queryFn: ({ signal }: { readonly signal: AbortSignal }) =>
         execute(rpc, 'query', prepared.input, runPromiseExit, signal),
       queryKey: prepared.key,
-      queryKeyHashFn: hashKey,
+      queryKeyHashFn: hashCanonicalKey,
     }
   }
 
