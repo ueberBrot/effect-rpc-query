@@ -12,6 +12,9 @@ const ignoredPaths = [
   'test-results/**',
 ]
 
+// Packed type fixtures target dist and run after packaging in the packed-types task.
+const packedTypeFixtures = ['tests/types/**']
+
 export default defineConfig({
   fmt: {
     ignorePatterns: ignoredPaths,
@@ -44,7 +47,7 @@ export default defineConfig({
     sortPackageJson: true,
   },
   lint: {
-    ignorePatterns: ignoredPaths,
+    ignorePatterns: [...ignoredPaths, ...packedTypeFixtures],
     options: {
       typeAware: true,
       typeCheck: true,
@@ -55,6 +58,7 @@ export default defineConfig({
     lint: true,
   },
   test: {
+    fileParallelism: true,
     include: ['tests/**/*.test.ts'],
     passWithNoTests: true,
   },
@@ -99,7 +103,10 @@ export default defineConfig({
         output: ['dist/**'],
       },
       'packed-package': {
-        command: 'pnpm --config.ignore-scripts=true pack --pack-destination .artifacts',
+        command: [
+          'pnpm --config.ignore-scripts=true pack --pack-destination .artifacts',
+          'node scripts/verify-packed-consumer.mts',
+        ],
         dependsOn: ['packed-types'],
         output: ['.artifacts/*.tgz'],
       },
@@ -130,14 +137,11 @@ export default defineConfig({
         command: 'playwright test',
         cache: false,
       },
+      quality: {
+        command: ['vp run check', 'vp run effect-check', 'vp run fallow', 'vp run test'],
+      },
       validate: {
-        command: [
-          'vp run check',
-          'vp run effect-check',
-          'vp run fallow',
-          'vp run test',
-          'vp run packed-package',
-        ],
+        command: ['vp run quality', 'vp run packed-package'],
       },
     },
   },

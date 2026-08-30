@@ -9,3 +9,4 @@ playwright-report/
 test-results/
 *.tgz
 .DS_Store
+.pnpm-store
