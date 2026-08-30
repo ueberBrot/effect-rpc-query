@@ -1,0 +1,26 @@
+{
+  "$schema": "./node_modules/fallow/schema.json",
+
+  // These tools are invoked through Vite+ task and pack configuration, which
+  // Fallow cannot discover as dependency usage. Effect and @effect/vitest are
+  // required by the no-test-yet foundation and become visible in later issues.
+  "ignoreDependencies": [
+    "@arethetypeswrong/cli",
+    "@effect/tsgo",
+    "@effect/vitest",
+    "effect",
+    "publint",
+    "typescript-5.9",
+    "unplugin-unused"
+  ],
+
+  // Health measures shipped library code. Repository configuration and tests
+  // remain covered by dead-code, duplication, lint, type, and execution checks.
+  "health": {
+    "ignore": ["tests/**", "vite.config.ts"]
+  },
+
+  "rules": {
+    "private-type-leaks": "error"
+  }
+}

@@ -1,0 +1,56 @@
+{
+  "name": "effect-rpc-query",
+  "version": "0.0.0",
+  "description": "TanStack Query utilities derived from Effect RPC contracts.",
+  "homepage": "https://github.com/ueberBrot/effect-rpc-query#readme",
+  "bugs": {
+    "url": "https://github.com/ueberBrot/effect-rpc-query/issues"
+  },
+  "license": "ISC",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/ueberBrot/effect-rpc-query.git"
+  },
+  "files": [
+    "dist"
+  ],
+  "type": "module",
+  "sideEffects": false,
+  "main": "./dist/index.mjs",
+  "module": "./dist/index.mjs",
+  "types": "./dist/index.d.mts",
+  "imports": {
+    "#effect-rpc-query": "./src/index.ts",
+    "#effect-rpc-query/*": "./src/*.ts"
+  },
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.mts",
+      "import": "./dist/index.mjs"
+    }
+  },
+  "publishConfig": {
+    "access": "public"
+  },
+  "scripts": {
+    "changeset": "changeset",
+    "prepare": "vp config --no-agent && effect-tsgo patch --typescript"
+  },
+  "devDependencies": {
+    "@arethetypeswrong/cli": "0.18.5",
+    "@changesets/cli": "3.0.1",
+    "@effect/tsgo": "0.36.5",
+    "@effect/vitest": "4.0.0-rc.111",
+    "@playwright/test": "1.62.1",
+    "@types/node": "24.13.3",
+    "effect": "4.0.0-rc.111",
+    "fallow": "3.17.0",
+    "publint": "0.3.24",
+    "typescript": "7.0.2",
+    "typescript-5.9": "npm:typescript@5.9.3",
+    "unplugin-unused": "0.5.2",
+    "vite": "npm:@voidzero-dev/vite-plus-core@0.2.9",
+    "vite-plus": "0.2.9"
+  },
+  "packageManager": "pnpm@11.20.0"
+}

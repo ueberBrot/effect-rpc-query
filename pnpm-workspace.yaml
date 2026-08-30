@@ -1,0 +1,17 @@
+packages:
+  - examples/*
+
+minimumReleaseAge: 10080
+minimumReleaseAgeStrict: true
+minimumReleaseAgeIgnoreMissingTime: false
+
+allowBuilds:
+  'msgpackr-extract@3.0.4': false
+
+overrides:
+  vite: npm:@voidzero-dev/vite-plus-core@0.2.9
+  vitest: 4.1.10
+
+peerDependencyRules:
+  allowedVersions:
+    vite: 0.2.9

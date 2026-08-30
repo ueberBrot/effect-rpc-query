@@ -1,0 +1,11 @@
+node_modules/
+dist/
+coverage/
+.vite/
+.vite-hooks/_/
+.fallow/
+.artifacts/
+playwright-report/
+test-results/
+*.tgz
+.DS_Store
