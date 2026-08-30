@@ -30,6 +30,11 @@ interface PreparedQuery {
   readonly key: readonly JsonValue[]
 }
 
+interface ValidatedRpcPath {
+  readonly rpc: AdaptedUnaryRpc
+  readonly segments: readonly [string, ...string[]]
+}
+
 const canonicalizeNumber = (value: number): number => {
   if (!Number.isFinite(value)) {
     throw new TypeError('Key values must contain only finite numbers')
@@ -120,19 +125,23 @@ const normalizePrefix = (prefix: readonly [JsonValue, ...JsonValue[]]): readonly
   }
 }
 
-// Validate every path before allocation so configuration failure stays atomic.
-const validateRpcPaths = (rpcs: ReadonlyArray<AdaptedUnaryRpc>) => {
+// Parse and validate every path before allocation so configuration failure stays atomic.
+const planRpcPaths = (rpcs: ReadonlyArray<AdaptedUnaryRpc>) => {
   const leafPaths = new Set<string>()
+  const plan: Array<ValidatedRpcPath> = []
 
   for (const rpc of rpcs) {
-    const segments = rpc.tag.split('.')
-    if (segments.some((segment) => segment.length === 0 || reservedPathSegments.has(segment))) {
+    const parsedSegments = rpc.tag.split('.')
+    if (
+      parsedSegments.some((segment) => segment.length === 0 || reservedPathSegments.has(segment))
+    ) {
       throw new EffectRpcQueryConfigError(
         'InvalidRpcPath',
         `RPC tag ${rpc.tag} cannot be projected into a utility path`,
         { rpcTag: rpc.tag },
       )
     }
+    const segments = parsedSegments as [string, ...string[]]
 
     for (let index = 1; index < segments.length; index += 1) {
       if (leafPaths.has(segments.slice(0, index).join('.'))) {
@@ -153,7 +162,10 @@ const validateRpcPaths = (rpcs: ReadonlyArray<AdaptedUnaryRpc>) => {
       )
     }
     leafPaths.add(rpc.tag)
+    plan.push({ rpc, segments })
   }
+
+  return plan
 }
 
 const preparePayload = (
@@ -341,11 +353,11 @@ const validateKeyEncoders = (
 const insertLeaf = (
   tree: Record<string, unknown>,
   prefix: readonly JsonValue[],
-  rpc: AdaptedUnaryRpc,
+  path: ValidatedRpcPath,
   keyEncoder: RuntimeKeyEncoder | undefined,
   runPromiseExit: RunPromiseExit<unknown>,
 ) => {
-  const segments = rpc.tag.split('.')
+  const { rpc, segments } = path
   let branch = tree
   for (let index = 0; index < segments.length - 1; index += 1) {
     const segment = segments[index] as string
@@ -366,16 +378,15 @@ const insertLeaf = (
 
 const createTree = (
   prefix: readonly JsonValue[],
-  rpcs: ReadonlyArray<AdaptedUnaryRpc>,
+  paths: ReadonlyArray<ValidatedRpcPath>,
   keyEncoders: Record<string, RuntimeKeyEncoder>,
   runPromiseExit: RunPromiseExit<unknown>,
 ) => {
   const tree: Record<string, unknown> = {}
   defineKey(tree, prefix)
 
-  // Path validation guarantees that every insertion can build a complete branch.
-  for (const rpc of rpcs) {
-    insertLeaf(tree, prefix, rpc, keyEncoders[rpc.tag], runPromiseExit)
+  for (const path of paths) {
+    insertLeaf(tree, prefix, path, keyEncoders[path.rpc.tag], runPromiseExit)
   }
   return deepFreezeTree(tree)
 }
@@ -400,14 +411,14 @@ export const createRpcQueryUtils = <
   const client = options.client as RpcClient.RpcClient.Flat<Rpc.Any, ClientError>
   const rpcs = extractUnaryRpcs(runtimeGroup, client)
   const prefix = normalizePrefix(options.keyPrefix)
-  validateRpcPaths(rpcs)
+  const paths = planRpcPaths(rpcs)
 
   const keyEncoders = (options.keyEncoders ?? {}) as Record<string, RuntimeKeyEncoder>
   validateKeyEncoders(rpcs, keyEncoders)
 
   const runPromiseExit = (options.runPromiseExit ??
     Effect.runPromiseExit) as RunPromiseExit<unknown>
-  return createTree(prefix, rpcs, keyEncoders, runPromiseExit) as RpcQueryUtils<
+  return createTree(prefix, paths, keyEncoders, runPromiseExit) as RpcQueryUtils<
     Group,
     Prefix,
     ClientError
