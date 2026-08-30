@@ -28,6 +28,6 @@
       }
     ]
   },
-  "include": ["src/**/*.ts", "tests/**/*.ts", "vite.config.ts"],
+  "include": ["scripts/**/*.mts", "src/**/*.ts", "tests/**/*.ts", "vite.config.ts"],
   "exclude": ["dist", "node_modules"]
 }

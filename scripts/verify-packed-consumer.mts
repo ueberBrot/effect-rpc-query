@@ -48,7 +48,7 @@ try {
   })
 
   writeFileSync(
-    join(consumerDirectory, 'runtime.mjs'),
+    join(consumerDirectory, 'runtime.mts'),
     `import * as rpcQuery from 'effect-rpc-query'
 import { skipToken } from '@tanstack/query-core'
 
@@ -59,7 +59,7 @@ const expectedExports = [
   'createRpcQueryUtils',
   'isEffectRpcQueryError',
   'skipToken',
-]
+] as const satisfies ReadonlyArray<keyof typeof rpcQuery>
 
 if (JSON.stringify(Object.keys(rpcQuery).sort()) !== JSON.stringify(expectedExports)) {
   throw new Error('The package root exposed an unexpected runtime surface')
@@ -69,10 +69,6 @@ if (rpcQuery.skipToken !== skipToken) {
 }
 `,
   )
-  execFileSync(process.execPath, ['runtime.mjs'], {
-    cwd: consumerDirectory,
-    stdio: 'inherit',
-  })
 
   // Reuse the full contract fixture, but resolve the library as an installed package.
   const fixture = readFileSync(
@@ -96,14 +92,14 @@ if (rpcQuery.skipToken !== skipToken) {
           target: 'ES2022',
           types: ['node'],
         },
-        include: ['technical-spine.ts'],
+        include: ['runtime.mts', 'technical-spine.ts'],
       },
       null,
       2,
     ),
   )
 
-  for (const compiler of ['typescript-5.9', 'typescript']) {
+  for (const compiler of ['typescript-5.9', 'typescript'] as const) {
     execFileSync(
       process.execPath,
       [
@@ -116,6 +112,12 @@ if (rpcQuery.skipToken !== skipToken) {
       { cwd: consumerDirectory, stdio: 'inherit' },
     )
   }
+
+  // Execute the same module only after both supported compilers accept it.
+  execFileSync(process.execPath, ['runtime.mts'], {
+    cwd: consumerDirectory,
+    stdio: 'inherit',
+  })
 } finally {
   rmSync(consumerDirectory, { force: true, recursive: true })
 }

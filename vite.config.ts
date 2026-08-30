@@ -101,7 +101,7 @@ export default defineConfig({
       'packed-package': {
         command: [
           'pnpm --config.ignore-scripts=true pack --pack-destination .artifacts',
-          'node scripts/verify-packed-consumer.mjs',
+          'node scripts/verify-packed-consumer.mts',
         ],
         dependsOn: ['packed-types'],
         output: ['.artifacts/*.tgz'],
