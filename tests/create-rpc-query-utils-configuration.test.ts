@@ -1,6 +1,7 @@
 import { describe, expect, it } from '@effect/vitest'
 import { Context, Effect, Schema } from 'effect'
 import { Rpc, RpcGroup } from 'effect/unstable/rpc'
+import type { RpcClient } from 'effect/unstable/rpc'
 
 import {
   createRpcQueryUtils,
@@ -11,6 +12,13 @@ import {
 } from '#effect-rpc-query'
 
 import { group, makeClient, makeRpcTestClient } from './fixtures/effect-rpc'
+
+const unusedClient = Effect.fn('TestRpc.unusedClient')(function* () {
+  return yield* Effect.die('configuration tests must not execute RPCs')
+})
+
+const unusedClientFor = <Group extends RpcGroup.Any>(_group: Group) =>
+  unusedClient as unknown as RpcClient.RpcClient.Flat<RpcGroup.Rpcs<Group>>
 
 describe('createRpcQueryUtils configuration', () => {
   it.effect('reports invalid utility paths with a stable configuration error', () =>
@@ -35,6 +43,83 @@ describe('createRpcQueryUtils configuration', () => {
       )
     }),
   )
+
+  it.each([
+    '',
+    '.leading',
+    'trailing.',
+    'empty..segment',
+    '__proto__.child',
+    'prototype.child',
+    'constructor.child',
+    'namespace.key',
+    'namespace.queryKey',
+    'namespace.mutationKey',
+    'namespace.queryOptions',
+    'namespace.mutationOptions',
+  ])('rejects the invalid RPC path %j before returning a tree', (rpcTag) => {
+    const invalidGroup = RpcGroup.make(Rpc.make(rpcTag, { success: Schema.Void }))
+
+    expect(() =>
+      createRpcQueryUtils(invalidGroup, {
+        client: unusedClientFor(invalidGroup),
+        keyPrefix: ['app'] as const,
+      }),
+    ).toThrow(
+      expect.objectContaining<Partial<EffectRpcQueryConfigError>>({
+        _tag: 'EffectRpcQueryConfigError',
+        code: 'InvalidRpcPath',
+        rpcTag,
+      }),
+    )
+  })
+
+  it('rejects every leaf-branch collision regardless of request order', () => {
+    const Leaf = Rpc.make('users', { success: Schema.Void })
+    const Descendant = Rpc.make('users.get', { success: Schema.Void })
+    const groups = [
+      [RpcGroup.make(Leaf, Descendant), 'users.get', 'users'],
+      [RpcGroup.make(Descendant, Leaf), 'users', 'users.get'],
+    ] as const
+
+    for (const [collidingGroup, rpcTag, path] of groups) {
+      expect(() =>
+        createRpcQueryUtils(collidingGroup, {
+          client: unusedClientFor(collidingGroup),
+          keyPrefix: ['app'] as const,
+        }),
+      ).toThrow(
+        expect.objectContaining<Partial<EffectRpcQueryConfigError>>({
+          _tag: 'EffectRpcQueryConfigError',
+          code: 'RpcPathCollision',
+          path,
+          rpcTag,
+        }),
+      )
+    }
+  })
+
+  it('rejects duplicate projected paths retained under different request-map keys', () => {
+    const First = Rpc.make('duplicates.read', { success: Schema.Literal('first') })
+    const Duplicate = Rpc.make('duplicates.read', { success: Schema.Literal('second') })
+    const duplicateGroup = RpcGroup.make(First)
+    const requests = duplicateGroup.requests as unknown as Map<string, Rpc.Any>
+    requests.set('duplicate-map-key', Duplicate)
+
+    expect(() =>
+      createRpcQueryUtils(duplicateGroup, {
+        client: unusedClientFor(duplicateGroup),
+        keyPrefix: ['app'] as const,
+      }),
+    ).toThrow(
+      expect.objectContaining<Partial<EffectRpcQueryConfigError>>({
+        _tag: 'EffectRpcQueryConfigError',
+        code: 'RpcPathCollision',
+        path: 'duplicates.read',
+        rpcTag: 'duplicates.read',
+      }),
+    )
+  })
 
   it.effect('reports non-JSON encoder output with a stable key error', () =>
     Effect.gen(function* () {

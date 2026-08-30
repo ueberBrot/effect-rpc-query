@@ -12,6 +12,10 @@ The default five-role triage vocabulary is used. See `docs/agents/triage-labels.
 
 This repository uses a single-context domain-doc layout. See `docs/agents/domain.md`.
 
+### Vite+
+
+Check `package.json` and `vite.config.ts` first, and run `vp run <name>` when the project defines a script or task with that name.
+
 ### Testing
 
 Don't write tests for what the type system already guarantees. Use compile-time fixtures to verify the published type contract; reserve runtime tests for behavior that can fail at runtime.

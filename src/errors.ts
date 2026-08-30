@@ -23,6 +23,9 @@ export interface EffectRpcQueryConfigErrorOptions {
   /** The underlying failure, when one exists. */
   readonly cause?: unknown
 
+  /** The existing projected path associated with a collision. */
+  readonly path?: string
+
   /** The RPC or encoder tag associated with the invalid configuration. */
   readonly rpcTag?: string
 }
@@ -65,6 +68,9 @@ export class EffectRpcQueryConfigError extends Error {
   /** The underlying failure, when one exists. */
   override readonly cause?: unknown
 
+  /** The existing projected path associated with a collision. */
+  readonly path: string | undefined
+
   /** The RPC or encoder tag associated with the invalid configuration. */
   readonly rpcTag: string | undefined
 
@@ -77,6 +83,7 @@ export class EffectRpcQueryConfigError extends Error {
     this.name = 'EffectRpcQueryConfigError'
     this.code = code
     this.cause = options.cause
+    this.path = options.path
     this.rpcTag = options.rpcTag
   }
 }
