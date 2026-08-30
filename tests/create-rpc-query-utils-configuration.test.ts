@@ -13,11 +13,12 @@ import {
 
 import { group, makeClient, makeRpcTestClient } from './fixtures/effect-rpc'
 
+const unusedClient = Effect.fn('TestRpc.unusedClient')(function* () {
+  return yield* Effect.die('configuration tests must not execute RPCs')
+})
+
 const unusedClientFor = <Group extends RpcGroup.Any>(_group: Group) =>
-  (() =>
-    Effect.die('configuration tests must not execute RPCs')) as unknown as RpcClient.RpcClient.Flat<
-    RpcGroup.Rpcs<Group>
-  >
+  unusedClient as unknown as RpcClient.RpcClient.Flat<RpcGroup.Rpcs<Group>>
 
 describe('createRpcQueryUtils configuration', () => {
   it.effect('reports invalid utility paths with a stable configuration error', () =>
@@ -77,11 +78,11 @@ describe('createRpcQueryUtils configuration', () => {
     const Leaf = Rpc.make('users', { success: Schema.Void })
     const Descendant = Rpc.make('users.get', { success: Schema.Void })
     const groups = [
-      [RpcGroup.make(Leaf, Descendant), 'users.get'],
-      [RpcGroup.make(Descendant, Leaf), 'users'],
+      [RpcGroup.make(Leaf, Descendant), 'users.get', 'users'],
+      [RpcGroup.make(Descendant, Leaf), 'users', 'users.get'],
     ] as const
 
-    for (const [collidingGroup, rpcTag] of groups) {
+    for (const [collidingGroup, rpcTag, path] of groups) {
       expect(() =>
         createRpcQueryUtils(collidingGroup, {
           client: unusedClientFor(collidingGroup),
@@ -91,6 +92,7 @@ describe('createRpcQueryUtils configuration', () => {
         expect.objectContaining<Partial<EffectRpcQueryConfigError>>({
           _tag: 'EffectRpcQueryConfigError',
           code: 'RpcPathCollision',
+          path,
           rpcTag,
         }),
       )
@@ -113,6 +115,7 @@ describe('createRpcQueryUtils configuration', () => {
       expect.objectContaining<Partial<EffectRpcQueryConfigError>>({
         _tag: 'EffectRpcQueryConfigError',
         code: 'RpcPathCollision',
+        path: 'duplicates.read',
         rpcTag: 'duplicates.read',
       }),
     )

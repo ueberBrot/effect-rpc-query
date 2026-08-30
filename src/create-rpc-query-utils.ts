@@ -125,9 +125,16 @@ const normalizePrefix = (prefix: readonly [JsonValue, ...JsonValue[]]): readonly
   }
 }
 
+const rpcPathCollision = (rpcTag: string, path: string, relation: 'collides with' | 'duplicates') =>
+  new EffectRpcQueryConfigError(
+    'RpcPathCollision',
+    `RPC tag ${rpcTag} ${relation} utility path ${path}`,
+    { path, rpcTag },
+  )
+
 // Parse and validate every path before allocation so configuration failure stays atomic.
 const planRpcPaths = (rpcs: ReadonlyArray<AdaptedUnaryRpc>) => {
-  const branchPaths = new Set<string>()
+  const branchPaths = new Map<string, string>()
   const leafPaths = new Set<string>()
   const plan: Array<ValidatedRpcPath> = []
 
@@ -145,31 +152,27 @@ const planRpcPaths = (rpcs: ReadonlyArray<AdaptedUnaryRpc>) => {
     const segments = parsedSegments as [string, ...string[]]
 
     if (leafPaths.has(rpc.tag)) {
-      throw new EffectRpcQueryConfigError(
-        'RpcPathCollision',
-        `RPC tag ${rpc.tag} duplicates another utility path`,
-        { rpcTag: rpc.tag },
-      )
+      throw rpcPathCollision(rpc.tag, rpc.tag, 'duplicates')
     }
 
-    if (branchPaths.has(rpc.tag)) {
-      throw new EffectRpcQueryConfigError(
-        'RpcPathCollision',
-        `RPC tag ${rpc.tag} collides with another utility path`,
-        { rpcTag: rpc.tag },
-      )
+    const descendantPath = branchPaths.get(rpc.tag)
+    if (descendantPath !== undefined) {
+      throw rpcPathCollision(rpc.tag, descendantPath, 'collides with')
     }
 
+    const rpcBranchPaths: Array<string> = []
     for (let index = 1; index < segments.length; index += 1) {
       const branchPath = segments.slice(0, index).join('.')
       if (leafPaths.has(branchPath)) {
-        throw new EffectRpcQueryConfigError(
-          'RpcPathCollision',
-          `RPC tag ${rpc.tag} collides with another utility path`,
-          { rpcTag: rpc.tag },
-        )
+        throw rpcPathCollision(rpc.tag, branchPath, 'collides with')
       }
-      branchPaths.add(branchPath)
+      rpcBranchPaths.push(branchPath)
+    }
+
+    for (const branchPath of rpcBranchPaths) {
+      if (!branchPaths.has(branchPath)) {
+        branchPaths.set(branchPath, rpc.tag)
+      }
     }
 
     leafPaths.add(rpc.tag)
