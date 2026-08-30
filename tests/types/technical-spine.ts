@@ -3,7 +3,7 @@ import {
   QueryClient,
   skipToken as queryCoreSkipToken,
 } from '@tanstack/query-core'
-import { Effect, Schema } from 'effect'
+import { Context, Effect, Schema } from 'effect'
 import { Rpc, RpcClient, RpcGroup, RpcMiddleware } from 'effect/unstable/rpc'
 
 import {
@@ -16,12 +16,8 @@ import {
   type JsonValue,
   type KeyEncoder,
   type QueryData,
-  type RpcMutationOptions,
-  type RpcOperation,
-  type RpcQueryOptions,
   type RpcQueryUtils,
   type RunPromiseExit,
-  type SkippedRpcQueryOptions,
   type SkipToken,
 } from '#effect-rpc-query'
 
@@ -50,6 +46,25 @@ const Watch = Rpc.make('events.watch', {
   stream: true,
 })
 
+class EncodingService extends Context.Service<EncodingService, { readonly suffix: string }>()(
+  'EncodingService',
+) {}
+
+const BasePayload = Schema.Struct({ value: Schema.String })
+const ServicefulPayload = BasePayload.pipe(
+  Schema.middlewareEncoding<typeof BasePayload, EncodingService>((encoding) =>
+    Effect.flatMap(EncodingService, () => encoding),
+  ),
+)
+const Serviceful = Rpc.make('encoding.serviceful', {
+  payload: ServicefulPayload,
+  success: Schema.String,
+})
+const Secret = Rpc.make('secrets.read', {
+  payload: { secret: Schema.Redacted(Schema.String) },
+  success: Schema.String,
+})
+
 const group = RpcGroup.make(GetUser, Ping, Secure, Watch)
 type Rpcs = RpcGroup.Rpcs<typeof group>
 
@@ -68,10 +83,9 @@ const jsonValue: JsonValue = { nested: [true, null, 1, 'value'] }
 const keyEncoder: KeyEncoder<typeof GetUser> = (payload) => ({ id: payload.id })
 const runPromiseExit: RunPromiseExit = Effect.runPromiseExit
 const queryData: QueryData<void> = null
-const operation: RpcOperation = 'query'
 const configCode: EffectRpcQueryConfigErrorCode = 'InvalidRpcPath'
 const keyCode: EffectRpcQueryKeyErrorCode = 'InvalidKeyValue'
-void [jsonValue, keyEncoder, runPromiseExit, queryData, operation, configCode, keyCode]
+void [jsonValue, keyEncoder, runPromiseExit, queryData, configCode, keyCode]
 
 const queryClient = new QueryClient()
 
@@ -80,16 +94,47 @@ const selected = utils.users.get.queryOptions({
   initialData: { id: 1, name: 'Ada' },
   select: (user) => user.name,
 })
-const typedSelected: RpcQueryOptions<typeof GetUser, typeof keyPrefix, never, string> = selected
-void typedSelected
+const definedInitialData:
+  | { readonly id: number; readonly name: string }
+  | (() => { readonly id: number; readonly name: string }) = selected.initialData
+void definedInitialData
 const selectedResult: Promise<string> = queryClient.query(selected)
 void selectedResult
+void queryClient.prefetchQuery(selected)
 
 const possiblyInitialized = utils.users.get.queryOptions({
   input: { id: 1, locale: 'de' },
   initialData: () => undefined,
 })
-void possiblyInitialized
+const possiblyUndefinedInitialData:
+  | { readonly id: number; readonly name: string }
+  | (() => { readonly id: number; readonly name: string } | undefined)
+  | undefined = possiblyInitialized.initialData
+void possiblyUndefinedInitialData
+
+const encoderGroup = RpcGroup.make(Serviceful, Secret)
+type EncoderRpcs = RpcGroup.Rpcs<typeof encoderGroup>
+declare const encoderClient: RpcClient.RpcClient.Flat<EncoderRpcs>
+declare const encoderRunner: RunPromiseExit<EncodingService>
+
+// @ts-expect-error serviceful and redacted payloads require explicit key encoders
+const missingEncoderOptions: CreateRpcQueryUtilsOptions<typeof encoderGroup, typeof keyPrefix> = {
+  client: encoderClient,
+  keyPrefix,
+  runPromiseExit: encoderRunner,
+}
+void missingEncoderOptions
+
+const encoderOptions: CreateRpcQueryUtilsOptions<typeof encoderGroup, typeof keyPrefix> = {
+  client: encoderClient,
+  keyEncoders: {
+    'encoding.serviceful': (payload) => payload,
+    'secrets.read': () => ({ redacted: true }),
+  },
+  keyPrefix,
+  runPromiseExit: encoderRunner,
+}
+createRpcQueryUtils(encoderGroup, encoderOptions)
 
 const cachedUser: { readonly id: number; readonly name: string } | undefined =
   queryClient.getQueryData(utils.users.get.queryKey({ id: 1 }))
@@ -97,17 +142,13 @@ void cachedUser
 
 const skipped = utils.users.get.queryOptions(skipToken)
 skipped.queryFn satisfies typeof queryCoreSkipToken
-const typedSkipped: SkippedRpcQueryOptions<typeof GetUser, typeof keyPrefix> = skipped
-const typedSkipToken: SkipToken = typedSkipped.queryFn
+const typedSkipToken: SkipToken = skipped.queryFn
 void typedSkipToken
 
 const pingQuery: Promise<null> = queryClient.query(utils.health.ping.queryOptions())
 void pingQuery
 
 const pingMutation = new MutationObserver(queryClient, utils.health.ping.mutationOptions())
-const pingMutationOptions: RpcMutationOptions<typeof Ping, typeof keyPrefix, never> =
-  utils.health.ping.mutationOptions()
-void pingMutationOptions
 const pingMutationResult: Promise<void> = pingMutation.mutate(undefined)
 void pingMutationResult
 

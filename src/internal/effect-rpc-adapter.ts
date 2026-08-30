@@ -1,4 +1,4 @@
-import { Schema } from 'effect'
+import { Schema, SchemaAST } from 'effect'
 import type { Effect } from 'effect'
 import { Rpc, RpcClient, RpcGroup, RpcSchema } from 'effect/unstable/rpc'
 
@@ -6,6 +6,9 @@ import { Rpc, RpcClient, RpcGroup, RpcSchema } from 'effect/unstable/rpc'
 export interface AdaptedUnaryRpc {
   /** Whether callers omit constructor input for this RPC. */
   readonly payloadless: boolean
+
+  /** Whether default key encoding could expose an explicit redacted value. */
+  readonly requiresKeyEncoder: boolean
 
   /** The literal RPC tag used for paths and diagnostics. */
   readonly tag: string
@@ -18,6 +21,29 @@ export interface AdaptedUnaryRpc {
 
   /** Schema-encodes a normalized payload for semantic cache identity. */
   readonly encodePayload: (payload: unknown) => unknown
+}
+
+// Redaction is runtime Schema metadata; encoding-service requirements are type-only.
+const containsRedactedSchema = (value: unknown, seen = new WeakSet<object>()): boolean => {
+  if (typeof value !== 'object' || value === null || seen.has(value)) {
+    return false
+  }
+  seen.add(value)
+
+  if (SchemaAST.isAST(value)) {
+    const representation = value.annotations?.['representation'] as
+      | { readonly id?: unknown }
+      | undefined
+    if (representation?.id === 'effect/schema/Redacted') {
+      return true
+    }
+  }
+
+  return Object.values(value).some((child) =>
+    Array.isArray(child)
+      ? child.some((element) => containsRedactedSchema(element, seen))
+      : containsRedactedSchema(child, seen),
+  )
 }
 
 /**
@@ -38,6 +64,7 @@ export const extractUnaryRpcs = <Rpcs extends Rpc.Any, ClientError>(
 
     unaryRpcs.push({
       payloadless: definition.payloadSchema === Schema.Void,
+      requiresKeyEncoder: containsRedactedSchema(definition.payloadSchema.ast),
       tag: definition._tag,
       invoke: (input) => client(definition._tag as never, input as never),
       makePayload: (input) => definition.payloadSchema.make(input),

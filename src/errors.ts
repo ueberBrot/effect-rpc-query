@@ -18,6 +18,15 @@ export type EffectRpcQueryKeyErrorCode =
 /** The TanStack operation that executed an RPC. */
 export type RpcOperation = 'query' | 'mutation'
 
+/** Safe metadata identifying the configuration entry that failed. */
+export interface EffectRpcQueryConfigErrorOptions {
+  /** The underlying failure, when one exists. */
+  readonly cause?: unknown
+
+  /** The RPC or encoder tag associated with the invalid configuration. */
+  readonly rpcTag?: string
+}
+
 /**
  * Wraps a failed RPC Exit for TanStack while preserving its complete Effect Cause.
  *
@@ -56,11 +65,19 @@ export class EffectRpcQueryConfigError extends Error {
   /** The underlying failure, when one exists. */
   override readonly cause?: unknown
 
-  constructor(code: EffectRpcQueryConfigErrorCode, message: string, cause?: unknown) {
-    super(message, cause === undefined ? undefined : { cause })
+  /** The RPC or encoder tag associated with the invalid configuration. */
+  readonly rpcTag: string | undefined
+
+  constructor(
+    code: EffectRpcQueryConfigErrorCode,
+    message: string,
+    options: EffectRpcQueryConfigErrorOptions = {},
+  ) {
+    super(message, options.cause === undefined ? undefined : { cause: options.cause })
     this.name = 'EffectRpcQueryConfigError'
     this.code = code
-    this.cause = cause
+    this.cause = options.cause
+    this.rpcTag = options.rpcTag
   }
 }
 

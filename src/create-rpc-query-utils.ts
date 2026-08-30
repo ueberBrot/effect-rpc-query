@@ -1,4 +1,4 @@
-import { skipToken } from '@tanstack/query-core'
+import { hashKey, skipToken } from '@tanstack/query-core'
 import { Effect, Exit } from 'effect'
 import type { Rpc, RpcClient, RpcGroup } from 'effect/unstable/rpc'
 
@@ -24,6 +24,51 @@ interface PreparedPayload {
   readonly normalized: unknown
 }
 
+interface PreparedQuery {
+  readonly input: unknown
+  readonly key: readonly JsonValue[]
+}
+
+const canonicalizeNumber = (value: number): number => {
+  if (!Number.isFinite(value)) {
+    throw new TypeError('Key values must contain only finite numbers')
+  }
+  return Object.is(value, -0) ? 0 : value
+}
+
+const canonicalizeArray = (value: unknown[], seen: WeakSet<object>): JsonValue => {
+  const copy: Array<JsonValue> = []
+  for (let index = 0; index < value.length; index += 1) {
+    if (!(index in value)) {
+      throw new TypeError('Key values must not contain sparse arrays')
+    }
+    copy.push(canonicalize(value[index], seen))
+  }
+  // Shared references are valid JSON; only references on the active path form cycles.
+  seen.delete(value)
+  return Object.freeze(copy)
+}
+
+const canonicalizeObject = (value: object, seen: WeakSet<object>): JsonValue => {
+  const prototype = Object.getPrototypeOf(value)
+  if (prototype !== Object.prototype && prototype !== null) {
+    throw new TypeError('Key values must contain only plain objects')
+  }
+
+  const copy: Record<string, JsonValue> = {}
+  for (const key of Object.keys(value).sort()) {
+    // defineProperty preserves an own "__proto__" key instead of invoking its setter.
+    Object.defineProperty(copy, key, {
+      configurable: true,
+      enumerable: true,
+      value: canonicalize((value as Record<string, unknown>)[key], seen),
+      writable: true,
+    })
+  }
+  seen.delete(value)
+  return Object.freeze(copy)
+}
+
 // Copying prevents caller mutation; sorting makes equivalent objects hash identically.
 const canonicalize = (value: unknown, seen: WeakSet<object> = new WeakSet()): JsonValue => {
   if (value === null || typeof value === 'string' || typeof value === 'boolean') {
@@ -31,10 +76,7 @@ const canonicalize = (value: unknown, seen: WeakSet<object> = new WeakSet()): Js
   }
 
   if (typeof value === 'number') {
-    if (!Number.isFinite(value)) {
-      throw new TypeError('Key values must contain only finite numbers')
-    }
-    return Object.is(value, -0) ? 0 : value
+    return canonicalizeNumber(value)
   }
 
   if (typeof value !== 'object') {
@@ -47,29 +89,10 @@ const canonicalize = (value: unknown, seen: WeakSet<object> = new WeakSet()): Js
   seen.add(value)
 
   if (Array.isArray(value)) {
-    const copy: Array<JsonValue> = []
-    for (let index = 0; index < value.length; index += 1) {
-      if (!(index in value)) {
-        throw new TypeError('Key values must not contain sparse arrays')
-      }
-      copy.push(canonicalize(value[index], seen))
-    }
-    // Shared references are valid JSON; only references on the active path form cycles.
-    seen.delete(value)
-    return Object.freeze(copy)
+    return canonicalizeArray(value, seen)
   }
 
-  const prototype = Object.getPrototypeOf(value)
-  if (prototype !== Object.prototype && prototype !== null) {
-    throw new TypeError('Key values must contain only plain objects')
-  }
-
-  const copy: Record<string, JsonValue> = {}
-  for (const key of Object.keys(value).sort()) {
-    copy[key] = canonicalize((value as Record<string, unknown>)[key], seen)
-  }
-  seen.delete(value)
-  return Object.freeze(copy)
+  return canonicalizeObject(value, seen)
 }
 
 const freezeKey = (parts: ReadonlyArray<JsonValue | string>) => Object.freeze([...parts])
@@ -88,7 +111,7 @@ const normalizePrefix = (prefix: readonly [JsonValue, ...JsonValue[]]): readonly
     throw new EffectRpcQueryConfigError(
       'InvalidKeyPrefix',
       'keyPrefix must contain only JSON-safe values',
-      cause,
+      { cause },
     )
   }
 }
@@ -103,6 +126,7 @@ const validateRpcPaths = (rpcs: ReadonlyArray<AdaptedUnaryRpc>) => {
       throw new EffectRpcQueryConfigError(
         'InvalidRpcPath',
         `RPC tag ${rpc.tag} cannot be projected into a utility path`,
+        { rpcTag: rpc.tag },
       )
     }
 
@@ -111,6 +135,7 @@ const validateRpcPaths = (rpcs: ReadonlyArray<AdaptedUnaryRpc>) => {
         throw new EffectRpcQueryConfigError(
           'RpcPathCollision',
           `RPC tag ${rpc.tag} collides with another utility path`,
+          { rpcTag: rpc.tag },
         )
       }
     }
@@ -120,6 +145,7 @@ const validateRpcPaths = (rpcs: ReadonlyArray<AdaptedUnaryRpc>) => {
       throw new EffectRpcQueryConfigError(
         'RpcPathCollision',
         `RPC tag ${rpc.tag} collides with another utility path`,
+        { rpcTag: rpc.tag },
       )
     }
     leafPaths.add(rpc.tag)
@@ -191,6 +217,24 @@ const defineKey = (target: Record<string, unknown>, parts: ReadonlyArray<JsonVal
   target['key'] = () => key
 }
 
+const prepareQuery = (
+  rpc: AdaptedUnaryRpc,
+  input: unknown,
+  queryOperationKey: readonly JsonValue[],
+  keyEncoder: RuntimeKeyEncoder | undefined,
+): PreparedQuery => {
+  if (rpc.payloadless) {
+    return { input: undefined, key: queryOperationKey }
+  }
+
+  const prepared = preparePayload(rpc, input, keyEncoder)
+  return {
+    // The ready client constructs this normalized payload again during execution.
+    input: prepared.normalized,
+    key: freezeKey([...queryOperationKey, prepared.canonical]),
+  }
+}
+
 const createQueryOptionsBuilder =
   (
     rpc: AdaptedUnaryRpc,
@@ -200,7 +244,7 @@ const createQueryOptionsBuilder =
   ) =>
   (argument?: unknown) => {
     if (!rpc.payloadless && argument === skipToken) {
-      return { queryFn: skipToken, queryKey: queryOperationKey }
+      return { queryFn: skipToken, queryKey: queryOperationKey, queryKeyHashFn: hashKey }
     }
 
     const suppliedOptions =
@@ -208,25 +252,17 @@ const createQueryOptionsBuilder =
         ? (argument as Record<string, unknown>)
         : {}
 
-    let preparedInput: unknown = undefined
-    let key = queryOperationKey
     const options = { ...suppliedOptions }
-
-    if (!rpc.payloadless) {
-      const input = options['input']
-      delete options['input']
-      const prepared = preparePayload(rpc, input, keyEncoder)
-      // The ready client constructs this normalized payload again during execution.
-      preparedInput = prepared.normalized
-      key = freezeKey([...queryOperationKey, prepared.canonical])
-    }
+    const prepared = prepareQuery(rpc, options['input'], queryOperationKey, keyEncoder)
+    delete options['input']
 
     return {
       // Owned fields follow user options so callers cannot replace keys or runners.
       ...options,
       queryFn: ({ signal }: { readonly signal: AbortSignal }) =>
-        execute(rpc, 'query', preparedInput, runPromiseExit, signal),
-      queryKey: key,
+        execute(rpc, 'query', prepared.input, runPromiseExit, signal),
+      queryKey: prepared.key,
+      queryKeyHashFn: hashKey,
     }
   }
 
@@ -240,13 +276,7 @@ const createLeaf = (
   const queryOperationKey = freezeKey([...rpcKey, 'query'])
   const mutationKey = freezeKey([...rpcKey, 'mutation'])
 
-  const queryKey = (input?: unknown) => {
-    if (rpc.payloadless) {
-      return queryOperationKey
-    }
-    const prepared = preparePayload(rpc, input, keyEncoder)
-    return freezeKey([...queryOperationKey, prepared.canonical])
-  }
+  const queryKey = (input?: unknown) => prepareQuery(rpc, input, queryOperationKey, keyEncoder).key
 
   const queryOptions = createQueryOptionsBuilder(rpc, queryOperationKey, keyEncoder, runPromiseExit)
 
@@ -274,6 +304,74 @@ const deepFreezeTree = (value: Record<string, unknown>) => {
   return Object.freeze(value)
 }
 
+const validateKeyEncoders = (
+  rpcs: ReadonlyArray<AdaptedUnaryRpc>,
+  keyEncoders: Record<string, RuntimeKeyEncoder>,
+) => {
+  const knownTags = new Set(rpcs.map((rpc) => rpc.tag))
+  for (const tag of Object.keys(keyEncoders)) {
+    if (!knownTags.has(tag)) {
+      throw new EffectRpcQueryConfigError(
+        'UnknownKeyEncoder',
+        `No unary RPC exists for key encoder ${tag}`,
+        { rpcTag: tag },
+      )
+    }
+  }
+
+  for (const rpc of rpcs) {
+    if (rpc.requiresKeyEncoder && keyEncoders[rpc.tag] === undefined) {
+      throw new EffectRpcQueryConfigError(
+        'MissingKeyEncoder',
+        `RPC ${rpc.tag} requires a safe custom key encoder`,
+        { rpcTag: rpc.tag },
+      )
+    }
+  }
+}
+
+const insertLeaf = (
+  tree: Record<string, unknown>,
+  prefix: readonly JsonValue[],
+  rpc: AdaptedUnaryRpc,
+  keyEncoder: RuntimeKeyEncoder | undefined,
+  runPromiseExit: RunPromiseExit<unknown>,
+) => {
+  const segments = rpc.tag.split('.')
+  let branch = tree
+  for (let index = 0; index < segments.length - 1; index += 1) {
+    const segment = segments[index] as string
+    let child = Object.hasOwn(branch, segment)
+      ? (branch[segment] as Record<string, unknown>)
+      : undefined
+    if (child === undefined) {
+      child = {}
+      defineKey(child, [...prefix, ...segments.slice(0, index + 1)])
+      branch[segment] = child
+    }
+    branch = child
+  }
+
+  const leafName = segments.at(-1) as string
+  branch[leafName] = createLeaf(rpc, [...prefix, ...segments], keyEncoder, runPromiseExit)
+}
+
+const createTree = (
+  prefix: readonly JsonValue[],
+  rpcs: ReadonlyArray<AdaptedUnaryRpc>,
+  keyEncoders: Record<string, RuntimeKeyEncoder>,
+  runPromiseExit: RunPromiseExit<unknown>,
+) => {
+  const tree: Record<string, unknown> = {}
+  defineKey(tree, prefix)
+
+  // Path validation guarantees that every insertion can build a complete branch.
+  for (const rpc of rpcs) {
+    insertLeaf(tree, prefix, rpc, keyEncoders[rpc.tag], runPromiseExit)
+  }
+  return deepFreezeTree(tree)
+}
+
 /**
  * Derives an eager, frozen TanStack Query utility tree from an Effect RPC group.
  *
@@ -297,44 +395,13 @@ export const createRpcQueryUtils = <
   validateRpcPaths(rpcs)
 
   const keyEncoders = (options.keyEncoders ?? {}) as Record<string, RuntimeKeyEncoder>
-  const knownTags = new Set(rpcs.map((rpc) => rpc.tag))
-  for (const tag of Object.keys(keyEncoders)) {
-    if (!knownTags.has(tag)) {
-      throw new EffectRpcQueryConfigError(
-        'UnknownKeyEncoder',
-        `No unary RPC exists for key encoder ${tag}`,
-      )
-    }
-  }
+  validateKeyEncoders(rpcs, keyEncoders)
 
   const runPromiseExit = (options.runPromiseExit ??
     Effect.runPromiseExit) as RunPromiseExit<unknown>
-  const tree: Record<string, unknown> = {}
-  defineKey(tree, prefix)
-
-  // Path validation above guarantees each assignment creates one complete tree.
-  for (const rpc of rpcs) {
-    const segments = rpc.tag.split('.')
-    let branch = tree
-    for (let index = 0; index < segments.length - 1; index += 1) {
-      const segment = segments[index] as string
-      let child = branch[segment] as Record<string, unknown> | undefined
-      if (child === undefined) {
-        child = {}
-        defineKey(child, [...prefix, ...segments.slice(0, index + 1)])
-        branch[segment] = child
-      }
-      branch = child
-    }
-
-    const leafName = segments.at(-1) as string
-    branch[leafName] = createLeaf(
-      rpc,
-      [...prefix, ...segments],
-      keyEncoders[rpc.tag],
-      runPromiseExit,
-    )
-  }
-
-  return deepFreezeTree(tree) as RpcQueryUtils<Group, Prefix, ClientError>
+  return createTree(prefix, rpcs, keyEncoders, runPromiseExit) as RpcQueryUtils<
+    Group,
+    Prefix,
+    ClientError
+  >
 }

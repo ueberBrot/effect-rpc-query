@@ -16,8 +16,6 @@ export type {
   EffectRpcQueryConfigErrorCode,
   // fallow-ignore-next-line unused-type
   EffectRpcQueryKeyErrorCode,
-  // fallow-ignore-next-line unused-type
-  RpcOperation,
 } from './errors'
 /** Types for annotating generated utilities and custom adapters. @api public */
 export type {
@@ -29,14 +27,8 @@ export type {
   // fallow-ignore-next-line unused-type
   QueryData,
   // fallow-ignore-next-line unused-type
-  RpcMutationOptions,
-  // fallow-ignore-next-line unused-type
-  RpcQueryOptions,
-  // fallow-ignore-next-line unused-type
   RpcQueryUtils,
   RunPromiseExit,
-  // fallow-ignore-next-line unused-type
-  SkippedRpcQueryOptions,
 } from './types'
 
 /** The type of Query Core's exact skip sentinel. @api public */
