@@ -1,6 +1,6 @@
 import type {
   DataTag,
-  MutationOptions,
+  MutationObserverOptions,
   QueryFunction,
   QueryKey,
   QueryObserverOptions,
@@ -199,7 +199,7 @@ export type RpcMutationOptions<
   ClientError,
   OnMutateResult = unknown,
 > = Omit<
-  MutationOptions<
+  MutationObserverOptions<
     Rpc.Success<R>,
     EffectRpcQueryError<RpcFailure<R, ClientError>>,
     Rpc.PayloadConstructor<R>,
@@ -258,7 +258,7 @@ export interface RpcQueryLeaf<R extends Rpc.Any, Prefix extends readonly JsonVal
   /** Builds fresh Query Core mutation options without binding variables. */
   readonly mutationOptions: <OnMutateResult = unknown>(
     options?: Omit<
-      MutationOptions<
+      MutationObserverOptions<
         Rpc.Success<R>,
         EffectRpcQueryError<RpcFailure<R, ClientError>>,
         Rpc.PayloadConstructor<R>,
