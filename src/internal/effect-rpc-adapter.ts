@@ -1,4 +1,4 @@
-import { Function, Schema, SchemaAST } from 'effect'
+import { Function, Predicate, Schema, SchemaAST } from 'effect'
 import type { Effect } from 'effect'
 import { Rpc, RpcClient, RpcGroup, RpcSchema } from 'effect/unstable/rpc'
 
@@ -34,7 +34,7 @@ export interface AdaptedUnaryRpc {
 // Runtime Schema metadata erases encoding service types. Conservatively require a
 // custom encoder for encoding-side middleware; decoding-only middleware uses identity.
 const containsUnsafeKeyEncoding = (value: unknown, seen = new WeakSet<object>()): boolean => {
-  if (typeof value !== 'object' || value === null || seen.has(value)) {
+  if (!Predicate.isObjectOrArray(value) || seen.has(value)) {
     return false
   }
   seen.add(value)
