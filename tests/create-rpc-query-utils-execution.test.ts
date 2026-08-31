@@ -24,15 +24,23 @@ describe('createRpcQueryUtils execution boundaries', () => {
             Schema.withConstructorDefault(Effect.succeed('en')),
           ),
         },
-        success: Schema.Struct({ id: Schema.Finite, locale: Schema.String }),
+        success: Schema.Struct({
+          id: Schema.Finite,
+          locale: Schema.String,
+          source: Schema.String,
+        }),
       })
       const profileGroup = RpcGroup.make(ReadProfile)
-      let executions = 0
+      let source = 'first execution'
       const client = yield* makeRpcTestClient(profileGroup, {
-        'profiles.read': (payload: { readonly id: number; readonly locale?: string }) => {
-          executions += 1
-          return Effect.succeed({ id: payload.id, locale: payload.locale ?? 'en' })
-        },
+        'profiles.read': Effect.fn('TestRpc.profiles.read')(
+          (payload: { readonly id: number; readonly locale?: string }) =>
+            Effect.sync(() => {
+              const response = { id: payload.id, locale: payload.locale ?? 'en', source }
+              source = 'second execution'
+              return response
+            }),
+        ),
       })
       const queryClient = new QueryClient()
       const utils = createRpcQueryUtils(profileGroup, {
@@ -57,9 +65,8 @@ describe('createRpcQueryUtils execution boundaries', () => {
       const first = yield* Effect.promise(() => queryClient.query(firstOptions))
       const cached = yield* Effect.promise(() => queryClient.query(secondOptions))
 
-      expect(first).toEqual({ id: 1, locale: 'en' })
+      expect(first).toEqual({ id: 1, locale: 'en', source: 'first execution' })
       expect(cached).toEqual(first)
-      expect(executions).toBe(1)
     }),
   )
 
@@ -84,12 +91,10 @@ describe('createRpcQueryUtils execution boundaries', () => {
         success: Schema.String,
       })
       const invalidGroup = RpcGroup.make(Invalid)
-      let executions = 0
       const client = yield* makeRpcTestClient(invalidGroup, {
-        'invalid.read': () => {
-          executions += 1
-          return Effect.succeed('unexpected')
-        },
+        'invalid.read': Effect.fn('TestRpc.invalid.read')(function* () {
+          return yield* Effect.die(new Error('RPC executed before key preparation completed'))
+        }),
       })
       const queryClient = new QueryClient()
       const utils = createRpcQueryUtils(invalidGroup, {
@@ -106,7 +111,6 @@ describe('createRpcQueryUtils execution boundaries', () => {
           rpcTag: 'invalid.read',
         }),
       )
-      expect(executions).toBe(0)
     }),
   )
 
@@ -117,13 +121,13 @@ describe('createRpcQueryUtils execution boundaries', () => {
       const started = yield* Deferred.make<void>()
       const interrupted = yield* Deferred.make<void>()
       const client = yield* makeRpcTestClient(slowGroup, {
-        'diagnostics.slow': () =>
-          Effect.gen(function* () {
+        'diagnostics.slow': Effect.fn('TestRpc.diagnostics.slow')(
+          function* () {
             yield* Deferred.succeed(started, undefined)
             return yield* Effect.never
-          }).pipe(
-            Effect.onInterrupt(() => Deferred.succeed(interrupted, undefined).pipe(Effect.asVoid)),
-          ),
+          },
+          Effect.onInterrupt(() => Deferred.succeed(interrupted, undefined).pipe(Effect.asVoid)),
+        ),
       })
       const queryClient = new QueryClient()
       const utils = createRpcQueryUtils(slowGroup, {
@@ -218,7 +222,9 @@ describe('createRpcQueryUtils execution boundaries', () => {
       })
       const secretGroup = RpcGroup.make(FailSecret)
       const client = yield* makeRpcTestClient(secretGroup, {
-        'secrets.fail': () => Effect.fail('declared-failure' as const),
+        'secrets.fail': Effect.fn('TestRpc.secrets.fail')(function* () {
+          return yield* Effect.fail('declared-failure' as const)
+        }),
       })
       const utils = createRpcQueryUtils(secretGroup, {
         client,
