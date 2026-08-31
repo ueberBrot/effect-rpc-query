@@ -1,38 +1,47 @@
-import { Schema, SchemaAST } from 'effect'
+import { Function, Predicate, Schema, SchemaAST } from 'effect'
 import type { Effect } from 'effect'
 import { Rpc, RpcClient, RpcGroup, RpcSchema } from 'effect/unstable/rpc'
 
+export type AdaptedKeyPayload =
+  | {
+      readonly _tag: 'Payloadless'
+    }
+  | {
+      readonly _tag: 'DefaultEncoding'
+      /** Schema-encodes a normalized payload for semantic cache identity. */
+      readonly encode: (payload: unknown) => unknown
+      /** Applies constructor defaults and validation synchronously. */
+      readonly make: (input: unknown) => unknown
+    }
+  | {
+      readonly _tag: 'CustomEncodingRequired'
+      /** Applies constructor defaults and validation synchronously. */
+      readonly make: (input: unknown) => unknown
+    }
+
 /** The runtime operations the factory needs from one unary Effect RPC. */
 export interface AdaptedUnaryRpc {
-  /** Whether callers omit constructor input for this RPC. */
-  readonly payloadless: boolean
-
-  /** Whether runtime Schema metadata requires a custom key encoder. */
-  readonly requiresKeyEncoder: boolean
+  /** The complete payload-key capability classified from runtime Schema metadata. */
+  readonly keyPayload: AdaptedKeyPayload
 
   /** The literal RPC tag used for paths and diagnostics. */
   readonly tag: string
 
   /** Calls the ready flat client without exposing its unstable signature. */
   readonly invoke: (input: unknown) => Effect.Effect<unknown, unknown, unknown>
-
-  /** Applies constructor defaults and validation synchronously. */
-  readonly makePayload: (input: unknown) => unknown
-
-  /** Schema-encodes a normalized payload for semantic cache identity. */
-  readonly encodePayload: (payload: unknown) => unknown
 }
 
-// Schema middleware does not expose its Effect services at runtime. Treating every
-// middleware as unsafe makes encoder validation atomic even for untyped callers.
-const containsUnsafeKeySchema = (value: unknown, seen = new WeakSet<object>()): boolean => {
-  if (typeof value !== 'object' || value === null || seen.has(value)) {
+// Runtime Schema metadata erases encoding service types. Conservatively require a
+// custom encoder for encoding-side middleware; decoding-only middleware uses identity.
+const containsUnsafeKeyEncoding = (value: unknown, seen = new WeakSet<object>()): boolean => {
+  if (!Predicate.isObjectOrArray(value) || seen.has(value)) {
     return false
   }
   seen.add(value)
 
-  if ((value as { readonly _tag?: unknown })._tag === 'Middleware') {
-    return true
+  const transformation = value as { readonly _tag?: unknown; readonly encode?: unknown }
+  if (transformation._tag === 'Middleware') {
+    return transformation.encode !== Function.identity
   }
 
   if (SchemaAST.isAST(value)) {
@@ -46,9 +55,29 @@ const containsUnsafeKeySchema = (value: unknown, seen = new WeakSet<object>()): 
 
   return Object.values(value).some((child) =>
     Array.isArray(child)
-      ? child.some((element) => containsUnsafeKeySchema(element, seen))
-      : containsUnsafeKeySchema(child, seen),
+      ? child.some((element) => containsUnsafeKeyEncoding(element, seen))
+      : containsUnsafeKeyEncoding(child, seen),
   )
+}
+
+const adaptKeyPayload = (payloadSchema: Rpc.AnyWithProps['payloadSchema']): AdaptedKeyPayload => {
+  if (SchemaAST.isVoid(payloadSchema.ast)) {
+    return { _tag: 'Payloadless' }
+  }
+
+  const make = (input: unknown) => payloadSchema.make(input)
+  if (containsUnsafeKeyEncoding(payloadSchema.ast)) {
+    return { _tag: 'CustomEncodingRequired', make }
+  }
+
+  return {
+    _tag: 'DefaultEncoding',
+    encode: (payload) =>
+      Schema.encodeUnknownSync(
+        payloadSchema as unknown as Schema.ConstraintEncoder<unknown, never>,
+      )(payload),
+    make,
+  }
 }
 
 /**
@@ -68,16 +97,9 @@ export const extractUnaryRpcs = <Rpcs extends Rpc.Any, ClientError>(
     }
 
     unaryRpcs.push({
-      payloadless: SchemaAST.isVoid(definition.payloadSchema.ast),
-      requiresKeyEncoder: containsUnsafeKeySchema(definition.payloadSchema.ast),
+      keyPayload: adaptKeyPayload(definition.payloadSchema),
       tag: definition._tag,
       invoke: (input) => client(definition._tag as never, input as never),
-      makePayload: (input) => definition.payloadSchema.make(input),
-      encodePayload: (payload) =>
-        // Serviceful encoders require a custom key encoder before this runs.
-        Schema.encodeUnknownSync(
-          definition.payloadSchema as unknown as Schema.ConstraintEncoder<unknown, never>,
-        )(payload),
     })
   }
 

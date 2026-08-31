@@ -4,7 +4,11 @@ import { Effect, Exit } from 'effect'
 import type { Rpc, RpcClient, RpcGroup } from 'effect/unstable/rpc'
 
 import { EffectRpcQueryConfigError, EffectRpcQueryError, EffectRpcQueryKeyError } from './errors'
-import { extractUnaryRpcs, type AdaptedUnaryRpc } from './internal/effect-rpc-adapter'
+import {
+  extractUnaryRpcs,
+  type AdaptedKeyPayload,
+  type AdaptedUnaryRpc,
+} from './internal/effect-rpc-adapter'
 import type { CreateRpcQueryUtilsOptions, JsonValue, RpcQueryUtils, RunPromiseExit } from './types'
 
 const reservedPathSegments = new Set([
@@ -183,30 +187,35 @@ const planRpcPaths = (rpcs: ReadonlyArray<AdaptedUnaryRpc>) => {
 }
 
 const preparePayload = (
-  rpc: AdaptedUnaryRpc,
+  rpcTag: string,
+  keyPayload: Exclude<AdaptedKeyPayload, { readonly _tag: 'Payloadless' }>,
   input: unknown,
   keyEncoder: RuntimeKeyEncoder | undefined,
 ): PreparedPayload => {
   let normalized: unknown
   try {
-    normalized = rpc.makePayload(input)
+    normalized = keyPayload.make(input)
   } catch (cause) {
     throw new EffectRpcQueryKeyError(
       'PayloadConstructionFailed',
-      rpc.tag,
-      `Could not construct the payload for RPC ${rpc.tag}`,
+      rpcTag,
+      `Could not construct the payload for RPC ${rpcTag}`,
       cause,
     )
   }
 
   let encoded: unknown
   try {
-    encoded = keyEncoder ? keyEncoder(normalized) : rpc.encodePayload(normalized)
+    encoded = keyEncoder
+      ? keyEncoder(normalized)
+      : keyPayload._tag === 'DefaultEncoding'
+        ? keyPayload.encode(normalized)
+        : undefined
   } catch (cause) {
     throw new EffectRpcQueryKeyError(
       keyEncoder ? 'KeyEncoderFailed' : 'PayloadEncodingFailed',
-      rpc.tag,
-      `Could not encode the key payload for RPC ${rpc.tag}`,
+      rpcTag,
+      `Could not encode the key payload for RPC ${rpcTag}`,
       cause,
     )
   }
@@ -216,8 +225,8 @@ const preparePayload = (
   } catch (cause) {
     throw new EffectRpcQueryKeyError(
       'InvalidKeyValue',
-      rpc.tag,
-      `The key payload for RPC ${rpc.tag} is not JSON-safe`,
+      rpcTag,
+      `The key payload for RPC ${rpcTag} is not JSON-safe`,
       cause,
     )
   }
@@ -253,11 +262,11 @@ const prepareQuery = (
   queryOperationKey: readonly JsonValue[],
   keyEncoder: RuntimeKeyEncoder | undefined,
 ): PreparedQuery => {
-  if (rpc.payloadless) {
+  if (rpc.keyPayload._tag === 'Payloadless') {
     return { input: undefined, key: queryOperationKey }
   }
 
-  const prepared = preparePayload(rpc, input, keyEncoder)
+  const prepared = preparePayload(rpc.tag, rpc.keyPayload, input, keyEncoder)
   return {
     // The ready client constructs this normalized payload again during execution.
     input: prepared.normalized,
@@ -273,7 +282,7 @@ const createQueryOptionsBuilder =
     runPromiseExit: RunPromiseExit<unknown>,
   ) =>
   (argument?: unknown) => {
-    if (!rpc.payloadless && argument === skipToken) {
+    if (rpc.keyPayload._tag !== 'Payloadless' && argument === skipToken) {
       return {
         queryFn: skipToken,
         queryKey: queryOperationKey,
@@ -342,9 +351,11 @@ const validateKeyEncoders = (
   rpcs: ReadonlyArray<AdaptedUnaryRpc>,
   keyEncoders: Record<string, RuntimeKeyEncoder>,
 ) => {
-  const knownTags = new Set(rpcs.map((rpc) => rpc.tag))
+  const supportedTags = new Set(
+    rpcs.filter((rpc) => rpc.keyPayload._tag !== 'Payloadless').map((rpc) => rpc.tag),
+  )
   for (const tag of Object.keys(keyEncoders)) {
-    if (!knownTags.has(tag)) {
+    if (!supportedTags.has(tag)) {
       throw new EffectRpcQueryConfigError(
         'UnknownKeyEncoder',
         `No unary RPC exists for key encoder ${tag}`,
@@ -354,7 +365,7 @@ const validateKeyEncoders = (
   }
 
   for (const rpc of rpcs) {
-    if (rpc.requiresKeyEncoder && keyEncoders[rpc.tag] === undefined) {
+    if (rpc.keyPayload._tag === 'CustomEncodingRequired' && keyEncoders[rpc.tag] === undefined) {
       throw new EffectRpcQueryConfigError(
         'MissingKeyEncoder',
         `RPC ${rpc.tag} requires a safe custom key encoder`,

@@ -1,5 +1,5 @@
 import { describe, expect, it } from '@effect/vitest'
-import { Context, Effect, Schema } from 'effect'
+import { Context, Effect, Redacted, Schema } from 'effect'
 import { Rpc, RpcGroup } from 'effect/unstable/rpc'
 import type { RpcClient } from 'effect/unstable/rpc'
 
@@ -121,6 +121,39 @@ describe('createRpcQueryUtils configuration', () => {
     )
   })
 
+  it('rejects key encoders for operations without payload keys before returning a tree', () => {
+    const Payloadless = Rpc.make('health.ping', { success: Schema.Void })
+    const Streaming = Rpc.make('events.watch', {
+      success: Schema.String,
+      stream: true,
+    })
+    const unsupportedGroup = RpcGroup.make(Payloadless, Streaming)
+    type UnsupportedOptions = CreateRpcQueryUtilsOptions<typeof unsupportedGroup, readonly ['app']>
+    let encoderExecutions = 0
+
+    for (const rpcTag of ['health.ping', 'events.watch', 'unknown.read']) {
+      const options = {
+        client: unusedClientFor(unsupportedGroup),
+        keyEncoders: {
+          [rpcTag]: () => {
+            encoderExecutions += 1
+            return null
+          },
+        },
+        keyPrefix: ['app'] as const,
+      } as unknown as UnsupportedOptions
+
+      expect(() => createRpcQueryUtils(unsupportedGroup, options)).toThrow(
+        expect.objectContaining<Partial<EffectRpcQueryConfigError>>({
+          _tag: 'EffectRpcQueryConfigError',
+          code: 'UnknownKeyEncoder',
+          rpcTag,
+        }),
+      )
+    }
+    expect(encoderExecutions).toBe(0)
+  })
+
   it.effect('reports non-JSON encoder output with a stable key error', () =>
     Effect.gen(function* () {
       const client = yield* makeClient()
@@ -140,6 +173,61 @@ describe('createRpcQueryUtils configuration', () => {
           rpcTag: 'users.get',
         }),
       )
+    }),
+  )
+
+  it.effect('passes normalized payloads to optional key encoders', () =>
+    Effect.gen(function* () {
+      const client = yield* makeClient()
+      let receivedPayload: { readonly id: number; readonly locale?: string | undefined } | undefined
+      const utils = createRpcQueryUtils(group, {
+        client,
+        keyEncoders: {
+          'users.get': (payload) => {
+            receivedPayload = payload
+            return { id: payload.id, locale: payload.locale ?? 'en' }
+          },
+        },
+        keyPrefix: ['app'] as const,
+      })
+
+      const key = utils.users.get.queryKey({ id: 1 })
+
+      expect(receivedPayload).toEqual({ id: 1, locale: 'en' })
+      expect(key).toEqual(['app', 'users', 'get', 'query', { id: 1, locale: 'en' }])
+      expect(Object.isFrozen(key.at(-1))).toBe(true)
+    }),
+  )
+
+  it.effect('wraps thrown key encoder failures without retaining input', () =>
+    Effect.gen(function* () {
+      const encoderFailure = new Error('encoder failed')
+      const client = yield* makeClient()
+      const utils = createRpcQueryUtils(group, {
+        client,
+        keyEncoders: {
+          'users.get': () => {
+            throw encoderFailure
+          },
+        },
+        keyPrefix: ['app'] as const,
+      })
+
+      const error = captureKeyError(() =>
+        utils.users.get.queryKey({ id: 1, locale: 'do-not-retain' }),
+      )
+
+      expect(error).toMatchObject({
+        _tag: 'EffectRpcQueryKeyError',
+        code: 'KeyEncoderFailed',
+        rpcTag: 'users.get',
+      })
+      expect(error.cause).toBe(encoderFailure)
+      expect(error.message).not.toContain('do-not-retain')
+      expect(error).not.toHaveProperty('encoded')
+      expect(error).not.toHaveProperty('input')
+      expect(error).not.toHaveProperty('payload')
+      expect(error).not.toHaveProperty('value')
     }),
   )
 
@@ -166,6 +254,23 @@ describe('createRpcQueryUtils configuration', () => {
           rpcTag: 'secrets.read',
         }),
       )
+
+      let receivedRedacted = false
+      const utils = createRpcQueryUtils(secretGroup, {
+        client,
+        keyEncoders: {
+          'secrets.read': (payload) => {
+            receivedRedacted = Redacted.isRedacted(payload.secret)
+            return { subject: 'current-user' }
+          },
+        },
+        keyPrefix: ['app'] as const,
+      })
+      const key = utils.secrets.read.queryKey({ secret: Redacted.make('do-not-key') })
+
+      expect(receivedRedacted).toBe(true)
+      expect(key).toEqual(['app', 'secrets', 'read', 'query', { subject: 'current-user' }])
+      expect(JSON.stringify(key)).not.toContain('do-not-key')
     }),
   )
 
@@ -175,7 +280,9 @@ describe('createRpcQueryUtils configuration', () => {
         'EncodingService',
       ) {}
       const Payload = Schema.Struct({ value: Schema.String }).pipe(
-        Schema.middlewareEncoding((encoding) => Effect.flatMap(EncodingService, () => encoding)),
+        Schema.middlewareEncoding((encoding) =>
+          Effect.flatMap(encoding, (encoded) => Effect.as(EncodingService, encoded)),
+        ),
       )
       const Serviceful = Rpc.make('encoding.serviceful', {
         payload: Payload,
@@ -197,6 +304,57 @@ describe('createRpcQueryUtils configuration', () => {
           rpcTag: 'encoding.serviceful',
         }),
       )
+
+      const safeOptions = {
+        client,
+        keyEncoders: {
+          'encoding.serviceful': (payload: { readonly value: string }) => payload,
+        },
+        keyPrefix: ['app'] as const,
+      } as unknown as ServicefulOptions
+      const utils = createRpcQueryUtils(servicefulGroup, safeOptions)
+
+      expect(utils.encoding.serviceful.queryKey({ value: 'safe' })).toEqual([
+        'app',
+        'encoding',
+        'serviceful',
+        'query',
+        { value: 'safe' },
+      ])
+    }),
+  )
+
+  it.effect('does not require a key encoder for decoding-only Schema middleware', () =>
+    Effect.gen(function* () {
+      class DecodingService extends Context.Service<DecodingService, { readonly suffix: string }>()(
+        'DecodingService',
+      ) {}
+      const Payload = Schema.Struct({ value: Schema.String }).pipe(
+        Schema.middlewareDecoding((decoding) => Effect.flatMap(DecodingService, () => decoding)),
+      )
+      const DecodingOnly = Rpc.make('decoding.only', {
+        payload: Payload,
+        success: Schema.String,
+      })
+      const decodingGroup = RpcGroup.make(DecodingOnly)
+      const client = yield* makeRpcTestClient(decodingGroup, {
+        'decoding.only': () => Effect.succeed('ok'),
+      })
+      const options: CreateRpcQueryUtilsOptions<typeof decodingGroup, readonly ['app']> = {
+        client,
+        keyPrefix: ['app'] as const,
+        runPromiseExit: Effect.runPromiseExit as never,
+      }
+
+      const utils = createRpcQueryUtils(decodingGroup, options)
+
+      expect(utils.decoding.only.queryKey({ value: 'safe' })).toEqual([
+        'app',
+        'decoding',
+        'only',
+        'query',
+        { value: 'safe' },
+      ])
     }),
   )
 
@@ -226,3 +384,15 @@ describe('createRpcQueryUtils configuration', () => {
     }),
   )
 })
+
+const captureKeyError = (run: () => unknown): EffectRpcQueryKeyError => {
+  try {
+    run()
+  } catch (error) {
+    if (error instanceof EffectRpcQueryKeyError) {
+      return error
+    }
+    throw error
+  }
+  throw new Error('Expected key preparation to fail')
+}
