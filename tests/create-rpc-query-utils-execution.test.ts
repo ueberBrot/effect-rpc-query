@@ -1,6 +1,6 @@
 import { describe, expect, it } from '@effect/vitest'
-import { CancelledError, QueryClient, QueryObserver } from '@tanstack/query-core'
-import { Deferred, Effect, Equal, Exit, Schema } from 'effect'
+import { CancelledError, MutationObserver, QueryClient, QueryObserver } from '@tanstack/query-core'
+import { Context, Deferred, Effect, Equal, Exit, Schema } from 'effect'
 import { Rpc, RpcGroup } from 'effect/unstable/rpc'
 
 import {
@@ -14,6 +14,98 @@ import {
 import { group, makeClient, makeRpcTestClient } from './fixtures/effect-rpc'
 
 describe('createRpcQueryUtils execution boundaries', () => {
+  it.effect('executes mutation variables without invalidating cached queries', () =>
+    Effect.gen(function* () {
+      const Read = Rpc.make('counter.read', { success: Schema.Finite })
+      const Set = Rpc.make('counter.set', {
+        payload: { value: Schema.Finite },
+        success: Schema.Finite,
+      })
+      const counterGroup = RpcGroup.make(Read, Set)
+      let value = 0
+      const client = yield* makeRpcTestClient(counterGroup, {
+        'counter.read': Effect.fn('TestRpc.counter.read')(() => Effect.sync(() => value)),
+        'counter.set': Effect.fn('TestRpc.counter.set')(
+          ({ value: nextValue }: { readonly value: number }) =>
+            Effect.sync(() => {
+              value = nextValue
+              return value
+            }),
+        ),
+      })
+      const queryClient = new QueryClient()
+      const utils = createRpcQueryUtils(counterGroup, {
+        client,
+        keyPrefix: ['app'] as const,
+      })
+
+      const readOptions = utils.counter.read.queryOptions({
+        staleTime: Number.POSITIVE_INFINITY,
+      })
+      expect(yield* Effect.promise(() => queryClient.query(readOptions))).toBe(0)
+
+      const firstOptions = utils.counter.set.mutationOptions({ gcTime: 60_000 })
+      const secondOptions = utils.counter.set.mutationOptions({ gcTime: 60_000 })
+      expect(firstOptions).not.toBe(secondOptions)
+      expect(Object.isFrozen(firstOptions)).toBe(false)
+      expect(Object.keys(firstOptions).sort()).toEqual(['gcTime', 'mutationFn', 'mutationKey'])
+      expect(firstOptions.mutationKey).toBe(utils.counter.set.mutationKey())
+      expect(firstOptions.mutationKey).toEqual(['app', 'counter', 'set', 'mutation'])
+
+      const mutation = new MutationObserver(queryClient, firstOptions)
+      expect(yield* Effect.promise(() => mutation.mutate({ value: 2 }))).toBe(2)
+      expect(value).toBe(2)
+      expect(yield* Effect.promise(() => queryClient.query(readOptions))).toBe(0)
+    }),
+  )
+
+  it.effect('uses an injected runner for mutation Effects with residual services', () =>
+    Effect.gen(function* () {
+      class MutationEncodingService extends Context.Service<
+        MutationEncodingService,
+        { readonly suffix: string }
+      >()('effect-rpc-query/tests/MutationEncodingService') {}
+      const Payload = Schema.Struct({ value: Schema.String }).pipe(
+        Schema.middlewareEncoding((encoding) =>
+          Effect.flatMap(MutationEncodingService, () => encoding),
+        ),
+      )
+      const Update = Rpc.make('encoding.update', {
+        payload: Payload,
+        success: Schema.String,
+      })
+      const encodingGroup = RpcGroup.make(Update)
+      const client = yield* makeRpcTestClient(encodingGroup, {
+        'encoding.update': Effect.fn('TestRpc.encoding.update')(({ value }) =>
+          Effect.succeed(value),
+        ),
+      })
+      let runnerUsed = false
+      const runPromiseExit: RunPromiseExit<MutationEncodingService> = (effect, options) => {
+        runnerUsed = true
+        return Effect.runPromiseExit(
+          Effect.provideService(effect, MutationEncodingService, { suffix: 'provided' }),
+          options,
+        )
+      }
+      const utils = createRpcQueryUtils(encodingGroup, {
+        client,
+        keyEncoders: {
+          'encoding.update': (payload) => payload,
+        },
+        keyPrefix: ['app'] as const,
+        runPromiseExit,
+      })
+
+      const mutation = new MutationObserver(
+        new QueryClient(),
+        utils.encoding.update.mutationOptions(),
+      )
+      expect(yield* Effect.promise(() => mutation.mutate({ value: 'updated' }))).toBe('updated')
+      expect(runnerUsed).toBe(true)
+    }),
+  )
+
   it.effect('executes with the default runner and reuses query-stable cached data', () =>
     Effect.gen(function* () {
       const ReadProfile = Rpc.make('profiles.read', {
@@ -213,6 +305,74 @@ describe('createRpcQueryUtils execution boundaries', () => {
     }),
   )
 
+  it.effect('wraps failed mutation Exits without changing their Cause', () =>
+    Effect.gen(function* () {
+      const client = yield* makeClient()
+      const directExit = yield* Effect.exit(client('diagnostics.fail', undefined))
+      if (Exit.isSuccess(directExit)) {
+        throw new Error('Expected the direct RPC client call to fail')
+      }
+      const queryClient = new QueryClient()
+      const utils = createRpcQueryUtils(group, {
+        client,
+        keyPrefix: ['app'] as const,
+      })
+
+      const error = yield* Effect.promise(() =>
+        new MutationObserver(queryClient, utils.diagnostics.fail.mutationOptions())
+          .mutate(undefined)
+          .catch((value: unknown) => value),
+      )
+
+      expect(error).toMatchObject({
+        _tag: 'EffectRpcQueryError',
+        operation: 'mutation',
+        rpcTag: 'diagnostics.fail',
+      })
+      expect(Equal.equals((error as EffectRpcQueryError<unknown>).cause, directExit.cause)).toBe(
+        true,
+      )
+    }),
+  )
+
+  it.effect('defers mutation payload construction to Effect execution', () =>
+    Effect.gen(function* () {
+      const Update = Rpc.make('profiles.update', {
+        payload: { name: Schema.String },
+        success: Schema.String,
+      })
+      const updateGroup = RpcGroup.make(Update)
+      const client = yield* makeRpcTestClient(updateGroup, {
+        'profiles.update': Effect.fn('TestRpc.profiles.update')(({ name }) => Effect.succeed(name)),
+      })
+      const queryClient = new QueryClient()
+      const utils = createRpcQueryUtils(updateGroup, {
+        client,
+        keyPrefix: ['app'] as const,
+      })
+
+      const options = utils.profiles.update.mutationOptions()
+      const invalidVariables = { name: 42 } as unknown as { readonly name: string }
+      const directExit = yield* Effect.exit(client('profiles.update', invalidVariables))
+      if (Exit.isSuccess(directExit)) {
+        throw new Error('Expected invalid mutation variables to fail')
+      }
+
+      const error = yield* Effect.promise(() =>
+        new MutationObserver(queryClient, options)
+          .mutate(invalidVariables)
+          .catch((value: unknown) => value),
+      )
+
+      expect(error).toBeInstanceOf(EffectRpcQueryError)
+      expect(error).not.toBeInstanceOf(EffectRpcQueryKeyError)
+      expect(error).toMatchObject({ operation: 'mutation', rpcTag: 'profiles.update' })
+      expect(Equal.equals((error as EffectRpcQueryError<unknown>).cause, directExit.cause)).toBe(
+        true,
+      )
+    }),
+  )
+
   it.effect('does not retain raw query input in execution errors', () =>
     Effect.gen(function* () {
       const FailSecret = Rpc.make('secrets.fail', {
@@ -259,6 +419,42 @@ describe('createRpcQueryUtils execution boundaries', () => {
       yield* Effect.promise(() =>
         expect(new QueryClient().query(utils.health.ping.queryOptions())).rejects.toBe(rejection),
       )
+
+      yield* Effect.promise(() =>
+        expect(
+          new MutationObserver(new QueryClient(), utils.health.ping.mutationOptions()).mutate(
+            undefined,
+          ),
+        ).rejects.toBe(rejection),
+      )
+    }),
+  )
+
+  it.effect('passes mutation callback errors through untouched', () =>
+    Effect.gen(function* () {
+      const callbackError = new Error('onMutate failed')
+      let executed = false
+      const runPromiseExit: RunPromiseExit = async <A, E>(): Promise<Exit.Exit<A, E>> => {
+        executed = true
+        return Exit.succeed(undefined as A)
+      }
+      const client = yield* makeClient()
+      const utils = createRpcQueryUtils(group, {
+        client,
+        keyPrefix: ['app'] as const,
+        runPromiseExit,
+      })
+      const mutation = new MutationObserver(
+        new QueryClient(),
+        utils.users.get.mutationOptions({
+          onMutate: () => {
+            throw callbackError
+          },
+        }),
+      )
+
+      yield* Effect.promise(() => expect(mutation.mutate({ id: 1 })).rejects.toBe(callbackError))
+      expect(executed).toBe(false)
     }),
   )
 
@@ -296,8 +492,9 @@ describe('createRpcQueryUtils execution boundaries', () => {
 
       expect(querySignal?.aborted).toBe(true)
 
-      const mutation = utils.health.ping.mutationOptions().mutationFn
-      yield* Effect.promise(() => mutation?.(undefined) ?? Promise.resolve())
+      const mutation = new MutationObserver(queryClient, utils.health.ping.mutationOptions())
+      const mutationResult = yield* Effect.promise(() => mutation.mutate(undefined))
+      expect(mutationResult).toBeUndefined()
       expect(mutationReceivedOptions).toBe(false)
     }),
   )

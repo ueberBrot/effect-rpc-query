@@ -291,8 +291,49 @@ const pingMutation = new MutationObserver(queryClient, utils.health.ping.mutatio
 const pingMutationResult: Promise<void> = pingMutation.mutate(undefined)
 void pingMutationResult
 
-const getMutation = new MutationObserver(queryClient, utils.users.get.mutationOptions())
-void getMutation.mutate({ id: 1 })
+const getMutationOptions = utils.users.get.mutationOptions<{
+  readonly previousName: string
+}>({
+  gcTime: 60_000,
+  onError: (error, variables, onMutateResult) => {
+    error satisfies EffectRpcQueryError<'not-found'>
+    variables satisfies { readonly id: number; readonly locale?: string }
+    onMutateResult satisfies { readonly previousName: string } | undefined
+  },
+  onMutate: (variables) => {
+    variables satisfies { readonly id: number; readonly locale?: string }
+    return { previousName: 'Grace' }
+  },
+  onSuccess: (data, variables, onMutateResult) => {
+    data satisfies { readonly id: number; readonly name: string }
+    variables satisfies { readonly id: number; readonly locale?: string }
+    onMutateResult satisfies { readonly previousName: string }
+  },
+  throwOnError: (error) => {
+    error satisfies EffectRpcQueryError<'not-found'>
+    return false
+  },
+})
+getMutationOptions.mutationKey satisfies readonly ['app', 'users', 'get', 'mutation']
+getMutationOptions.throwOnError satisfies
+  | boolean
+  | ((error: EffectRpcQueryError<'not-found'>) => boolean)
+  | undefined
+const getMutation = new MutationObserver(queryClient, getMutationOptions)
+const getMutationResult: Promise<{ readonly id: number; readonly name: string }> =
+  getMutation.mutate({ id: 1 })
+void getMutationResult
+
+// @ts-expect-error mutation variables arrive at execution, not option construction
+utils.users.get.mutationOptions({ input: { id: 1 } })
+utils.users.get.mutationOptions({
+  // @ts-expect-error the package owns the mutation function
+  mutationFn: async () => ({ id: 1, name: 'Grace' }),
+})
+utils.users.get.mutationOptions({
+  // @ts-expect-error the package owns the mutation key
+  mutationKey: ['custom'],
+})
 
 utils.admin.secure.queryOptions({
   retry: (_count, error) => {
@@ -311,6 +352,8 @@ void utils.projects.watch
 void utils.events
 // @ts-expect-error leaves expose no direct execution helper
 void utils.projects['by-id'].find.call
+// @ts-expect-error leaves expose no mutation cancellation helper
+void utils.users.get.cancelMutation
 
 if (skipToken !== queryCoreSkipToken) {
   throw new Error('skipToken must preserve Query Core identity')
