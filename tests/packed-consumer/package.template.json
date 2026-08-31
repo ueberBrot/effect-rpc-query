@@ -1,0 +1,11 @@
+{
+  "name": "effect-rpc-query-packed-consumer-__LABEL__",
+  "private": true,
+  "dependencies": {
+    "@tanstack/query-core": "__QUERY_CORE_VERSION__",
+    "@tanstack/react-query": "__REACT_QUERY_VERSION__",
+    "effect": "__EFFECT_VERSION__",
+    "effect-rpc-query": "__PACKAGE_TARBALL__",
+    "react": "__REACT_VERSION__"
+  }
+}

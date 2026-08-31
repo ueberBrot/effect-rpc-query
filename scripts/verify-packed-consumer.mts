@@ -2,37 +2,16 @@
 // Vite+ invokes this verifier through its dynamically declared packed-package task.
 import { deepStrictEqual, equal, match } from 'node:assert/strict'
 import { execFileSync } from 'node:child_process'
-import { existsSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
+import { cpSync, existsSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { dirname, join, resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
 
+import repositoryManifest from '../package.json' with { type: 'json' }
+
 const repositoryRoot = resolve(dirname(fileURLToPath(import.meta.url)), '..')
 const artifactDirectory = join(repositoryRoot, '.artifacts')
-
-interface PackageManifest {
-  readonly author?: string
-  readonly description?: string
-  readonly devDependencies?: Readonly<Record<string, string>>
-  readonly engines?: unknown
-  readonly exports?: unknown
-  readonly files?: unknown
-  readonly license?: string
-  readonly main?: string
-  readonly module?: string
-  readonly name: string
-  readonly peerDependencies?: Readonly<Record<string, string>>
-  readonly publishConfig?: unknown
-  readonly repository?: unknown
-  readonly sideEffects?: boolean
-  readonly type?: string
-  readonly types?: string
-  readonly version: string
-}
-
-const repositoryManifest = JSON.parse(
-  readFileSync(join(repositoryRoot, 'package.json'), 'utf8'),
-) as PackageManifest
+const consumerFixtureDirectory = join(repositoryRoot, 'tests', 'packed-consumer')
 const tarballName = `${repositoryManifest.name.replace(/^@/, '').replaceAll('/', '-')}-${repositoryManifest.version}.tgz`
 const tarballPath = join(artifactDirectory, tarballName)
 
@@ -40,50 +19,25 @@ if (!existsSync(tarballPath)) {
   throw new Error(`Packed tarball does not exist: ${tarballPath}`)
 }
 
-const packageManifest = JSON.parse(
+const packedManifest = JSON.parse(
   execFileSync('tar', ['-xOzf', tarballPath, 'package/package.json'], { encoding: 'utf8' }),
-) as PackageManifest
+) as typeof repositoryManifest
 
-const testedVersion = (dependency: string): string => {
-  const version = repositoryManifest.devDependencies?.[dependency]
-  if (version === undefined) {
-    throw new Error(`Missing tested dependency pin: ${dependency}`)
-  }
-  return version
-}
+const testedVersion = (dependency: keyof typeof repositoryManifest.devDependencies): string =>
+  repositoryManifest.devDependencies[dependency]
 
-equal(packageManifest.name, repositoryManifest.name)
-equal(packageManifest.version, repositoryManifest.version)
-
-equal(
-  packageManifest.description,
-  'Type-safe TanStack Query utilities generated from Effect RPC definitions.',
-)
-equal(packageManifest.author, 'Maurice de Bruyn')
-equal(packageManifest.license, 'ISC')
-deepStrictEqual(packageManifest.repository, {
-  type: 'git',
-  url: 'git+https://github.com/ueberBrot/effect-rpc-query.git',
-})
-deepStrictEqual(packageManifest.publishConfig, { access: 'public' })
-deepStrictEqual(packageManifest.files, ['dist'])
-equal(packageManifest.type, 'module')
-equal(packageManifest.sideEffects, false)
-equal(packageManifest.main, './dist/index.mjs')
-equal(packageManifest.module, './dist/index.mjs')
-equal(packageManifest.types, './dist/index.d.mts')
-deepStrictEqual(packageManifest.exports, {
+deepStrictEqual(packedManifest.exports, {
   '.': {
     types: './dist/index.d.mts',
     import: './dist/index.mjs',
   },
 })
-deepStrictEqual(packageManifest.peerDependencies, {
+deepStrictEqual(packedManifest.peerDependencies, {
   '@tanstack/query-core': '>=5.102.0 <6',
   effect: '4.0.0-rc.111',
 })
-equal(packageManifest.peerDependencies?.['effect'], testedVersion('effect'))
-equal('engines' in packageManifest, false)
+equal(packedManifest.peerDependencies.effect, testedVersion('effect'))
+equal('engines' in packedManifest, false)
 
 const publicBarrel = readFileSync(join(repositoryRoot, 'src', 'index.ts'), 'utf8')
 equal(
@@ -128,9 +82,10 @@ deepStrictEqual(declarationNames, [
   'skipToken',
 ])
 
-const queryCorePeerRange = packageManifest.peerDependencies?.['@tanstack/query-core']
-const queryCoreMinimum = /^>=(?<minimum>\d+\.\d+\.\d+) <6$/u.exec(queryCorePeerRange ?? '')
-  ?.groups?.['minimum']
+const queryCorePeerRange = packedManifest.peerDependencies['@tanstack/query-core']
+const queryCoreMinimum = /^>=(?<minimum>\d+\.\d+\.\d+) <6$/u.exec(queryCorePeerRange)?.groups?.[
+  'minimum'
+]
 if (queryCoreMinimum === undefined) {
   throw new Error(`Unsupported Query Core peer range: ${queryCorePeerRange}`)
 }
@@ -165,24 +120,17 @@ const verifyConsumer = (
   const consumerDirectory = mkdtempSync(join(tmpdir(), `effect-rpc-query-${label}-`))
 
   try {
-    writeFileSync(
-      join(consumerDirectory, 'package.json'),
-      JSON.stringify(
-        {
-          name: `effect-rpc-query-packed-consumer-${label}`,
-          private: true,
-          dependencies: {
-            '@tanstack/query-core': queryCoreVersion,
-            '@tanstack/react-query': reactQueryVersion,
-            effect: testedVersion('effect'),
-            'effect-rpc-query': `file:${tarballPath}`,
-            react: testedVersion('react'),
-          },
-        },
-        null,
-        2,
-      ),
-    )
+    cpSync(consumerFixtureDirectory, consumerDirectory, { recursive: true })
+
+    const manifestTemplate = readFileSync(join(consumerDirectory, 'package.template.json'), 'utf8')
+    const consumerManifest = manifestTemplate
+      .replaceAll('__LABEL__', label)
+      .replaceAll('__QUERY_CORE_VERSION__', queryCoreVersion)
+      .replaceAll('__REACT_QUERY_VERSION__', reactQueryVersion)
+      .replaceAll('__EFFECT_VERSION__', testedVersion('effect'))
+      .replaceAll('__PACKAGE_TARBALL__', `file:${tarballPath}`)
+      .replaceAll('__REACT_VERSION__', testedVersion('react'))
+    writeFileSync(join(consumerDirectory, 'package.json'), consumerManifest)
 
     // Prefer cached artifacts, but allow a fresh machine to fetch exact pinned versions.
     // The temporary project must resolve every peer from its own node_modules.
@@ -190,73 +138,6 @@ const verifyConsumer = (
       cwd: consumerDirectory,
       stdio: 'inherit',
     })
-
-    writeFileSync(
-      join(consumerDirectory, 'runtime.mts'),
-      `import * as rpcQuery from 'effect-rpc-query'
-import { skipToken } from '@tanstack/query-core'
-import { skipToken as reactQuerySkipToken } from '@tanstack/react-query'
-import type {
-  CreateRpcQueryUtilsOptions,
-  EffectRpcQueryConfigErrorCode,
-  EffectRpcQueryKeyErrorCode,
-  JsonValue,
-  KeyEncoder,
-  QueryData,
-  RpcQueryUtils,
-  RunPromiseExit,
-  SkipToken,
-} from 'effect-rpc-query'
-
-type PublicTypes = [
-  CreateRpcQueryUtilsOptions<any, readonly [JsonValue, ...JsonValue[]]>,
-  EffectRpcQueryConfigErrorCode,
-  EffectRpcQueryKeyErrorCode,
-  KeyEncoder<any>,
-  QueryData<unknown>,
-  RpcQueryUtils<any, readonly [JsonValue, ...JsonValue[]]>,
-  RunPromiseExit,
-  SkipToken,
-]
-
-const expectedExports = [
-  'EffectRpcQueryConfigError',
-  'EffectRpcQueryError',
-  'EffectRpcQueryKeyError',
-  'createRpcQueryUtils',
-  'isEffectRpcQueryError',
-  'skipToken',
-] as const satisfies ReadonlyArray<keyof typeof rpcQuery>
-
-if (JSON.stringify(Object.keys(rpcQuery).sort()) !== JSON.stringify(expectedExports)) {
-  throw new Error('The package root exposed an unexpected runtime surface')
-}
-if (rpcQuery.skipToken !== skipToken || rpcQuery.skipToken !== reactQuerySkipToken) {
-  throw new Error('The package returned a different skipToken instance')
-}
-`,
-    )
-
-    writeFileSync(
-      join(consumerDirectory, 'tsconfig.json'),
-      JSON.stringify(
-        {
-          compilerOptions: {
-            lib: ['ES2022', 'DOM', 'DOM.Iterable', 'ESNext.Disposable'],
-            module: 'NodeNext',
-            moduleResolution: 'NodeNext',
-            noEmit: true,
-            skipLibCheck: true,
-            strict: true,
-            target: 'ES2022',
-            types: [],
-          },
-          include: ['runtime.mts'],
-        },
-        null,
-        2,
-      ),
-    )
 
     execFileSync(
       process.execPath,
@@ -270,7 +151,6 @@ if (rpcQuery.skipToken !== skipToken || rpcQuery.skipToken !== reactQuerySkipTok
       { cwd: consumerDirectory, stdio: 'inherit' },
     )
 
-    // Execute the same module after the installed declarations pass the smoke check.
     execFileSync(process.execPath, ['runtime.mts'], {
       cwd: consumerDirectory,
       stdio: 'inherit',

@@ -29,5 +29,5 @@
     ]
   },
   "include": ["scripts/**/*.mts", "src/**/*.ts", "tests/**/*.ts", "vite.config.ts"],
-  "exclude": ["dist", "node_modules"]
+  "exclude": ["dist", "node_modules", "tests/packed-consumer"]
 }
