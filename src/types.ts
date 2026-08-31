@@ -109,17 +109,6 @@ export type ConcreteQueryKey<
   EffectRpcQueryError<RpcFailure<R, ClientError>>
 >
 
-/** A skipped operation key carrying the inference unavailable from its sentinel query function. */
-export type SkippedQueryKey<
-  Prefix extends readonly JsonValue[],
-  R extends Rpc.Any,
-  ClientError,
-> = DataTag<
-  QueryOperationKey<Prefix, R>,
-  QueryData<Rpc.Success<R>>,
-  EffectRpcQueryError<RpcFailure<R, ClientError>>
->
-
 export type MutationKey<Prefix extends readonly JsonValue[], R extends Rpc.Any> = readonly [
   ...RpcKey<Prefix, R>,
   'mutation',
@@ -208,16 +197,16 @@ export type SkippedRpcQueryOptions<
     EffectRpcQueryError<RpcFailure<R, ClientError>>,
     QueryData<Rpc.Success<R>>,
     QueryData<Rpc.Success<R>>,
-    SkippedQueryKey<Prefix, R, ClientError>
+    QueryOperationKey<Prefix, R>
   >,
   OwnedQueryOption
 > & {
   /** Query Core's exact skip sentinel. */
   readonly queryFn: SkipToken
   /** The operation prefix, which contains no unconstructed payload. */
-  readonly queryKey: SkippedQueryKey<Prefix, R, ClientError>
+  readonly queryKey: QueryOperationKey<Prefix, R>
   /** Query Core's stable hash for the operation key. */
-  readonly queryKeyHashFn: QueryKeyHashFunction<SkippedQueryKey<Prefix, R, ClientError>>
+  readonly queryKeyHashFn: QueryKeyHashFunction<QueryOperationKey<Prefix, R>>
 }
 
 /** Mutation options generated for one unary RPC. */
