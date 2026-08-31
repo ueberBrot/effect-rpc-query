@@ -128,14 +128,20 @@ deepStrictEqual(declarationNames, [
   'skipToken',
 ])
 
+const queryCorePeerRange = packageManifest.peerDependencies?.['@tanstack/query-core']
+const queryCoreMinimum = /^>=(?<minimum>\d+\.\d+\.\d+) <6$/u.exec(queryCorePeerRange ?? '')
+  ?.groups?.['minimum']
+if (queryCoreMinimum === undefined) {
+  throw new Error(`Unsupported Query Core peer range: ${queryCorePeerRange}`)
+}
+
 const testedQueryCoreVersion = testedVersion('@tanstack/query-core')
-const [queryMajor = Number.NaN, queryMinor = Number.NaN] = testedQueryCoreVersion
-  .split('.')
-  .map(Number)
+const testedReactQueryVersion = testedVersion('@tanstack/react-query')
+equal(testedReactQueryVersion, testedQueryCoreVersion)
 equal(
-  queryMajor === 5 && queryMinor >= 102,
-  true,
-  `Tested Query Core ${testedQueryCoreVersion} is outside the declared peer range`,
+  testedQueryCoreVersion === queryCoreMinimum,
+  false,
+  'The tested current Query Core must be newer than the peer lower bound',
 )
 
 const packedFiles = execFileSync('tar', ['-tzf', tarballPath], { encoding: 'utf8' })
@@ -151,38 +157,43 @@ deepStrictEqual(packedFiles, [
   'package/package.json',
 ])
 
-const consumerDirectory = mkdtempSync(join(tmpdir(), 'effect-rpc-query-'))
+const verifyConsumer = (
+  label: string,
+  queryCoreVersion: string,
+  reactQueryVersion: string,
+): void => {
+  const consumerDirectory = mkdtempSync(join(tmpdir(), `effect-rpc-query-${label}-`))
 
-try {
-  writeFileSync(
-    join(consumerDirectory, 'package.json'),
-    JSON.stringify(
-      {
-        name: 'effect-rpc-query-packed-consumer',
-        private: true,
-        dependencies: {
-          '@tanstack/query-core': testedVersion('@tanstack/query-core'),
-          '@tanstack/react-query': testedVersion('@tanstack/react-query'),
-          effect: testedVersion('effect'),
-          'effect-rpc-query': `file:${tarballPath}`,
-          react: testedVersion('react'),
+  try {
+    writeFileSync(
+      join(consumerDirectory, 'package.json'),
+      JSON.stringify(
+        {
+          name: `effect-rpc-query-packed-consumer-${label}`,
+          private: true,
+          dependencies: {
+            '@tanstack/query-core': queryCoreVersion,
+            '@tanstack/react-query': reactQueryVersion,
+            effect: testedVersion('effect'),
+            'effect-rpc-query': `file:${tarballPath}`,
+            react: testedVersion('react'),
+          },
         },
-      },
-      null,
-      2,
-    ),
-  )
+        null,
+        2,
+      ),
+    )
 
-  // Prefer cached artifacts, but allow a fresh machine to fetch exact pinned versions.
-  // The temporary project must resolve every peer from its own node_modules.
-  execFileSync('pnpm', ['install', '--ignore-scripts', '--prefer-offline'], {
-    cwd: consumerDirectory,
-    stdio: 'inherit',
-  })
+    // Prefer cached artifacts, but allow a fresh machine to fetch exact pinned versions.
+    // The temporary project must resolve every peer from its own node_modules.
+    execFileSync('pnpm', ['install', '--ignore-scripts', '--prefer-offline'], {
+      cwd: consumerDirectory,
+      stdio: 'inherit',
+    })
 
-  writeFileSync(
-    join(consumerDirectory, 'runtime.mts'),
-    `import * as rpcQuery from 'effect-rpc-query'
+    writeFileSync(
+      join(consumerDirectory, 'runtime.mts'),
+      `import * as rpcQuery from 'effect-rpc-query'
 import { skipToken } from '@tanstack/query-core'
 import { skipToken as reactQuerySkipToken } from '@tanstack/react-query'
 import type {
@@ -224,46 +235,50 @@ if (rpcQuery.skipToken !== skipToken || rpcQuery.skipToken !== reactQuerySkipTok
   throw new Error('The package returned a different skipToken instance')
 }
 `,
-  )
+    )
 
-  writeFileSync(
-    join(consumerDirectory, 'tsconfig.json'),
-    JSON.stringify(
-      {
-        compilerOptions: {
-          lib: ['ES2022', 'DOM', 'DOM.Iterable', 'ESNext.Disposable'],
-          module: 'NodeNext',
-          moduleResolution: 'NodeNext',
-          noEmit: true,
-          skipLibCheck: true,
-          strict: true,
-          target: 'ES2022',
-          types: [],
+    writeFileSync(
+      join(consumerDirectory, 'tsconfig.json'),
+      JSON.stringify(
+        {
+          compilerOptions: {
+            lib: ['ES2022', 'DOM', 'DOM.Iterable', 'ESNext.Disposable'],
+            module: 'NodeNext',
+            moduleResolution: 'NodeNext',
+            noEmit: true,
+            skipLibCheck: true,
+            strict: true,
+            target: 'ES2022',
+            types: [],
+          },
+          include: ['runtime.mts'],
         },
-        include: ['runtime.mts'],
-      },
-      null,
-      2,
-    ),
-  )
+        null,
+        2,
+      ),
+    )
 
-  execFileSync(
-    process.execPath,
-    [
-      join(repositoryRoot, 'node_modules', 'typescript', 'bin', 'tsc'),
-      '-p',
-      'tsconfig.json',
-      '--pretty',
-      'false',
-    ],
-    { cwd: consumerDirectory, stdio: 'inherit' },
-  )
+    execFileSync(
+      process.execPath,
+      [
+        join(repositoryRoot, 'node_modules', 'typescript', 'bin', 'tsc'),
+        '-p',
+        'tsconfig.json',
+        '--pretty',
+        'false',
+      ],
+      { cwd: consumerDirectory, stdio: 'inherit' },
+    )
 
-  // Execute the same module after the installed declarations pass the smoke check.
-  execFileSync(process.execPath, ['runtime.mts'], {
-    cwd: consumerDirectory,
-    stdio: 'inherit',
-  })
-} finally {
-  rmSync(consumerDirectory, { force: true, recursive: true })
+    // Execute the same module after the installed declarations pass the smoke check.
+    execFileSync(process.execPath, ['runtime.mts'], {
+      cwd: consumerDirectory,
+      stdio: 'inherit',
+    })
+  } finally {
+    rmSync(consumerDirectory, { force: true, recursive: true })
+  }
 }
+
+verifyConsumer('lower-bound', queryCoreMinimum, queryCoreMinimum)
+verifyConsumer('current', testedQueryCoreVersion, testedReactQueryVersion)
