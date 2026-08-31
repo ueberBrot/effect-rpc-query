@@ -274,14 +274,19 @@ const prepareQuery = (
   }
 }
 
-const createQueryOptionsBuilder =
-  (
-    rpc: AdaptedUnaryRpc,
-    queryOperationKey: readonly JsonValue[],
-    keyEncoder: RuntimeKeyEncoder | undefined,
-    runPromiseExit: RunPromiseExit<unknown>,
-  ) =>
-  (argument?: unknown) => {
+const createLeaf = (
+  rpc: AdaptedUnaryRpc,
+  rpcKeyParts: ReadonlyArray<JsonValue | string>,
+  keyEncoder: RuntimeKeyEncoder | undefined,
+  runPromiseExit: RunPromiseExit<unknown>,
+) => {
+  const rpcKey = freezeKey(rpcKeyParts)
+  const queryOperationKey = freezeKey([...rpcKey, 'query'])
+  const mutationKey = freezeKey([...rpcKey, 'mutation'])
+
+  const queryKey = (input?: unknown) => prepareQuery(rpc, input, queryOperationKey, keyEncoder).key
+
+  const queryOptions = (argument?: unknown) => {
     if (rpc.keyPayload._tag !== 'Payloadless' && argument === skipToken) {
       return {
         queryFn: skipToken,
@@ -308,20 +313,6 @@ const createQueryOptionsBuilder =
       queryKeyHashFn: hashCanonicalKey,
     }
   }
-
-const createLeaf = (
-  rpc: AdaptedUnaryRpc,
-  rpcKeyParts: ReadonlyArray<JsonValue | string>,
-  keyEncoder: RuntimeKeyEncoder | undefined,
-  runPromiseExit: RunPromiseExit<unknown>,
-) => {
-  const rpcKey = freezeKey(rpcKeyParts)
-  const queryOperationKey = freezeKey([...rpcKey, 'query'])
-  const mutationKey = freezeKey([...rpcKey, 'mutation'])
-
-  const queryKey = (input?: unknown) => prepareQuery(rpc, input, queryOperationKey, keyEncoder).key
-
-  const queryOptions = createQueryOptionsBuilder(rpc, queryOperationKey, keyEncoder, runPromiseExit)
 
   const mutationOptions = (options: Record<string, unknown> = {}) => ({
     ...options,
