@@ -72,10 +72,10 @@ if (rpcQuery.skipToken !== skipToken) {
 
   // Reuse the full contract fixture, but resolve the library as an installed package.
   const fixture = readFileSync(
-    join(repositoryRoot, 'tests/types/technical-spine.ts'),
+    join(repositoryRoot, 'tests/types/public-contract.ts'),
     'utf8',
   ).replace("from '#effect-rpc-query'", "from 'effect-rpc-query'")
-  writeFileSync(join(consumerDirectory, 'technical-spine.ts'), fixture)
+  writeFileSync(join(consumerDirectory, 'public-contract.ts'), fixture)
   writeFileSync(
     join(consumerDirectory, 'tsconfig.json'),
     JSON.stringify(
@@ -92,7 +92,7 @@ if (rpcQuery.skipToken !== skipToken) {
           target: 'ES2022',
           types: ['node'],
         },
-        include: ['runtime.mts', 'technical-spine.ts'],
+        include: ['runtime.mts', 'public-contract.ts'],
       },
       null,
       2,

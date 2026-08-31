@@ -45,7 +45,7 @@ const canonicalizeNumber = (value: number): number => {
 const canonicalizeArray = (value: unknown[], seen: WeakSet<object>): JsonValue => {
   const copy: Array<JsonValue> = []
   for (let index = 0; index < value.length; index += 1) {
-    if (!(index in value)) {
+    if (!Object.hasOwn(value, index)) {
       throw new TypeError('Key values must not contain sparse arrays')
     }
     copy.push(canonicalize(value[index], seen))

@@ -104,6 +104,12 @@ const options: CreateRpcQueryUtilsOptions<typeof group, typeof keyPrefix> = {
   client,
   keyPrefix,
 }
+
+// @ts-expect-error key prefixes must contain at least one value
+createRpcQueryUtils(group, { client, keyPrefix: [] as const })
+// @ts-expect-error key prefixes accept only strict JSON values
+createRpcQueryUtils(group, { client, keyPrefix: ['app', new Date(0)] as const })
+
 const utils = createRpcQueryUtils(group, options)
 const typedUtils: RpcQueryUtils<typeof group, typeof keyPrefix> = utils
 void typedUtils
