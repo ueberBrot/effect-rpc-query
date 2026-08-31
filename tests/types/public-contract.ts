@@ -13,8 +13,6 @@ import {
 } from '@tanstack/react-query'
 import { createRootRouteWithContext, createRoute } from '@tanstack/react-router'
 import { Context, Effect, Schema } from 'effect'
-import { Rpc, RpcClient, RpcGroup, RpcMiddleware } from 'effect/unstable/rpc'
-
 import {
   createRpcQueryUtils,
   EffectRpcQueryError,
@@ -28,7 +26,8 @@ import {
   type RpcQueryUtils,
   type RunPromiseExit,
   type SkipToken,
-} from '#effect-rpc-query'
+} from 'effect-rpc-query'
+import { Rpc, RpcClient, RpcGroup, RpcMiddleware } from 'effect/unstable/rpc'
 
 class AuthMiddleware extends RpcMiddleware.Service<AuthMiddleware>()('AuthMiddleware', {
   error: Schema.Literal('unauthorized'),
