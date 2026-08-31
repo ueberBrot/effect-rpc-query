@@ -30,9 +30,15 @@ importers:
       '@tanstack/query-core':
         specifier: 5.102.0
         version: 5.102.0
+      '@tanstack/react-query':
+        specifier: 5.102.0
+        version: 5.102.0(react@19.2.4)
       '@types/node':
         specifier: 24.13.3
         version: 24.13.3
+      '@types/react':
+        specifier: 19.2.14
+        version: 19.2.14
       effect:
         specifier: 4.0.0-rc.111
         version: 4.0.0-rc.111
@@ -42,6 +48,9 @@ importers:
       publint:
         specifier: 0.3.24
         version: 0.3.24
+      react:
+        specifier: 19.2.4
+        version: 19.2.4
       typescript:
         specifier: 7.0.2
         version: 7.0.2
@@ -628,6 +637,11 @@ packages:
   '@tanstack/query-core@5.102.0':
     resolution: {integrity: sha512-tvBzr11Q7StuMCEsIJdqX8TAWt6WZIzfw/yrSAjObZDerwTTPeCxeLXN2R8ZSn4ZxFpQV819Xn8QmoO+vtnDvw==}
 
+  '@tanstack/react-query@5.102.0':
+    resolution: {integrity: sha512-0GyVyEcGt9M7jHPCua16hNVtstUXE2R4HsnNubFYcDs7DJaLzh1dSiXsADDU/cNn/SqrLfa0vRKyjUmbx4rZLA==}
+    peerDependencies:
+      react: ^18 || ^19
+
   '@testing-library/dom@10.4.1':
     resolution: {integrity: sha512-o4PXJQidqJl82ckFaXUeoAW+XysPLauYI43Abki5hABd853iMhitooc6znOnczgbTYmEP6U6/y1ZyKAIsvMKGg==}
     engines: {node: '>=18'}
@@ -652,6 +666,9 @@ packages:
 
   '@types/node@24.13.3':
     resolution: {integrity: sha512-Dh8vAsV36ig5wa9OX4pXvMc9D3Veibfw2wix0CUwYODLD8nkj9UsLjASr49nPg+2eKzxhBV+v7L8pXvT4e639Q==}
+
+  '@types/react@19.2.14':
+    resolution: {integrity: sha512-ilcTH/UniCkMdtexkoCN0bI7pMcJDvmQFPvuPvmEaYA/NSfFTAgdUSLAoVjaRJm7+6PvcM+q1zYOwS4wTYMF9w==}
 
   '@typescript/typescript-aix-ppc64@7.0.2':
     resolution: {integrity: sha512-MTKKkWB7p/0E9xi1d1tHtZ5PiLkGEMIq88pK2CubZjOsLtYTLqhgIgi6zepFa+9GHZ6h05NMCkQxGKiPXMxXtQ==}
@@ -1133,6 +1150,9 @@ packages:
   convert-source-map@2.0.0:
     resolution: {integrity: sha512-Kvp459HrV2FEJ1CAsi1Ku+MY3kasH19TFykTz2xWmMeq6bk2NU3XXvfJ+Q61m0xktWwt+1HSYf3JZsTms3aRJg==}
 
+  csstype@3.2.3:
+    resolution: {integrity: sha512-z1HGKcYy2xA8AGQfwrn0PAy+PB7X/GSj3UVJW9qKyn43xWa+gl5nXmU4qqLMRzWVLFC8KusUX8T/0kCiOYpAIQ==}
+
   dequal@2.0.3:
     resolution: {integrity: sha512-0je+qPKHEMohvfRTCEo3CrPG6cAzAYgmzKyxRiYSSDkS6eGJdyVJm7WaYA5ECaAD9wLB2T4EEeymA5aFVcYXCA==}
     engines: {node: '>=6'}
@@ -1478,6 +1498,10 @@ packages:
 
   react-is@17.0.2:
     resolution: {integrity: sha512-w2GsyukL62IJnlaff/nRegPQR94C/XXamvMWmSHRJ4y7Ts/4ocGRmTHvOs8PSE6pB3dWOrD/nueuU5sduBsQ4w==}
+
+  react@19.2.4:
+    resolution: {integrity: sha512-9nfp2hYpCwOjAN+8TZFGhtWEwgvWHXqESH8qT89AT/lWklpLON22Lc8pEtnpsZz7VmawabSU0gCjnj8aC0euHQ==}
+    engines: {node: '>=0.10.0'}
 
   require-directory@2.1.1:
     resolution: {integrity: sha512-fGxEI7+wsG9xrvdjsrlmL22OMTTiHRwAMroiEeMgq8gzoLC/PQr7RsRDSTLUg/bZAZtF+TVIkHc6/4RIKrui+Q==}
@@ -2131,6 +2155,11 @@ snapshots:
 
   '@tanstack/query-core@5.102.0': {}
 
+  '@tanstack/react-query@5.102.0(react@19.2.4)':
+    dependencies:
+      '@tanstack/query-core': 5.102.0
+      react: 19.2.4
+
   '@testing-library/dom@10.4.1':
     dependencies:
       '@babel/code-frame': 7.29.7
@@ -2160,6 +2189,10 @@ snapshots:
   '@types/node@24.13.3':
     dependencies:
       undici-types: 7.18.2
+
+  '@types/react@19.2.14':
+    dependencies:
+      csstype: 3.2.3
 
   '@typescript/typescript-aix-ppc64@7.0.2':
     optional: true
@@ -2479,6 +2512,8 @@ snapshots:
   confbox@0.2.4: {}
 
   convert-source-map@2.0.0: {}
+
+  csstype@3.2.3: {}
 
   dequal@2.0.3: {}
 
@@ -2806,6 +2841,8 @@ snapshots:
   pure-rand@8.4.2: {}
 
   react-is@17.0.2: {}
+
+  react@19.2.4: {}
 
   require-directory@2.1.1: {}
 

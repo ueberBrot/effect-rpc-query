@@ -1,8 +1,10 @@
 import type {
   DataTag,
+  InitialDataFunction,
   MutationObserverOptions,
+  NonUndefinedGuard,
   QueryFunction,
-  QueryKey,
+  QueryKeyHashFunction,
   QueryObserverOptions,
   SkipToken,
 } from '@tanstack/query-core'
@@ -147,7 +149,7 @@ export type RpcQueryOptions<
   /** The concrete, data-tagged key for this normalized payload. */
   readonly queryKey: ConcreteQueryKey<Prefix, R, ClientError>
   /** Query Core's stable hash for the canonical semantic key. */
-  readonly queryKeyHashFn: (queryKey: QueryKey) => string
+  readonly queryKeyHashFn: QueryKeyHashFunction<ConcreteQueryKey<Prefix, R, ClientError>>
 }
 
 /** Query input whose initial value is known to be present. */
@@ -157,7 +159,9 @@ export type DefinedQueryInputOptions<
   ClientError,
   Selected,
 > = Omit<QueryInputOptions<R, Prefix, ClientError, Selected>, 'initialData'> & {
-  readonly initialData: QueryData<Rpc.Success<R>> | (() => QueryData<Rpc.Success<R>>)
+  readonly initialData:
+    | NonUndefinedGuard<QueryData<Rpc.Success<R>>>
+    | (() => NonUndefinedGuard<QueryData<Rpc.Success<R>>>)
 }
 
 /** Query input with no guaranteed initial value. */
@@ -168,9 +172,9 @@ export type UndefinedQueryInputOptions<
   Selected,
 > = Omit<QueryInputOptions<R, Prefix, ClientError, Selected>, 'initialData'> & {
   readonly initialData?:
-    | QueryData<Rpc.Success<R>>
     | undefined
-    | (() => QueryData<Rpc.Success<R>> | undefined)
+    | InitialDataFunction<NonUndefinedGuard<QueryData<Rpc.Success<R>>>>
+    | NonUndefinedGuard<QueryData<Rpc.Success<R>>>
 }
 
 /** Generated options whose initial value remains visibly required. */
@@ -189,7 +193,7 @@ export type SkippedRpcQueryOptions<R extends Rpc.Any, Prefix extends readonly Js
   /** The operation prefix, which contains no unconstructed payload. */
   readonly queryKey: QueryOperationKey<Prefix, R>
   /** Query Core's stable hash for the operation key. */
-  readonly queryKeyHashFn: (queryKey: QueryKey) => string
+  readonly queryKeyHashFn: QueryKeyHashFunction<QueryOperationKey<Prefix, R>>
 }
 
 /** Mutation options generated for one unary RPC. */
