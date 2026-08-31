@@ -83,6 +83,18 @@ const Secret = Rpc.make('secrets.read', {
   payload: { secret: Schema.Redacted(Schema.String) },
   success: Schema.String,
 })
+const SecretList = Rpc.make('secrets.list', {
+  payload: Schema.Array(Schema.Union([Schema.String, Schema.Redacted(Schema.String)])),
+  success: Schema.String,
+})
+
+class ClassPayload extends Schema.Class<ClassPayload>('ClassPayload')({
+  id: Schema.Finite,
+}) {}
+const ClassRead = Rpc.make('classes.read', {
+  payload: ClassPayload,
+  success: Schema.String,
+})
 
 const group = RpcGroup.make(
   GetUser,
@@ -134,11 +146,60 @@ void [exactLeafInterface, projectKey, projectPing, bracketOnly]
 
 const jsonValue: JsonValue = { nested: [true, null, 1, 'value'] }
 const keyEncoder: KeyEncoder<typeof GetUser> = (payload) => ({ id: payload.id })
+const classKeyEncoder: KeyEncoder<typeof ClassRead> = (payload) => {
+  payload satisfies ClassPayload
+  return { id: payload.id }
+}
 const runPromiseExit: RunPromiseExit = Effect.runPromiseExit
 const queryData: QueryData<void> = null
 const configCode: EffectRpcQueryConfigErrorCode = 'InvalidRpcPath'
 const keyCode: EffectRpcQueryKeyErrorCode = 'InvalidKeyValue'
-void [jsonValue, keyEncoder, runPromiseExit, queryData, configCode, keyCode]
+void [jsonValue, keyEncoder, classKeyEncoder, runPromiseExit, queryData, configCode, keyCode]
+
+createRpcQueryUtils(group, {
+  client,
+  keyEncoders: {
+    // @ts-expect-error payloadless operations have no payload identity to override
+    'health.ping': () => null,
+  },
+  keyPrefix,
+})
+
+createRpcQueryUtils(group, {
+  client,
+  keyEncoders: {
+    // @ts-expect-error streaming operations are omitted and cannot have encoders
+    'events.watch': () => null,
+  },
+  keyPrefix,
+})
+
+createRpcQueryUtils(group, {
+  client,
+  keyEncoders: {
+    // @ts-expect-error encoder configuration is keyed by literal unary RPC tags
+    'users.missing': () => null,
+  },
+  keyPrefix,
+})
+
+createRpcQueryUtils(group, {
+  client,
+  keyEncoders: {
+    // @ts-expect-error key encoders must return synchronously
+    'users.get': async (payload) => ({ id: payload.id }),
+  },
+  keyPrefix,
+})
+
+createRpcQueryUtils(group, {
+  client,
+  keyEncoders: {
+    // @ts-expect-error Effect-returning key encoders are outside the public contract
+    'users.get': (payload) => Effect.succeed({ id: payload.id }),
+  },
+  keyPrefix,
+})
 
 const queryClient = new QueryClient()
 
@@ -199,6 +260,20 @@ const encoderOptions: CreateRpcQueryUtilsOptions<typeof encoderGroup, typeof key
   runPromiseExit: encoderRunner,
 }
 createRpcQueryUtils(encoderGroup, encoderOptions)
+
+const secretListGroup = RpcGroup.make(SecretList)
+type SecretListRpcs = RpcGroup.Rpcs<typeof secretListGroup>
+declare const secretListClient: RpcClient.RpcClient.Flat<SecretListRpcs>
+
+// @ts-expect-error redacted values nested in a top-level array require an encoder
+const missingSecretListEncoder: CreateRpcQueryUtilsOptions<
+  typeof secretListGroup,
+  typeof keyPrefix
+> = {
+  client: secretListClient,
+  keyPrefix,
+}
+void missingSecretListEncoder
 
 const cachedUser: { readonly id: number; readonly name: string } | undefined =
   queryClient.getQueryData(utils.users.get.queryKey({ id: 1 }))

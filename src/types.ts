@@ -57,6 +57,16 @@ export type UnaryRpc<R extends Rpc.Any> =
 export type UnaryRpcs<Group extends RpcGroup.Any> =
   RpcsOf<Group> extends infer R ? (R extends Rpc.Any ? UnaryRpc<R> : never) : never
 
+/** Selects unary RPCs whose query keys include constructed payload identity. */
+export type PayloadBearingUnaryRpcs<Group extends RpcGroup.Any> =
+  UnaryRpcs<Group> extends infer R
+    ? R extends Rpc.Any
+      ? void extends Rpc.PayloadConstructor<R>
+        ? never
+        : R
+      : never
+    : never
+
 /** Extracts failures introduced by client-side RPC middleware. */
 export type ClientMiddlewareError<R extends Rpc.Any> =
   R extends Rpc.Rpc<string, Schema.Top, Schema.Top, Schema.Top, infer Middleware, unknown>
@@ -322,12 +332,14 @@ export type ContainsRedacted<A> =
 export type NeedsKeyEncoder<R extends Rpc.Any> = [PayloadSchema<R>['EncodingServices']] extends [
   never,
 ]
-  ? ContainsRedacted<Rpc.Payload<R>>
+  ? true extends ContainsRedacted<Rpc.Payload<R>>
+    ? true
+    : false
   : true
 
 /** Selects RPCs whose default key encoding is unsafe or cannot run synchronously. */
 export type RequiredEncoderRpcs<Group extends RpcGroup.Any> =
-  UnaryRpcs<Group> extends infer R
+  PayloadBearingUnaryRpcs<Group> extends infer R
     ? R extends Rpc.Any
       ? NeedsKeyEncoder<R> extends true
         ? R
@@ -339,21 +351,26 @@ export type RequiredEncoderRpcs<Group extends RpcGroup.Any> =
 export type KeyEncoders<Group extends RpcGroup.Any> = {
   readonly [R in RequiredEncoderRpcs<Group> as R['_tag']]: KeyEncoder<R>
 } & Partial<{
-  readonly [R in Exclude<UnaryRpcs<Group>, RequiredEncoderRpcs<Group>> as R['_tag']]: KeyEncoder<R>
+  readonly [R in Exclude<
+    PayloadBearingUnaryRpcs<Group>,
+    RequiredEncoderRpcs<Group>
+  > as R['_tag']]: KeyEncoder<R>
 }>
 
 /** Makes the encoder map optional only when no RPC requires an override. */
-export type KeyEncoderOption<Group extends RpcGroup.Any> = [RequiredEncoderRpcs<Group>] extends [
-  never,
-]
-  ? {
-      /** Overrides synchronous semantic encoding for selected RPC payloads. */
-      readonly keyEncoders?: KeyEncoders<Group>
-    }
-  : {
-      /** Supplies safe synchronous identity for every serviceful or redacted payload. */
-      readonly keyEncoders: KeyEncoders<Group>
-    }
+export type KeyEncoderOption<Group extends RpcGroup.Any> = [
+  PayloadBearingUnaryRpcs<Group>,
+] extends [never]
+  ? { readonly keyEncoders?: never }
+  : [RequiredEncoderRpcs<Group>] extends [never]
+    ? {
+        /** Overrides synchronous semantic encoding for selected RPC payloads. */
+        readonly keyEncoders?: KeyEncoders<Group>
+      }
+    : {
+        /** Supplies safe synchronous identity for every serviceful or redacted payload. */
+        readonly keyEncoders: KeyEncoders<Group>
+      }
 
 /** Requires a custom runner when client-side Schema services remain. */
 export type RunnerOption<Group extends RpcGroup.Any> = [
