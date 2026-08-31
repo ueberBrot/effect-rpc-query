@@ -1,12 +1,13 @@
 {
   "name": "effect-rpc-query",
   "version": "0.0.0",
-  "description": "TanStack Query utilities derived from Effect RPC contracts.",
+  "description": "Type-safe TanStack Query utilities generated from Effect RPC definitions.",
   "homepage": "https://github.com/ueberBrot/effect-rpc-query#readme",
   "bugs": {
     "url": "https://github.com/ueberBrot/effect-rpc-query/issues"
   },
   "license": "ISC",
+  "author": "Maurice de Bruyn",
   "repository": {
     "type": "git",
     "url": "git+https://github.com/ueberBrot/effect-rpc-query.git"
