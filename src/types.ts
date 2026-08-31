@@ -109,6 +109,17 @@ export type ConcreteQueryKey<
   EffectRpcQueryError<RpcFailure<R, ClientError>>
 >
 
+/** A skipped operation key carrying the inference unavailable from its sentinel query function. */
+export type SkippedQueryKey<
+  Prefix extends readonly JsonValue[],
+  R extends Rpc.Any,
+  ClientError,
+> = DataTag<
+  QueryOperationKey<Prefix, R>,
+  QueryData<Rpc.Success<R>>,
+  EffectRpcQueryError<RpcFailure<R, ClientError>>
+>
+
 export type MutationKey<Prefix extends readonly JsonValue[], R extends Rpc.Any> = readonly [
   ...RpcKey<Prefix, R>,
   'mutation',
@@ -187,13 +198,26 @@ export type DefinedRpcQueryOptions<
   Pick<DefinedQueryInputOptions<R, Prefix, ClientError, Selected>, 'initialData'>
 
 /** Query Core options returned when a payload-bearing query uses `skipToken`. */
-export type SkippedRpcQueryOptions<R extends Rpc.Any, Prefix extends readonly JsonValue[]> = {
+export type SkippedRpcQueryOptions<
+  R extends Rpc.Any,
+  Prefix extends readonly JsonValue[],
+  ClientError,
+> = Omit<
+  QueryObserverOptions<
+    QueryData<Rpc.Success<R>>,
+    EffectRpcQueryError<RpcFailure<R, ClientError>>,
+    QueryData<Rpc.Success<R>>,
+    QueryData<Rpc.Success<R>>,
+    SkippedQueryKey<Prefix, R, ClientError>
+  >,
+  OwnedQueryOption
+> & {
   /** Query Core's exact skip sentinel. */
   readonly queryFn: SkipToken
   /** The operation prefix, which contains no unconstructed payload. */
-  readonly queryKey: QueryOperationKey<Prefix, R>
+  readonly queryKey: SkippedQueryKey<Prefix, R, ClientError>
   /** Query Core's stable hash for the operation key. */
-  readonly queryKeyHashFn: QueryKeyHashFunction<QueryOperationKey<Prefix, R>>
+  readonly queryKeyHashFn: QueryKeyHashFunction<SkippedQueryKey<Prefix, R, ClientError>>
 }
 
 /** Mutation options generated for one unary RPC. */
@@ -243,7 +267,7 @@ export type QueryOptionsBuilder<
             readonly input: Rpc.PayloadConstructor<R>
           },
         ): RpcQueryOptions<R, Prefix, ClientError, Selected>
-        (token: SkipToken): SkippedRpcQueryOptions<R, Prefix>
+        (token: SkipToken): SkippedRpcQueryOptions<R, Prefix, ClientError>
       }
 
 export type QueryKeyBuilder<R extends Rpc.Any, Prefix extends readonly JsonValue[], ClientError> =

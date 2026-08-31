@@ -11,6 +11,7 @@ import {
   useQuery,
   useSuspenseQuery,
 } from '@tanstack/react-query'
+import { createRootRouteWithContext, createRoute } from '@tanstack/react-router'
 import { Context, Effect, Schema } from 'effect'
 import { Rpc, RpcClient, RpcGroup, RpcMiddleware } from 'effect/unstable/rpc'
 
@@ -260,8 +261,16 @@ const suspenseHook = useSuspenseQuery(queryOptions)
 const suspenseData: string = suspenseHook.data
 suspenseHook.error satisfies EffectRpcQueryError<'not-found'> | null
 usePrefetchQuery(queryOptions)
-const loader = (): Promise<string> => queryClient.query(queryOptions)
-void [exactQueryHashInput, queryHookData, suspenseData, loader]
+
+const rootRoute = createRootRouteWithContext<{ readonly queryClient: QueryClient }>()()
+const queryRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  loader: ({ context }) => context.queryClient.query(queryOptions),
+  path: 'users',
+})
+type QueryRouteLoaderData = Assert<Equal<(typeof queryRoute.types)['loaderData'], string>>
+const queryRouteLoaderData: QueryRouteLoaderData = true
+void [exactQueryHashInput, queryHookData, suspenseData, queryRouteLoaderData]
 
 const possiblyInitialized = utils.users.get.queryOptions({
   input: { id: 1, locale: 'de' },
@@ -340,6 +349,10 @@ type ExactSkippedQueryHashInput = Assert<
 >
 const exactSkippedQueryHashInput: ExactSkippedQueryHashInput = true
 void exactSkippedQueryHashInput
+const skippedHook = useQuery(skipped)
+const skippedData: { readonly id: number; readonly name: string } | undefined = skippedHook.data
+skippedHook.error satisfies EffectRpcQueryError<'not-found'> | null
+void skippedData
 
 // @ts-expect-error suspense queries cannot use the skip sentinel
 useSuspenseQuery(skipped)
