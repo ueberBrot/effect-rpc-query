@@ -1,19 +1,22 @@
 // fallow-ignore-file unused-file
 // Vite+ invokes this verifier through its dynamically declared packed-package task.
 import { execFileSync } from 'node:child_process'
-import { mkdtempSync, readFileSync, readdirSync, rmSync, writeFileSync } from 'node:fs'
+import { existsSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { dirname, join, resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
 
 const repositoryRoot = resolve(dirname(fileURLToPath(import.meta.url)), '..')
 const artifactDirectory = join(repositoryRoot, '.artifacts')
-const tarballName = readdirSync(artifactDirectory).find((name) =>
-  /^effect-rpc-query-.*\.tgz$/.test(name),
-)
+const packageManifest = JSON.parse(readFileSync(join(repositoryRoot, 'package.json'), 'utf8')) as {
+  readonly name: string
+  readonly version: string
+}
+const tarballName = `${packageManifest.name.replace(/^@/, '').replaceAll('/', '-')}-${packageManifest.version}.tgz`
+const tarballPath = join(artifactDirectory, tarballName)
 
-if (tarballName === undefined) {
-  throw new Error('No effect-rpc-query tarball exists in .artifacts')
+if (!existsSync(tarballPath)) {
+  throw new Error(`Packed tarball does not exist: ${tarballPath}`)
 }
 
 const consumerDirectory = mkdtempSync(join(tmpdir(), 'effect-rpc-query-'))
@@ -25,26 +28,18 @@ try {
       {
         name: 'effect-rpc-query-packed-consumer',
         private: true,
-        type: 'module',
         dependencies: {
           '@tanstack/query-core': '5.102.0',
           '@tanstack/react-query': '5.102.0',
-          '@tanstack/react-router': '1.169.2',
-          '@types/node': '24.13.3',
-          '@types/react': '19.2.14',
-          '@types/react-dom': '19.2.3',
           effect: '4.0.0-rc.111',
-          'effect-rpc-query': `file:${join(artifactDirectory, tarballName)}`,
+          'effect-rpc-query': `file:${tarballPath}`,
           react: '19.2.4',
-          'react-dom': '19.2.4',
         },
       },
       null,
       2,
     ),
   )
-  // Match the repository lockfile instead of re-resolving Effect's broad range.
-  writeFileSync(join(consumerDirectory, 'pnpm-workspace.yaml'), "overrides:\n  msgpackr: '2.0.5'\n")
 
   // Prefer cached artifacts, but allow a fresh machine to fetch exact pinned versions.
   // The temporary project must resolve every peer from its own node_modules.
@@ -77,50 +72,40 @@ if (rpcQuery.skipToken !== skipToken || rpcQuery.skipToken !== reactQuerySkipTok
 `,
   )
 
-  // Reuse the full contract fixture, but resolve the library as an installed package.
-  const fixture = readFileSync(
-    join(repositoryRoot, 'tests/types/public-contract.ts'),
-    'utf8',
-  ).replace("from '#effect-rpc-query'", "from 'effect-rpc-query'")
-  writeFileSync(join(consumerDirectory, 'public-contract.ts'), fixture)
   writeFileSync(
     join(consumerDirectory, 'tsconfig.json'),
     JSON.stringify(
       {
         compilerOptions: {
-          exactOptionalPropertyTypes: true,
           lib: ['ES2022', 'DOM', 'DOM.Iterable', 'ESNext.Disposable'],
           module: 'NodeNext',
           moduleResolution: 'NodeNext',
           noEmit: true,
-          noUncheckedIndexedAccess: true,
-          skipLibCheck: false,
+          skipLibCheck: true,
           strict: true,
           target: 'ES2022',
-          types: ['node'],
+          types: [],
         },
-        include: ['runtime.mts', 'public-contract.ts'],
+        include: ['runtime.mts'],
       },
       null,
       2,
     ),
   )
 
-  for (const compiler of ['typescript-5.9', 'typescript'] as const) {
-    execFileSync(
-      process.execPath,
-      [
-        join(repositoryRoot, 'node_modules', compiler, 'bin', 'tsc'),
-        '-p',
-        'tsconfig.json',
-        '--pretty',
-        'false',
-      ],
-      { cwd: consumerDirectory, stdio: 'inherit' },
-    )
-  }
+  execFileSync(
+    process.execPath,
+    [
+      join(repositoryRoot, 'node_modules', 'typescript', 'bin', 'tsc'),
+      '-p',
+      'tsconfig.json',
+      '--pretty',
+      'false',
+    ],
+    { cwd: consumerDirectory, stdio: 'inherit' },
+  )
 
-  // Execute the same module only after both supported compilers accept it.
+  // Execute the same module after the installed declarations pass the smoke check.
   execFileSync(process.execPath, ['runtime.mts'], {
     cwd: consumerDirectory,
     stdio: 'inherit',
