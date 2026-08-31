@@ -1,12 +1,13 @@
 {
   "name": "effect-rpc-query",
   "version": "0.0.0",
-  "description": "TanStack Query utilities derived from Effect RPC contracts.",
+  "description": "Type-safe TanStack Query utilities generated from Effect RPC definitions.",
   "homepage": "https://github.com/ueberBrot/effect-rpc-query#readme",
   "bugs": {
     "url": "https://github.com/ueberBrot/effect-rpc-query/issues"
   },
   "license": "ISC",
+  "author": "Maurice de Bruyn",
   "repository": {
     "type": "git",
     "url": "git+https://github.com/ueberBrot/effect-rpc-query.git"
@@ -42,8 +43,8 @@
     "@effect/tsgo": "0.36.5",
     "@effect/vitest": "4.0.0-rc.111",
     "@playwright/test": "1.62.1",
-    "@tanstack/query-core": "5.102.0",
-    "@tanstack/react-query": "5.102.0",
+    "@tanstack/query-core": "5.102.2",
+    "@tanstack/react-query": "5.102.2",
     "@tanstack/react-router": "1.169.2",
     "@types/node": "24.13.3",
     "@types/react": "19.2.14",

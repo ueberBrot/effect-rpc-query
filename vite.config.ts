@@ -14,6 +14,8 @@ const ignoredPaths = [
 
 // Packed type fixtures target dist and run after packaging in the packed-types task.
 const packedTypeFixtures = ['tests/types/**']
+// Packed consumer fixtures resolve dependencies from an isolated temporary project.
+const packedConsumerFixtures = ['tests/packed-consumer/**']
 
 export default defineConfig({
   fmt: {
@@ -47,7 +49,7 @@ export default defineConfig({
     sortPackageJson: true,
   },
   lint: {
-    ignorePatterns: [...ignoredPaths, ...packedTypeFixtures],
+    ignorePatterns: [...ignoredPaths, ...packedTypeFixtures, ...packedConsumerFixtures],
     options: {
       typeAware: true,
       typeCheck: true,
