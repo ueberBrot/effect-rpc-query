@@ -356,6 +356,35 @@ describe('createRpcQueryUtils configuration', () => {
     }),
   )
 
+  it.effect('does not require a key encoder for service-free encoding middleware', () =>
+    Effect.gen(function* () {
+      const Payload = Schema.Struct({ value: Schema.String }).pipe(
+        Schema.middlewareEncoding((encoding) => Effect.map(encoding, (value) => value)),
+      )
+      const ServiceFree = Rpc.make('encoding.service-free', {
+        payload: Payload,
+        success: Schema.String,
+      })
+      const serviceFreeGroup = RpcGroup.make(ServiceFree)
+      const client = yield* makeRpcTestClient(serviceFreeGroup, {
+        'encoding.service-free': () => Effect.succeed('ok'),
+      })
+
+      const utils = createRpcQueryUtils(serviceFreeGroup, {
+        client,
+        keyPrefix: ['app'] as const,
+      })
+
+      expect(utils.encoding['service-free'].queryKey({ value: 'safe' })).toEqual([
+        'app',
+        'encoding',
+        'service-free',
+        'query',
+        { value: 'safe' },
+      ])
+    }),
+  )
+
   it.effect('preserves an own __proto__ property in canonical payload keys', () =>
     Effect.gen(function* () {
       const encoded = Object.defineProperty({}, '__proto__', {
