@@ -280,7 +280,9 @@ describe('createRpcQueryUtils configuration', () => {
         'EncodingService',
       ) {}
       const Payload = Schema.Struct({ value: Schema.String }).pipe(
-        Schema.middlewareEncoding((encoding) => Effect.flatMap(EncodingService, () => encoding)),
+        Schema.middlewareEncoding((encoding) =>
+          Effect.flatMap(encoding, (encoded) => Effect.as(EncodingService, encoded)),
+        ),
       )
       const Serviceful = Rpc.make('encoding.serviceful', {
         payload: Payload,
@@ -350,35 +352,6 @@ describe('createRpcQueryUtils configuration', () => {
         'app',
         'decoding',
         'only',
-        'query',
-        { value: 'safe' },
-      ])
-    }),
-  )
-
-  it.effect('does not require a key encoder for service-free encoding middleware', () =>
-    Effect.gen(function* () {
-      const Payload = Schema.Struct({ value: Schema.String }).pipe(
-        Schema.middlewareEncoding((encoding) => Effect.map(encoding, (value) => value)),
-      )
-      const ServiceFree = Rpc.make('encoding.service-free', {
-        payload: Payload,
-        success: Schema.String,
-      })
-      const serviceFreeGroup = RpcGroup.make(ServiceFree)
-      const client = yield* makeRpcTestClient(serviceFreeGroup, {
-        'encoding.service-free': () => Effect.succeed('ok'),
-      })
-
-      const utils = createRpcQueryUtils(serviceFreeGroup, {
-        client,
-        keyPrefix: ['app'] as const,
-      })
-
-      expect(utils.encoding['service-free'].queryKey({ value: 'safe' })).toEqual([
-        'app',
-        'encoding',
-        'service-free',
         'query',
         { value: 'safe' },
       ])

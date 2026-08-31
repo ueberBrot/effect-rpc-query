@@ -1,4 +1,5 @@
-import { Context, Effect, Option, Predicate, Schema, SchemaAST } from 'effect'
+import { Function, Schema, SchemaAST } from 'effect'
+import type { Effect } from 'effect'
 import { Rpc, RpcClient, RpcGroup, RpcSchema } from 'effect/unstable/rpc'
 
 export type AdaptedKeyPayload =
@@ -30,46 +31,17 @@ export interface AdaptedUnaryRpc {
   readonly invoke: (input: unknown) => Effect.Effect<unknown, unknown, unknown>
 }
 
-const containsServiceInstruction = (value: unknown, seen = new WeakSet<object>()): boolean => {
-  if (!Predicate.isObjectKeyword(value) || seen.has(value)) {
-    return false
-  }
-  seen.add(value)
-
-  if (Context.isKey(value)) {
-    return !Context.isReference(value)
-  }
-
-  return Object.values(value).some((child) => containsServiceInstruction(child, seen))
-}
-
-const encodingMiddlewareRequiresService = (value: {
-  readonly encode: (effect: unknown, options: SchemaAST.ParseOptions) => unknown
-}): boolean => {
-  try {
-    const probe = Effect.succeed(Option.none())
-    return containsServiceInstruction(value.encode(probe, {}))
-  } catch {
-    // Middleware is expected to construct an Effect without running user work.
-    // If it cannot do that, default synchronous encoding is not safe to assume.
-    return true
-  }
-}
-
-// Runtime Schema metadata erases service types, so inspect the Effect assembled by
-// encoding middleware without running it. Redacted annotations remain directly visible.
+// Runtime Schema metadata erases encoding service types. Conservatively require a
+// custom encoder for encoding-side middleware; decoding-only middleware uses identity.
 const containsUnsafeKeyEncoding = (value: unknown, seen = new WeakSet<object>()): boolean => {
   if (typeof value !== 'object' || value === null || seen.has(value)) {
     return false
   }
   seen.add(value)
 
-  const transformation = value as {
-    readonly _tag?: unknown
-    readonly encode?: (effect: unknown, options: SchemaAST.ParseOptions) => unknown
-  }
-  if (transformation._tag === 'Middleware' && transformation.encode !== undefined) {
-    return encodingMiddlewareRequiresService({ encode: transformation.encode })
+  const transformation = value as { readonly _tag?: unknown; readonly encode?: unknown }
+  if (transformation._tag === 'Middleware') {
+    return transformation.encode !== Function.identity
   }
 
   if (SchemaAST.isAST(value)) {
