@@ -4,6 +4,7 @@ import {
   QueryClient,
   skipToken as queryCoreSkipToken,
 } from '@tanstack/query-core'
+import { skipToken as reactQuerySkipToken } from '@tanstack/react-query'
 import { Effect, Schema, Stream } from 'effect'
 import { Rpc, RpcGroup } from 'effect/unstable/rpc'
 
@@ -91,6 +92,7 @@ describe('createRpcQueryUtils', () => {
       })
 
       expect(skipToken).toBe(queryCoreSkipToken)
+      expect(skipToken).toBe(reactQuerySkipToken)
       const skipped = utils.users.get.queryOptions(skipToken)
       expect(skipped).toMatchObject({
         queryFn: queryCoreSkipToken,

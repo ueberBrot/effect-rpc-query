@@ -28,9 +28,15 @@ try {
         type: 'module',
         dependencies: {
           '@tanstack/query-core': '5.102.0',
+          '@tanstack/react-query': '5.102.0',
+          '@tanstack/react-router': '1.169.2',
           '@types/node': '24.13.3',
+          '@types/react': '19.2.14',
+          '@types/react-dom': '19.2.3',
           effect: '4.0.0-rc.111',
           'effect-rpc-query': `file:${join(artifactDirectory, tarballName)}`,
+          react: '19.2.4',
+          'react-dom': '19.2.4',
         },
       },
       null,
@@ -51,6 +57,7 @@ try {
     join(consumerDirectory, 'runtime.mts'),
     `import * as rpcQuery from 'effect-rpc-query'
 import { skipToken } from '@tanstack/query-core'
+import { skipToken as reactQuerySkipToken } from '@tanstack/react-query'
 
 const expectedExports = [
   'EffectRpcQueryConfigError',
@@ -64,7 +71,7 @@ const expectedExports = [
 if (JSON.stringify(Object.keys(rpcQuery).sort()) !== JSON.stringify(expectedExports)) {
   throw new Error('The package root exposed an unexpected runtime surface')
 }
-if (rpcQuery.skipToken !== skipToken) {
+if (rpcQuery.skipToken !== skipToken || rpcQuery.skipToken !== reactQuerySkipToken) {
   throw new Error('The package returned a different skipToken instance')
 }
 `,

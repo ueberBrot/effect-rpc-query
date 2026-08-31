@@ -377,9 +377,14 @@ describe('createRpcQueryUtils configuration', () => {
       expect((canonical as Record<string, JsonValue>)['__proto__']).toBe('semantic-value')
 
       const options = utils.users.get.queryOptions({ input: { id: 1 } })
-      const emptyPayloadKey = [...options.queryKey.slice(0, -1), {}]
+      const emptyPayloadUtils = createRpcQueryUtils(group, {
+        client,
+        keyEncoders: { 'users.get': () => ({}) },
+        keyPrefix: ['app'] as const,
+      })
+      const emptyPayloadOptions = emptyPayloadUtils.users.get.queryOptions({ input: { id: 1 } })
       expect(options.queryKeyHashFn(options.queryKey)).not.toBe(
-        options.queryKeyHashFn(emptyPayloadKey),
+        emptyPayloadOptions.queryKeyHashFn(emptyPayloadOptions.queryKey),
       )
     }),
   )

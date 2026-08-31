@@ -5,6 +5,13 @@ import {
   QueryClient,
   skipToken as queryCoreSkipToken,
 } from '@tanstack/query-core'
+import {
+  skipToken as reactQuerySkipToken,
+  usePrefetchQuery,
+  useQuery,
+  useSuspenseQuery,
+} from '@tanstack/react-query'
+import { createRootRouteWithContext, createRoute } from '@tanstack/react-router'
 import { Context, Effect, Schema } from 'effect'
 import { Rpc, RpcClient, RpcGroup, RpcMiddleware } from 'effect/unstable/rpc'
 
@@ -214,7 +221,56 @@ const definedInitialData:
 void definedInitialData
 const selectedResult: Promise<string> = queryClient.query(selected)
 void selectedResult
-void queryClient.prefetchQuery(selected)
+
+const selectedHook = useQuery(selected)
+const selectedHookData: string = selectedHook.data
+selectedHook.error satisfies EffectRpcQueryError<'not-found'> | null
+void selectedHookData
+
+const queryOptions = utils.users.get.queryOptions({
+  enabled: (query) => query.state.data?.id !== 0,
+  gcTime: 60_000,
+  input: { id: 1 },
+  meta: { source: 'fixture' },
+  networkMode: 'offlineFirst',
+  notifyOnChangeProps: ['data', 'error'],
+  placeholderData: (previous) => previous,
+  refetchInterval: (query) => (query.state.data === undefined ? 1_000 : false),
+  refetchOnMount: (query) => query.state.data === undefined,
+  retry: (_count, error) => {
+    error satisfies EffectRpcQueryError<'not-found'>
+    return false
+  },
+  retryDelay: (_attempt, error) => {
+    error satisfies EffectRpcQueryError<'not-found'>
+    return 0
+  },
+  select: (user) => user.name,
+  staleTime: (query) => (query.state.data?.name === 'Ada' ? Infinity : 0),
+  structuralSharing: false,
+})
+type ExactQueryHashInput = Assert<
+  Equal<Parameters<typeof queryOptions.queryKeyHashFn>[0], typeof queryOptions.queryKey>
+>
+const exactQueryHashInput: ExactQueryHashInput = true
+
+const queryHook = useQuery(queryOptions)
+const queryHookData: string | undefined = queryHook.data
+queryHook.error satisfies EffectRpcQueryError<'not-found'> | null
+const suspenseHook = useSuspenseQuery(queryOptions)
+const suspenseData: string = suspenseHook.data
+suspenseHook.error satisfies EffectRpcQueryError<'not-found'> | null
+usePrefetchQuery(queryOptions)
+
+const rootRoute = createRootRouteWithContext<{ readonly queryClient: QueryClient }>()()
+const queryRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  loader: ({ context }) => context.queryClient.query(queryOptions),
+  path: 'users',
+})
+type QueryRouteLoaderData = Assert<Equal<(typeof queryRoute.types)['loaderData'], string>>
+const queryRouteLoaderData: QueryRouteLoaderData = true
+void [exactQueryHashInput, queryHookData, suspenseData, queryRouteLoaderData]
 
 const possiblyInitialized = utils.users.get.queryOptions({
   input: { id: 1, locale: 'de' },
@@ -279,10 +335,29 @@ const cachedUser: { readonly id: number; readonly name: string } | undefined =
   queryClient.getQueryData(utils.users.get.queryKey({ id: 1 }))
 void cachedUser
 
+const concreteQueryKey = utils.users.get.queryKey({ id: 1 })
+concreteQueryKey satisfies readonly ['app', 'users', 'get', 'query', JsonValue]
+const cachedState = queryClient.getQueryState(concreteQueryKey)
+cachedState?.error satisfies EffectRpcQueryError<'not-found'> | null | undefined
+
 const skipped = utils.users.get.queryOptions(skipToken)
 skipped.queryFn satisfies typeof queryCoreSkipToken
 const typedSkipToken: SkipToken = skipped.queryFn
 void typedSkipToken
+type ExactSkippedQueryHashInput = Assert<
+  Equal<Parameters<typeof skipped.queryKeyHashFn>[0], typeof skipped.queryKey>
+>
+const exactSkippedQueryHashInput: ExactSkippedQueryHashInput = true
+void exactSkippedQueryHashInput
+const skippedHook = useQuery(skipped)
+const skippedData: { readonly id: number; readonly name: string } | undefined = skippedHook.data
+skippedHook.error satisfies EffectRpcQueryError<'not-found'> | null
+void skippedData
+
+// @ts-expect-error suspense queries cannot use the skip sentinel
+useSuspenseQuery(skipped)
+// @ts-expect-error prefetch-only hooks cannot use the skip sentinel
+usePrefetchQuery(skipped)
 
 const pingQuery: Promise<null> = queryClient.query(utils.health.ping.queryOptions())
 void pingQuery
@@ -346,6 +421,27 @@ utils.admin.secure.queryOptions({
 utils.users.get.queryOptions({})
 // @ts-expect-error payloadless queries do not accept an input field
 utils.health.ping.queryOptions({ input: undefined })
+// @ts-expect-error payloadless queries do not accept the skip sentinel
+utils.health.ping.queryOptions(skipToken)
+// @ts-expect-error key builders never accept the skip sentinel
+utils.users.get.queryKey(skipToken)
+// @ts-expect-error mutation builders never accept the skip sentinel
+utils.users.get.mutationOptions(skipToken)
+// @ts-expect-error the package owns the query function
+utils.users.get.queryOptions({
+  input: { id: 1 },
+  queryFn: queryCoreSkipToken,
+})
+// @ts-expect-error the package owns the query key
+utils.users.get.queryOptions({
+  input: { id: 1 },
+  queryKey: ['custom'],
+})
+// @ts-expect-error the package owns the per-call query key hash function
+utils.users.get.queryOptions({
+  input: { id: 1 },
+  queryKeyHashFn: JSON.stringify,
+})
 // @ts-expect-error streaming RPCs are omitted from the utility tree
 void utils.projects.watch
 // @ts-expect-error branches emptied by stream omission are absent
@@ -355,6 +451,6 @@ void utils.projects['by-id'].find.call
 // @ts-expect-error leaves expose no mutation cancellation helper
 void utils.users.get.cancelMutation
 
-if (skipToken !== queryCoreSkipToken) {
-  throw new Error('skipToken must preserve Query Core identity')
+if (skipToken !== queryCoreSkipToken || skipToken !== reactQuerySkipToken) {
+  throw new Error('skipToken must preserve Query Core and React Query identity')
 }
