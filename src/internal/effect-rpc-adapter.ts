@@ -1,4 +1,4 @@
-import { Context, Effect, Option, Schema, SchemaAST } from 'effect'
+import { Context, Effect, Option, Predicate, Schema, SchemaAST } from 'effect'
 import { Rpc, RpcClient, RpcGroup, RpcSchema } from 'effect/unstable/rpc'
 
 export type AdaptedKeyPayload =
@@ -31,22 +31,13 @@ export interface AdaptedUnaryRpc {
 }
 
 const containsServiceInstruction = (value: unknown, seen = new WeakSet<object>()): boolean => {
-  if (
-    (typeof value !== 'object' && typeof value !== 'function') ||
-    value === null ||
-    seen.has(value)
-  ) {
+  if (!Predicate.isObjectKeyword(value) || seen.has(value)) {
     return false
   }
   seen.add(value)
 
   if (Context.isKey(value)) {
     return !Context.isReference(value)
-  }
-
-  const instruction = value as { readonly _id?: unknown; readonly op?: unknown }
-  if (instruction._id === 'Service' || instruction.op === 'Service') {
-    return true
   }
 
   return Object.values(value).some((child) => containsServiceInstruction(child, seen))
