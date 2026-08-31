@@ -12,6 +12,9 @@ import repositoryManifest from '../package.json' with { type: 'json' }
 const repositoryRoot = resolve(dirname(fileURLToPath(import.meta.url)), '..')
 const artifactDirectory = join(repositoryRoot, '.artifacts')
 const consumerFixtureDirectory = join(repositoryRoot, 'tests', 'packed-consumer')
+const lockfilePath = join(repositoryRoot, 'pnpm-lock.yaml')
+const typeFixtureDirectory = join(repositoryRoot, 'tests', 'types')
+const workspaceConfigPath = join(repositoryRoot, 'pnpm-workspace.yaml')
 const tarballName = `${repositoryManifest.name.replace(/^@/, '').replaceAll('/', '-')}-${repositoryManifest.version}.tgz`
 const tarballPath = join(artifactDirectory, tarballName)
 
@@ -25,6 +28,26 @@ const packedManifest = JSON.parse(
 
 const testedVersion = (dependency: keyof typeof repositoryManifest.devDependencies): string =>
   repositoryManifest.devDependencies[dependency]
+
+const lockedVersions = (dependency: string): ReadonlyArray<string> => {
+  const escapedDependency = dependency.replaceAll('/', '\\/')
+  const matches = readFileSync(lockfilePath, 'utf8').matchAll(
+    new RegExp(`^  ${escapedDependency}@(?<version>[^(:]+)`, 'gmu'),
+  )
+  return [...new Set(Array.from(matches, (match) => match.groups?.['version']))]
+    .filter((version): version is string => version !== undefined)
+    .sort()
+}
+
+const vitestOverride = /^  vitest: (?<version>\S+)$/mu.exec(
+  readFileSync(workspaceConfigPath, 'utf8'),
+)?.groups?.['version']
+if (vitestOverride === undefined) {
+  throw new Error('The workspace must pin one Vitest override')
+}
+
+deepStrictEqual(lockedVersions('effect'), [testedVersion('effect')])
+deepStrictEqual(lockedVersions('vitest'), [vitestOverride])
 
 deepStrictEqual(packedManifest.exports, {
   '.': {
@@ -112,24 +135,75 @@ deepStrictEqual(packedFiles, [
   'package/package.json',
 ])
 
-const verifyConsumer = (
-  label: string,
-  queryCoreVersion: string,
-  reactQueryVersion: string,
+const compilerCases = [
+  {
+    executable: join(repositoryRoot, 'node_modules', 'typescript-5.9', 'bin', 'tsc'),
+    label: 'typescript-5.9',
+  },
+  {
+    executable: join(repositoryRoot, 'node_modules', 'typescript', 'bin', 'tsc'),
+    label: 'typescript-current',
+  },
+] as const
+
+const peerCases = [
+  {
+    label: 'query-core-lower-bound',
+    queryCoreVersion: queryCoreMinimum,
+    reactQueryVersion: queryCoreMinimum,
+  },
+  {
+    label: 'query-core-current',
+    queryCoreVersion: testedQueryCoreVersion,
+    reactQueryVersion: testedReactQueryVersion,
+  },
+] as const
+
+const runTypeScript = (
+  consumerDirectory: string,
+  compiler: (typeof compilerCases)[number],
+  project: 'tsconfig.json' | 'tsconfig.type-scale.json',
+  extendedDiagnostics: boolean,
 ): void => {
-  const consumerDirectory = mkdtempSync(join(tmpdir(), `effect-rpc-query-${label}-`))
+  console.log(`Verifying ${project} with ${compiler.label}`)
+  execFileSync(
+    process.execPath,
+    [
+      compiler.executable,
+      '-p',
+      project,
+      '--pretty',
+      'false',
+      ...(extendedDiagnostics ? ['--extendedDiagnostics'] : []),
+    ],
+    { cwd: consumerDirectory, stdio: 'inherit' },
+  )
+}
+
+const verifyConsumer = (peer: (typeof peerCases)[number]): void => {
+  const consumerDirectory = mkdtempSync(join(tmpdir(), `effect-rpc-query-${peer.label}-`))
 
   try {
     cpSync(consumerFixtureDirectory, consumerDirectory, { recursive: true })
+    cpSync(
+      join(typeFixtureDirectory, 'public-contract.ts'),
+      join(consumerDirectory, 'public-contract.ts'),
+    )
+    cpSync(join(typeFixtureDirectory, 'type-scale.ts'), join(consumerDirectory, 'type-scale.ts'))
 
     const manifestTemplate = readFileSync(join(consumerDirectory, 'package.template.json'), 'utf8')
     const consumerManifest = manifestTemplate
-      .replaceAll('__LABEL__', label)
-      .replaceAll('__QUERY_CORE_VERSION__', queryCoreVersion)
-      .replaceAll('__REACT_QUERY_VERSION__', reactQueryVersion)
+      .replaceAll('__LABEL__', peer.label)
+      .replaceAll('__QUERY_CORE_VERSION__', peer.queryCoreVersion)
+      .replaceAll('__REACT_QUERY_VERSION__', peer.reactQueryVersion)
+      .replaceAll('__REACT_ROUTER_VERSION__', testedVersion('@tanstack/react-router'))
+      .replaceAll('__NODE_TYPES_VERSION__', testedVersion('@types/node'))
+      .replaceAll('__REACT_TYPES_VERSION__', testedVersion('@types/react'))
+      .replaceAll('__REACT_DOM_TYPES_VERSION__', testedVersion('@types/react-dom'))
       .replaceAll('__EFFECT_VERSION__', testedVersion('effect'))
       .replaceAll('__PACKAGE_TARBALL__', `file:${tarballPath}`)
       .replaceAll('__REACT_VERSION__', testedVersion('react'))
+      .replaceAll('__REACT_DOM_VERSION__', testedVersion('react-dom'))
     writeFileSync(join(consumerDirectory, 'package.json'), consumerManifest)
 
     // Prefer cached artifacts, but allow a fresh machine to fetch exact pinned versions.
@@ -139,19 +213,17 @@ const verifyConsumer = (
       stdio: 'inherit',
     })
 
-    execFileSync(
-      process.execPath,
-      [
-        join(repositoryRoot, 'node_modules', 'typescript', 'bin', 'tsc'),
-        '-p',
-        'tsconfig.json',
-        '--pretty',
-        'false',
-      ],
-      { cwd: consumerDirectory, stdio: 'inherit' },
-    )
+    for (const compiler of compilerCases) {
+      runTypeScript(consumerDirectory, compiler, 'tsconfig.json', false)
+      runTypeScript(
+        consumerDirectory,
+        compiler,
+        'tsconfig.type-scale.json',
+        peer.label === 'query-core-current' && compiler.label === 'typescript-current',
+      )
+    }
 
-    execFileSync(process.execPath, ['runtime.mts'], {
+    execFileSync(process.execPath, ['--experimental-import-meta-resolve', 'runtime.mts'], {
       cwd: consumerDirectory,
       stdio: 'inherit',
     })
@@ -160,5 +232,6 @@ const verifyConsumer = (
   }
 }
 
-verifyConsumer('lower-bound', queryCoreMinimum, queryCoreMinimum)
-verifyConsumer('current', testedQueryCoreVersion, testedReactQueryVersion)
+for (const peer of peerCases) {
+  verifyConsumer(peer)
+}

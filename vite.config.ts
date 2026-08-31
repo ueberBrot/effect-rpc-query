@@ -12,10 +12,8 @@ const ignoredPaths = [
   'test-results/**',
 ]
 
-// Packed type fixtures target dist and run after packaging in the packed-types task.
-const packedTypeFixtures = ['tests/types/**']
-// Packed consumer fixtures resolve dependencies from an isolated temporary project.
-const packedConsumerFixtures = ['tests/packed-consumer/**']
+// Packed fixtures resolve only the installed tarball from isolated temporary projects.
+const packedFixtures = ['tests/packed-consumer/**', 'tests/types/**']
 
 export default defineConfig({
   fmt: {
@@ -49,7 +47,7 @@ export default defineConfig({
     sortPackageJson: true,
   },
   lint: {
-    ignorePatterns: [...ignoredPaths, ...packedTypeFixtures, ...packedConsumerFixtures],
+    ignorePatterns: [...ignoredPaths, ...packedFixtures],
     options: {
       typeAware: true,
       typeCheck: true,
@@ -107,18 +105,11 @@ export default defineConfig({
       'packed-package': {
         command: [
           'pnpm --config.ignore-scripts=true pack --pack-destination .artifacts',
+          'fallow dead-code --private-type-leaks --file dist/index.d.mts',
           'node scripts/verify-packed-consumer.mts',
         ],
-        dependsOn: ['packed-types'],
-        output: ['.artifacts/*.tgz'],
-      },
-      'packed-types': {
-        command: [
-          'node node_modules/typescript-5.9/bin/tsc -p tests/types/tsconfig.json',
-          'node node_modules/typescript/bin/tsc -p tests/types/tsconfig.json',
-        ],
         dependsOn: ['pack'],
-        output: [],
+        output: ['.artifacts/*.tgz'],
       },
       fallow: {
         command: [

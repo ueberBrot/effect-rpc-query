@@ -4,10 +4,12 @@
     "module": "NodeNext",
     "moduleResolution": "NodeNext",
     "noEmit": true,
-    "skipLibCheck": true,
+    "exactOptionalPropertyTypes": true,
+    "noUncheckedIndexedAccess": true,
+    "skipLibCheck": false,
     "strict": true,
     "target": "ES2022",
-    "types": []
+    "types": ["node"]
   },
-  "include": ["runtime.mts"]
+  "include": ["runtime.mts", "public-contract.ts"]
 }
