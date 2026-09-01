@@ -32,7 +32,7 @@ export const DiagnosticsSection = ({
 }: {
   readonly application: ViteReactApplication
 }) => {
-  const declaredFailure = useMutation(application.rpc.diagnostics.fail.mutationOptions())
+  const declaredFailure = useMutation(application.rpcQuery.diagnostics.fail.mutationOptions())
   const slowQuery = useSlowQueryCancellation(application)
   const message = describeSlowQuery(slowQuery.state)
 

@@ -5,17 +5,19 @@ import { Effect, Exit, Layer, ManagedRuntime, Scope } from 'effect'
 import { createRpcQueryUtils, type RunPromiseExit } from 'effect-rpc-query'
 import { RpcClient } from 'effect/unstable/rpc'
 
-const makeRpcQueryUtils = (client: ExampleRpcClient, runPromiseExit: RunPromiseExit) =>
+const makeExampleRpcQueryUtils = (client: ExampleRpcClient, runPromiseExit: RunPromiseExit) =>
   createRpcQueryUtils(exampleRpcGroup, {
     client,
     keyPrefix: ['vite-react'] as const,
     runPromiseExit,
   })
 
+export type ExampleRpcQueryUtils = ReturnType<typeof makeExampleRpcQueryUtils>
+
 export interface ViteReactApplication {
   readonly dispose: () => Promise<void>
   readonly queryClient: QueryClient
-  readonly rpc: ReturnType<typeof makeRpcQueryUtils>
+  readonly rpcQuery: ExampleRpcQueryUtils
 }
 
 export interface StartViteReactApplicationOptions {
@@ -61,12 +63,12 @@ export const startViteReactApplication = async ({
         }),
         options,
       )
-    const rpc = makeRpcQueryUtils(client, runPromiseExit)
+    const rpcQuery = makeExampleRpcQueryUtils(client, runPromiseExit)
 
     return {
       dispose,
       queryClient,
-      rpc,
+      rpcQuery,
     }
   } catch (cause) {
     try {

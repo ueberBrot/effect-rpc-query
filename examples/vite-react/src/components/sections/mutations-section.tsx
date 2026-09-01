@@ -10,16 +10,20 @@ export const MutationsSection = ({
 }: {
   readonly application: ViteReactApplication
 }) => {
-  const { queryClient, rpc } = application
+  const { queryClient, rpcQuery } = application
   const voidQuery = useQuery(
-    rpc.diagnostics.cancel.queryOptions({
+    rpcQuery.diagnostics.cancel.queryOptions({
       enabled: false,
       input: { operationId: 'no-active-operation' },
     }),
   )
-  const invalidateUsers = () => queryClient.invalidateQueries({ queryKey: rpc.users.key() })
-  const resetUsers = useMutation(rpc.testing.reset.mutationOptions({ onSuccess: invalidateUsers }))
-  const seedUsers = useMutation(rpc.testing.seed.mutationOptions({ onSuccess: invalidateUsers }))
+  const invalidateUsers = () => queryClient.invalidateQueries({ queryKey: rpcQuery.users.key() })
+  const resetUsers = useMutation(
+    rpcQuery.testing.reset.mutationOptions({ onSuccess: invalidateUsers }),
+  )
+  const seedUsers = useMutation(
+    rpcQuery.testing.seed.mutationOptions({ onSuccess: invalidateUsers }),
+  )
 
   return (
     <section className="space-y-4 rounded-2xl border border-emerald-200 bg-white/90 p-6 shadow-xl shadow-emerald-950/5">

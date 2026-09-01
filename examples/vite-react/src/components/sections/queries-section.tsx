@@ -7,20 +7,22 @@ import { EffectErrorDetails } from '../ui/effect-error-details.tsx'
 import { UserList } from '../users/user-list.tsx'
 
 const FeaturedUser = ({ application }: { readonly application: ViteReactApplication }) => {
-  const featured = useSuspenseQuery(application.rpc.users.get.queryOptions({ input: { id: 1 } }))
+  const featured = useSuspenseQuery(
+    application.rpcQuery.users.get.queryOptions({ input: { id: 1 } }),
+  )
   return <p className="text-sm text-slate-600">Featured: {featured.data.name}</p>
 }
 
 export const QueriesSection = ({ application }: { readonly application: ViteReactApplication }) => {
-  const { queryClient, rpc } = application
-  const users = useQuery(rpc.users.list.queryOptions())
+  const { queryClient, rpcQuery } = application
+  const users = useQuery(rpcQuery.users.list.queryOptions())
   const [cacheMessage, setCacheMessage] = useState<string>()
   const [invalidationMessage, setInvalidationMessage] = useState<string>()
-  const invalidateUsers = () => queryClient.invalidateQueries({ queryKey: rpc.users.key() })
+  const invalidateUsers = () => queryClient.invalidateQueries({ queryKey: rpcQuery.users.key() })
 
   const reuseCachedUsers = async () => {
     const cached = await queryClient.query({
-      ...rpc.users.list.queryOptions(),
+      ...rpcQuery.users.list.queryOptions(),
       staleTime: Infinity,
     })
     setCacheMessage(`Reused ${String(cached?.length ?? 0)} cached users`)

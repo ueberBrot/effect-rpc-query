@@ -12,10 +12,10 @@ export const UserList = ({
   readonly application: ViteReactApplication
   readonly users: ReadonlyArray<User> | undefined
 }) => {
-  const { queryClient, rpc } = application
+  const { queryClient, rpcQuery } = application
   const deleteUser = useMutation(
-    rpc.users.delete.mutationOptions({
-      onSuccess: () => queryClient.invalidateQueries({ queryKey: rpc.users.key() }),
+    rpcQuery.users.delete.mutationOptions({
+      onSuccess: () => queryClient.invalidateQueries({ queryKey: rpcQuery.users.key() }),
     }),
   )
 

@@ -23,11 +23,11 @@ const delay = (milliseconds: number) =>
   })
 
 /** Owns the complete start-observe-cancel-observe flow for one slow RPC query. */
-export const useSlowQueryCancellation = ({ queryClient, rpc }: ViteReactApplication) => {
+export const useSlowQueryCancellation = ({ queryClient, rpcQuery }: ViteReactApplication) => {
   const [state, setState] = useState<SlowQueryCancellationState>({ _tag: 'Idle' })
   const baseline = useRef<DiagnosticStatus | undefined>(undefined)
   const slowQuery = useQuery(
-    rpc.diagnostics.slow.queryOptions({
+    rpcQuery.diagnostics.slow.queryOptions({
       enabled: false,
       input: slowInput,
     }),
@@ -35,7 +35,7 @@ export const useSlowQueryCancellation = ({ queryClient, rpc }: ViteReactApplicat
 
   const readStatus = () =>
     queryClient.query({
-      ...rpc.diagnostics.status.queryOptions(),
+      ...rpcQuery.diagnostics.status.queryOptions(),
       staleTime: 0,
     })
 
@@ -69,7 +69,9 @@ export const useSlowQueryCancellation = ({ queryClient, rpc }: ViteReactApplicat
 
     setState({ _tag: 'Cancelling' })
     try {
-      await queryClient.cancelQueries({ queryKey: rpc.diagnostics.slow.queryKey(slowInput) })
+      await queryClient.cancelQueries({
+        queryKey: rpcQuery.diagnostics.slow.queryKey(slowInput),
+      })
       const status = await waitForStatus(({ interrupted }) => interrupted > before.interrupted)
       setState({ _tag: 'Cancelled', interruptions: status.interrupted })
     } catch (error) {
