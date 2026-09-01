@@ -3,6 +3,7 @@
   "compilerOptions": {
     "target": "ES2022",
     "lib": ["ES2022", "DOM", "DOM.Iterable"],
+    "jsx": "react-jsx",
     "module": "ESNext",
     "moduleResolution": "Bundler",
     "allowImportingTsExtensions": true,
@@ -31,6 +32,7 @@
   },
   "include": [
     "examples/**/*.ts",
+    "examples/**/*.tsx",
     "scripts/**/*.mts",
     "src/**/*.ts",
     "tests/**/*.ts",

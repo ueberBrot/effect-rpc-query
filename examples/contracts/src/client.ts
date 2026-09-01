@@ -2,7 +2,7 @@ import { Effect, Layer } from 'effect'
 import { FetchHttpClient } from 'effect/unstable/http'
 import { RpcClient, RpcClientError, RpcGroup, RpcSerialization } from 'effect/unstable/rpc'
 
-import { exampleRpcGroup } from './contracts.ts'
+import { exampleRpcGroup, type SlowDiagnosticInput } from './contracts.ts'
 
 export type ExampleRpcClient = RpcClient.RpcClient.Flat<
   RpcGroup.Rpcs<typeof exampleRpcGroup>,
@@ -28,10 +28,7 @@ export const makeExampleRpcClient = Effect.fn('ExampleRpc.makeExampleRpcClient')
       return Reflect.apply(client, undefined, [tag, payload, options])
     }
 
-    const slowPayload = payload as {
-      readonly durationMs?: number
-      readonly operationId?: string
-    }
+    const slowPayload = payload as SlowDiagnosticInput
     const operationId =
       slowPayload.operationId ?? `${globalThis.crypto.randomUUID()}-${String(nextSlowOperation++)}`
 

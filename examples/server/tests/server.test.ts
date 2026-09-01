@@ -1,3 +1,4 @@
+import type { DiagnosticStatus } from '@effect-rpc-query/contracts'
 import { type ExampleRpcClient, makeExampleRpcClient } from '@effect-rpc-query/contracts/client'
 import { startExampleRpcServer } from '@effect-rpc-query/server'
 import { describe, expect, it } from '@effect/vitest'
@@ -9,7 +10,7 @@ import { acquireNodeServer } from '../src/node-server-resource.ts'
 
 const waitForStatus = Effect.fn('TestExampleRpc.waitForStatus')(function* (
   client: ExampleRpcClient,
-  predicate: (status: { readonly interrupted: number; readonly started: number }) => boolean,
+  predicate: (status: DiagnosticStatus) => boolean,
 ) {
   for (let attempt = 0; attempt < 100; attempt += 1) {
     const status = yield* client('diagnostics.status', undefined)
@@ -31,7 +32,8 @@ describe('example RPC server', () => {
       const preflight = yield* Effect.promise(() =>
         fetch(server.rpcUrl, {
           headers: {
-            'access-control-request-headers': 'content-type,x-example-authorization',
+            'access-control-request-headers':
+              'baggage,content-type,traceparent,tracestate,x-example-authorization',
             'access-control-request-method': 'POST',
             origin: 'http://127.0.0.1:5173',
           },
@@ -40,6 +42,9 @@ describe('example RPC server', () => {
       )
       expect(preflight.status).toBe(204)
       expect(preflight.headers.get('access-control-allow-origin')).toBe('*')
+      expect(preflight.headers.get('access-control-allow-headers')).toBe(
+        'baggage,content-type,traceparent,tracestate,x-example-authorization',
+      )
       expect(preflight.headers.get('access-control-allow-methods')).toContain('POST')
 
       const missing = yield* Effect.promise(() => fetch(`${server.url}/missing`))

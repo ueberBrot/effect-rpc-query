@@ -73,7 +73,10 @@ const writeWebResponse = async (response: Response, target: ServerResponse): Pro
 }
 
 const setCorsHeaders = (response: ServerResponse): void => {
-  response.setHeader('access-control-allow-headers', 'content-type,x-example-authorization')
+  response.setHeader(
+    'access-control-allow-headers',
+    'baggage,content-type,traceparent,tracestate,x-example-authorization',
+  )
   response.setHeader('access-control-allow-methods', 'POST,OPTIONS')
   response.setHeader('access-control-allow-origin', '*')
 }

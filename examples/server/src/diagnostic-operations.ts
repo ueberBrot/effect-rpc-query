@@ -1,9 +1,5 @@
+import type { DiagnosticStatus, SlowDiagnosticInput } from '@effect-rpc-query/contracts'
 import { Deferred, Effect, Ref } from 'effect'
-
-interface DiagnosticStatus {
-  readonly interrupted: number
-  readonly started: number
-}
 
 const initialStatus = (): DiagnosticStatus => ({ interrupted: 0, started: 0 })
 
@@ -46,10 +42,7 @@ export const makeDiagnosticOperations = Effect.fn('ExampleRpc.makeDiagnosticOper
     const slow = Effect.fn('ExampleRpc.diagnostics.slow')(function* ({
       durationMs,
       operationId,
-    }: {
-      readonly durationMs?: number
-      readonly operationId?: string
-    }) {
+    }: SlowDiagnosticInput) {
       const id = operationId ?? 'anonymous'
       const cancellation = yield* Deferred.make<void>()
       const operations = active.get(id) ?? new Set<Deferred.Deferred<void>>()

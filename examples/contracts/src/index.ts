@@ -6,3 +6,4 @@ export {
   SeedUser,
   User,
 } from './contracts.ts'
+export type { DiagnosticStatus, SlowDiagnosticInput } from './contracts.ts'
