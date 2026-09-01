@@ -91,10 +91,12 @@ export default defineConfig({
     tasks: {
       check: {
         command: 'vp check',
+        dependsOn: ['pack'],
         output: [],
       },
       'effect-check': {
         command: 'effect-tsgo diagnostics --project tsconfig.json --strict',
+        dependsOn: ['pack'],
         output: [],
       },
       pack: {
