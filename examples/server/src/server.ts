@@ -5,6 +5,7 @@ import { RpcSerialization, RpcServer } from 'effect/unstable/rpc'
 import { createServer, type IncomingMessage, type ServerResponse } from 'node:http'
 import { Readable } from 'node:stream'
 
+import { acquireNodeServer, closeNodeServer } from './node-server-resource.ts'
 import { exampleRpcHandlersLayer } from './rpc-handlers.ts'
 
 class ExampleRpcServerError extends Schema.TaggedError<ExampleRpcServerError>()(
@@ -70,13 +71,6 @@ const writeWebResponse = async (response: Response, target: ServerResponse): Pro
     body.pipe(target)
   })
 }
-
-const closeNodeServer = (server: ReturnType<typeof createServer>): Promise<void> =>
-  new Promise((resolve, reject) => {
-    server.close((error) => (error === undefined ? resolve() : reject(error)))
-    server.closeIdleConnections()
-    server.closeAllConnections()
-  })
 
 const setCorsHeaders = (response: ServerResponse): void => {
   response.setHeader('access-control-allow-headers', 'content-type,x-example-authorization')
@@ -145,36 +139,41 @@ export const startExampleRpcServer = Effect.fn('ExampleRpc.startExampleRpcServer
       })
   })
 
-  const port = yield* Effect.callback<number, ExampleRpcServerError>((resume) => {
-    const onError = (cause: Error) =>
-      resume(
-        Effect.fail(
-          new ExampleRpcServerError({
-            cause,
-            message: 'Example RPC server failed to listen',
-          }),
-        ),
-      )
-    server.once('error', onError)
-    server.listen(options.port ?? 0, host, () => {
-      server.off('error', onError)
-      const address = server.address()
-      if (address === null || typeof address === 'string') {
+  const port = yield* acquireNodeServer(
+    server,
+    Effect.callback<number, ExampleRpcServerError>((resume) => {
+      const onError = (cause: Error) =>
         resume(
           Effect.fail(
             new ExampleRpcServerError({
-              cause: address,
-              message: 'Example RPC server did not bind a TCP address',
+              cause,
+              message: 'Example RPC server failed to listen',
             }),
           ),
         )
-        return
-      }
-      resume(Effect.succeed(address.port))
-    })
-  })
-
-  yield* Effect.addFinalizer(() => Effect.promise(() => closeNodeServer(server)))
+      server.once('error', onError)
+      server.listen(options.port ?? 0, host, () => {
+        server.off('error', onError)
+        const address = server.address()
+        if (address === null || typeof address === 'string') {
+          resume(
+            Effect.promise(() => closeNodeServer(server)).pipe(
+              Effect.andThen(
+                Effect.fail(
+                  new ExampleRpcServerError({
+                    cause: address,
+                    message: 'Example RPC server did not bind a TCP address',
+                  }),
+                ),
+              ),
+            ),
+          )
+          return
+        }
+        resume(Effect.succeed(address.port))
+      })
+    }),
+  )
 
   const url = `http://${host}:${String(port)}`
   return {

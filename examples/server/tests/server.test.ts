@@ -1,8 +1,11 @@
 import { type ExampleRpcClient, makeExampleRpcClient } from '@effect-rpc-query/contracts/client'
 import { startExampleRpcServer } from '@effect-rpc-query/server'
 import { describe, expect, it } from '@effect/vitest'
-import { Cause, Effect, Exit, Fiber, Result, Scope, Stream } from 'effect'
+import { Cause, Deferred, Effect, Exit, Fiber, Result, Scope, Stream } from 'effect'
 import { RpcClient } from 'effect/unstable/rpc'
+import { createServer } from 'node:http'
+
+import { acquireNodeServer } from '../src/node-server-resource.ts'
 
 const waitForStatus = Effect.fn('TestExampleRpc.waitForStatus')(function* (
   client: ExampleRpcClient,
@@ -175,6 +178,41 @@ describe('example RPC server', () => {
       expect((yield* Effect.promise(() => fetch(`${server.url}/health`))).status).toBe(200)
       yield* Scope.close(scope, Exit.void)
       yield* Effect.promise(() => expect(fetch(`${server.url}/health`)).rejects.toThrow())
+    }),
+  )
+
+  it.live('releases a listener when startup is interrupted', () =>
+    Effect.gen(function* () {
+      const listening = yield* Deferred.make<number>()
+      const finishAcquisition = yield* Deferred.make<void>()
+      const owner = yield* Scope.make()
+      const nodeServer = createServer()
+      const listen = Effect.callback<number>((resume) => {
+        nodeServer.listen(0, '127.0.0.1', () => {
+          const address = nodeServer.address()
+          if (address === null || typeof address === 'string') {
+            resume(Effect.die('Expected a TCP address'))
+            return
+          }
+          resume(Effect.succeed(address.port))
+        })
+      }).pipe(
+        Effect.tap((port) => Deferred.succeed(listening, port)),
+        Effect.tap(() => Deferred.await(finishAcquisition)),
+      )
+      const starting = yield* acquireNodeServer(nodeServer, listen).pipe(
+        Scope.provide(owner),
+        Effect.forkChild,
+      )
+      const port = yield* Deferred.await(listening)
+      const interruption = yield* Fiber.interrupt(starting).pipe(Effect.forkChild)
+
+      yield* Deferred.succeed(finishAcquisition, undefined)
+      yield* Fiber.join(interruption)
+      yield* Scope.close(owner, Exit.void)
+
+      const replacement = yield* startExampleRpcServer({ port })
+      expect(replacement.port).toBe(port)
     }),
   )
 })

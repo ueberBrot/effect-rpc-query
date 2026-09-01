@@ -25,53 +25,49 @@ const initialState = (): ServerState => ({
   users: initialUsers,
 })
 
+const makeUser = (id: number, { locale, name }: SeedUser): User =>
+  new User({ id, locale: locale ?? 'en', name })
+
 const handlersLayer = exampleRpcGroup.toLayer(
   Effect.gen(function* () {
     const state = yield* Ref.make(initialState())
     const diagnostics = yield* makeDiagnosticOperations()
 
     return exampleRpcGroup.of({
-      'diagnostics.cancel': ({ operationId }) => diagnostics.cancel(operationId),
-      'diagnostics.fail': () =>
+      'diagnostics.cancel': Effect.fn('ExampleRpc.diagnostics.cancel')(
+        ({ operationId }: { readonly operationId: string }) => diagnostics.cancel(operationId),
+      ),
+      'diagnostics.fail': Effect.fn('ExampleRpc.diagnostics.fail')(() =>
         Effect.fail(
           new DiagnosticFailure({
             reason: 'requested-failure',
           }),
         ),
+      ),
       'diagnostics.slow': diagnostics.slow,
-      'diagnostics.status': () => diagnostics.status,
+      'diagnostics.status': Effect.fn('ExampleRpc.diagnostics.status')(() => diagnostics.status),
       'diagnostics.stream': () => Stream.make('first', 'second'),
-      'testing.reset': () =>
-        Effect.gen(function* () {
-          yield* diagnostics.reset
-          yield* Ref.set(state, initialState())
-        }),
-      'testing.seed': ({ users }) =>
+      'testing.reset': Effect.fn('ExampleRpc.testing.reset')(function* () {
+        yield* diagnostics.reset
+        yield* Ref.set(state, initialState())
+      }),
+      'testing.seed': Effect.fn('ExampleRpc.testing.seed')(
+        ({ users }: { readonly users: ReadonlyArray<SeedUser> }) =>
+          Ref.modify(state, (current) => {
+            const seeded = users.map((user, index) => makeUser(index + 1, user))
+            return [
+              seeded,
+              {
+                ...current,
+                nextUserId: seeded.length + 1,
+                users: seeded,
+              },
+            ] as const
+          }),
+      ),
+      'users.create': Effect.fn('ExampleRpc.users.create')((payload: SeedUser) =>
         Ref.modify(state, (current) => {
-          const seeded = users.map(
-            (user, index) =>
-              new User({
-                id: index + 1,
-                locale: user.locale ?? 'en',
-                name: user.name,
-              }),
-          )
-          return [
-            seeded,
-            {
-              ...current,
-              nextUserId: seeded.length + 1,
-              users: seeded,
-            },
-          ] as const
-        }),
-      'users.create': ({ locale, name }: SeedUser) =>
-        Ref.modify(state, (current) => {
-          const user = new User({
-            id: current.nextUserId,
-            locale: locale ?? 'en',
-            name,
-          })
+          const user = makeUser(current.nextUserId, payload)
           return [
             user,
             {
@@ -81,7 +77,8 @@ const handlersLayer = exampleRpcGroup.toLayer(
             },
           ] as const
         }),
-      'users.delete': ({ id }) =>
+      ),
+      'users.delete': Effect.fn('ExampleRpc.users.delete')(({ id }: { readonly id: number }) =>
         Ref.modify(state, (current) => {
           const exists = current.users.some((user) => user.id === id)
           return [
@@ -98,22 +95,27 @@ const handlersLayer = exampleRpcGroup.toLayer(
             exists ? Effect.void : Effect.fail('user-not-found' as const),
           ),
         ),
-      'users.get': ({ id, locale }) =>
-        Ref.get(state).pipe(
-          Effect.flatMap((current) => {
-            const user = current.users.find((candidate) => candidate.id === id)
-            return user === undefined
-              ? Effect.fail('user-not-found' as const)
-              : Effect.succeed(
-                  new User({
-                    id: user.id,
-                    locale: locale ?? 'en',
-                    name: user.name,
-                  }),
-                )
-          }),
-        ),
-      'users.list': () => Ref.get(state).pipe(Effect.map((current) => current.users)),
+      ),
+      'users.get': Effect.fn('ExampleRpc.users.get')(
+        ({ id, locale }: { readonly id: number; readonly locale?: string }) =>
+          Ref.get(state).pipe(
+            Effect.flatMap((current) => {
+              const user = current.users.find((candidate) => candidate.id === id)
+              return user === undefined
+                ? Effect.fail('user-not-found' as const)
+                : Effect.succeed(
+                    new User({
+                      id: user.id,
+                      locale: locale ?? 'en',
+                      name: user.name,
+                    }),
+                  )
+            }),
+          ),
+      ),
+      'users.list': Effect.fn('ExampleRpc.users.list')(() =>
+        Ref.get(state).pipe(Effect.map((current) => current.users)),
+      ),
     })
   }),
 )
