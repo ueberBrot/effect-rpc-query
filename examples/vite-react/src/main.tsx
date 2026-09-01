@@ -2,9 +2,9 @@ import { StrictMode } from 'react'
 import { createRoot } from 'react-dom/client'
 
 import { ViteReactExample } from './App.tsx'
-import { startViteReactApplication } from './application.ts'
+import { startViteReactApplication } from './lib/application.ts'
 
-import './styles.css'
+import './styles/tailwind.css'
 
 const rpcUrl = import.meta.env.VITE_RPC_URL ?? '/rpc'
 const container = document.querySelector('#root')

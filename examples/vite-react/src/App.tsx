@@ -1,25 +1,31 @@
 import { QueryClientProvider } from '@tanstack/react-query'
 
-import type { ViteReactApplication } from './application.ts'
-import { DiagnosticsSection } from './diagnostics-section.tsx'
-import { MutationsSection } from './mutations-section.tsx'
-import { QueriesSection } from './queries-section.tsx'
+import { DiagnosticsSection } from './components/sections/diagnostics-section.tsx'
+import { MutationsSection } from './components/sections/mutations-section.tsx'
+import { QueriesSection } from './components/sections/queries-section.tsx'
+import type { ViteReactApplication } from './lib/application.ts'
 
 const ExampleContent = ({ application }: { readonly application: ViteReactApplication }) => (
-  <main>
-    <header>
-      <p className="eyebrow">Effect RPC with TanStack Query</p>
-      <h1>Effect RPC in a plain React app</h1>
-      <p>
-        This app owns the RPC client, its lifetime, and the QueryClient. Each control passes
-        generated options directly to React Query.
-      </p>
-    </header>
+  <div className="min-h-screen bg-emerald-50 text-slate-900 antialiased">
+    <main className="mx-auto grid max-w-6xl gap-4 px-5 py-12 md:grid-cols-2">
+      <header className="rounded-2xl border border-emerald-200 bg-white/90 p-6 shadow-xl shadow-emerald-950/5 md:col-span-2">
+        <p className="mb-2 text-xs font-bold tracking-widest text-emerald-700 uppercase">
+          Effect RPC with TanStack Query
+        </p>
+        <h1 className="text-3xl font-bold tracking-tight text-slate-950 sm:text-4xl">
+          Effect RPC in a plain React app
+        </h1>
+        <p className="mt-3 max-w-3xl leading-7 text-slate-600">
+          This app owns the RPC client, its lifetime, and the QueryClient. Each control passes
+          generated options directly to React Query.
+        </p>
+      </header>
 
-    <QueriesSection application={application} />
-    <MutationsSection application={application} />
-    <DiagnosticsSection application={application} />
-  </main>
+      <QueriesSection application={application} />
+      <MutationsSection application={application} />
+      <DiagnosticsSection application={application} />
+    </main>
+  </div>
 )
 
 export const ViteReactExample = ({

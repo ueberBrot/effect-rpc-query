@@ -2,7 +2,7 @@ import type { DiagnosticStatus } from '@effect-rpc-query/contracts'
 import { useQuery } from '@tanstack/react-query'
 import { useRef, useState } from 'react'
 
-import type { ViteReactApplication } from './application.ts'
+import type { ViteReactApplication } from '../lib/application.ts'
 
 const slowInput = {
   durationMs: 60_000,

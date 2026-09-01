@@ -1,11 +1,12 @@
 import { useMutation } from '@tanstack/react-query'
 
-import type { ViteReactApplication } from './application.ts'
-import { EffectErrorDetails } from './effect-error-details.tsx'
 import {
   type SlowQueryCancellationState,
   useSlowQueryCancellation,
-} from './use-slow-query-cancellation.ts'
+} from '../../hooks/use-slow-query-cancellation.ts'
+import type { ViteReactApplication } from '../../lib/application.ts'
+import { ActionButton } from '../ui/action-button.tsx'
+import { EffectErrorDetails } from '../ui/effect-error-details.tsx'
 
 const describeSlowQuery = (state: SlowQueryCancellationState): string | undefined => {
   switch (state._tag) {
@@ -36,28 +37,32 @@ export const DiagnosticsSection = ({
   const message = describeSlowQuery(slowQuery.state)
 
   return (
-    <section>
-      <h2>Errors and cancellation</h2>
-      <div className="actions">
-        <button onClick={() => declaredFailure.mutate(undefined)} type="button">
+    <section className="space-y-4 rounded-2xl border border-emerald-200 bg-white/90 p-6 shadow-xl shadow-emerald-950/5">
+      <h2 className="text-xl font-bold text-slate-950">Errors and cancellation</h2>
+      <div className="flex flex-wrap gap-3">
+        <ActionButton onClick={() => declaredFailure.mutate(undefined)} type="button">
           Trigger declared failure
-        </button>
-        <button disabled={!slowQuery.canStart} onClick={() => void slowQuery.start()} type="button">
+        </ActionButton>
+        <ActionButton
+          disabled={!slowQuery.canStart}
+          onClick={() => void slowQuery.start()}
+          type="button"
+        >
           Start slow query
-        </button>
-        <button
+        </ActionButton>
+        <ActionButton
           disabled={!slowQuery.canCancel}
           onClick={() => void slowQuery.cancel()}
           type="button"
         >
           Cancel query
-        </button>
+        </ActionButton>
       </div>
       <EffectErrorDetails error={declaredFailure.error} />
       {slowQuery.state._tag === 'Failed' ? (
         <EffectErrorDetails error={slowQuery.state.error} />
       ) : null}
-      {message === undefined ? null : <p>{message}</p>}
+      {message === undefined ? null : <p className="text-sm">{message}</p>}
     </section>
   )
 }

@@ -1,6 +1,6 @@
 import { exampleRpcGroup } from '@effect-rpc-query/contracts'
 import { Effect, Layer, Schema, Scope } from 'effect'
-import { HttpEffect } from 'effect/unstable/http'
+import { HttpEffect, HttpMiddleware, HttpServerRequest } from 'effect/unstable/http'
 import { RpcSerialization, RpcServer } from 'effect/unstable/rpc'
 import { createServer, type IncomingMessage, type ServerResponse } from 'node:http'
 import { Readable } from 'node:stream'
@@ -104,7 +104,11 @@ export const startExampleRpcServer = Effect.fn('ExampleRpc.startExampleRpcServer
     Effect.provide(rpcContext),
     Scope.provide(scope),
   )
-  const webHandler = HttpEffect.toWebHandler(rpcHttpEffect)
+  const runtimeContext = yield* Effect.context<Scope.Scope>()
+  const webHandler = HttpEffect.toWebHandlerWith<
+    Scope.Scope,
+    Scope.Scope | HttpServerRequest.HttpServerRequest
+  >(runtimeContext)(HttpMiddleware.logger(rpcHttpEffect))
   const server = createServer((request, response) => {
     const address = server.address()
     const port = typeof address === 'object' && address !== null ? address.port : 0

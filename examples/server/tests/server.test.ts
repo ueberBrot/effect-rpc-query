@@ -2,7 +2,7 @@ import type { DiagnosticStatus } from '@effect-rpc-query/contracts'
 import { type ExampleRpcClient, makeExampleRpcClient } from '@effect-rpc-query/contracts/client'
 import { startExampleRpcServer } from '@effect-rpc-query/server'
 import { describe, expect, it } from '@effect/vitest'
-import { Cause, Deferred, Effect, Exit, Fiber, Result, Scope, Stream } from 'effect'
+import { Cause, Deferred, Effect, Exit, Fiber, Logger, Result, Scope, Stream } from 'effect'
 import { RpcClient } from 'effect/unstable/rpc'
 import { createServer } from 'node:http'
 
@@ -51,6 +51,33 @@ describe('example RPC server', () => {
       expect(missing.status).toBe(404)
     }),
   )
+
+  it.effect('logs structured HTTP response metadata for RPC requests', () => {
+    const entries: Array<{
+      readonly annotations: Record<string, unknown>
+      readonly message: unknown
+    }> = []
+    const collectingLogger = Logger.make<unknown, void>((options) => {
+      const entry = Logger.formatStructured.log(options)
+      entries.push({ annotations: entry.annotations, message: entry.message })
+    })
+
+    return Effect.gen(function* () {
+      const server = yield* startExampleRpcServer()
+      const client = yield* makeExampleRpcClient(server.rpcUrl)
+
+      yield* client('users.list', undefined)
+
+      expect(entries).toContainEqual({
+        annotations: expect.objectContaining({
+          'http.method': 'POST',
+          'http.status': 200,
+          'http.url': '/rpc/',
+        }),
+        message: 'Sent HTTP response',
+      })
+    }).pipe(Effect.provide(Logger.layer([collectingLogger])))
+  })
 
   it.effect('serves deterministic user state over HTTP and resets it explicitly', () =>
     Effect.gen(function* () {

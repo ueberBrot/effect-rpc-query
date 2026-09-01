@@ -17,10 +17,12 @@
   },
   "devDependencies": {
     "@effect-rpc-query/server": "workspace:*",
+    "@tailwindcss/vite": "4.3.3",
     "@testing-library/react": "16.3.0",
     "@types/react": "19.2.14",
     "@types/react-dom": "19.2.3",
     "jsdom": "26.1.0",
+    "tailwindcss": "4.3.3",
     "vite": "0.2.9",
     "vite-plus": "0.2.9",
     "vitest": "4.1.10"

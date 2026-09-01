@@ -44,6 +44,9 @@ export default defineConfig({
       ],
       newlinesBetween: true,
     },
+    sortTailwindcss: {
+      stylesheet: './examples/vite-react/src/styles/tailwind.css',
+    },
     sortPackageJson: true,
   },
   lint: {

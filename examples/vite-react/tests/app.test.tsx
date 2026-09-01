@@ -6,7 +6,7 @@ import { Effect, Exit, Scope } from 'effect'
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 
 import { ViteReactExample } from '../src/App.tsx'
-import { startViteReactApplication, type ViteReactApplication } from '../src/application.ts'
+import { startViteReactApplication, type ViteReactApplication } from '../src/lib/application.ts'
 
 describe('plain Vite React integration', () => {
   let application: ViteReactApplication | undefined
@@ -47,24 +47,41 @@ describe('plain Vite React integration', () => {
     expect(failure.textContent).toContain('DiagnosticFailure')
   })
 
-  it('seeds, mutates, and invalidates user queries through generated keys', async () => {
+  it('seeds and invalidates user queries through generated keys', async () => {
     expect(await screen.findByText('Ada Lovelace')).toBeTruthy()
-
-    fireEvent.click(screen.getByRole('button', { name: 'Delete user 2' }))
-    await waitFor(() => {
-      expect(screen.queryByText('Edsger Dijkstra')).toBeNull()
-    })
 
     fireEvent.click(screen.getByRole('button', { name: 'Load sample users' }))
     expect(await screen.findByText('Grace Hopper')).toBeTruthy()
     expect(screen.getByText('Margaret Hamilton')).toBeTruthy()
 
-    fireEvent.click(screen.getByRole('button', { name: 'Add Barbara' }))
-    expect(await screen.findByText('Added Barbara Liskov')).toBeTruthy()
-    expect(await screen.findByText('Barbara Liskov')).toBeTruthy()
-
     fireEvent.click(screen.getByRole('button', { name: 'Invalidate user cache' }))
     expect(await screen.findByText('User cache invalidated')).toBeTruthy()
+  })
+
+  it('adds the user details submitted through the form', async () => {
+    expect(await screen.findByText('Ada Lovelace')).toBeTruthy()
+
+    fireEvent.change(screen.getByLabelText('Name'), {
+      target: { value: 'Katherine Johnson' },
+    })
+    fireEvent.change(screen.getByLabelText('Locale (optional)'), {
+      target: { value: 'fr' },
+    })
+    fireEvent.click(screen.getByRole('button', { name: 'Add user' }))
+
+    expect(await screen.findByText('Added Katherine Johnson')).toBeTruthy()
+    expect(await screen.findByText('Katherine Johnson')).toBeTruthy()
+    expect(screen.getByText('User 3, locale fr')).toBeTruthy()
+  })
+
+  it('deletes the user selected from the rendered list', async () => {
+    expect(await screen.findByText('Edsger Dijkstra')).toBeTruthy()
+
+    fireEvent.click(screen.getByRole('button', { name: 'Delete Edsger Dijkstra' }))
+
+    await waitFor(() => {
+      expect(screen.queryByText('Edsger Dijkstra')).toBeNull()
+    })
   })
 
   it('cancels a started slow query and observes server-side interruption', async () => {
