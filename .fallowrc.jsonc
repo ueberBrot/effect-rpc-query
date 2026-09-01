@@ -1,6 +1,16 @@
 {
   "$schema": "./node_modules/fallow/schema.json",
 
+  "ignorePatterns": ["examples/tanstack-start/src/routeTree.gen.ts"],
+
+  // TanStack Start consumes this export through its generated virtual entry.
+  "ignoreExports": [
+    {
+      "file": "examples/tanstack-start/src/router.tsx",
+      "exports": ["getRouter"]
+    }
+  ],
+
   // These tools are invoked through Vite+ task and pack configuration, which
   // Fallow cannot discover as dependency usage. Effect and @effect/vitest are
   // required by the no-test-yet foundation and become visible in later issues.

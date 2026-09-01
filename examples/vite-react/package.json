@@ -9,6 +9,7 @@
   },
   "dependencies": {
     "@effect-rpc-query/contracts": "workspace:*",
+    "@effect-rpc-query/example-react": "workspace:*",
     "@tanstack/react-query": "catalog:",
     "effect": "catalog:",
     "effect-rpc-query": "workspace:*",

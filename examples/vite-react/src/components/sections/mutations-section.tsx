@@ -27,7 +27,7 @@ export const MutationsSection = ({
 
   return (
     <section className="space-y-4 rounded-2xl border border-emerald-200 bg-white/90 p-6 shadow-xl shadow-emerald-950/5">
-      <h2 className="text-xl font-bold text-slate-950">Generated mutations</h2>
+      <h2 className="text-xl font-bold text-slate-950">Mutations and invalidation</h2>
       <CreateUserForm application={application} />
       <div className="flex flex-wrap gap-3">
         <ActionButton

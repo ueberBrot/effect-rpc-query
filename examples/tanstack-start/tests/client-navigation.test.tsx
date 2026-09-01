@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 
 import { startExampleRpcServer } from '@effect-rpc-query/server'
-import { dehydrate, hydrate } from '@tanstack/react-query'
+import { dehydrate } from '@tanstack/react-query'
 import { createMemoryHistory, RouterProvider } from '@tanstack/react-router'
 import { act, cleanup, fireEvent, render, screen } from '@testing-library/react'
 import { Effect, Exit, Scope } from 'effect'
@@ -41,7 +41,17 @@ describe('TanStack Start hydration and client navigation', () => {
     await serverApplication.queryClient.ensureQueryData(serverOptions)
 
     browserApplication = await startTanStackStartApplication({ rpcUrl: server.rpcUrl })
-    hydrate(browserApplication.queryClient, dehydrate(serverApplication.queryClient))
+    const router = await createTanStackStartRouter({
+      application: browserApplication,
+      history: createMemoryHistory({ initialEntries: ['/'] }),
+      scrollRestoration: false,
+    })
+    await router.options.hydrate?.({
+      dehydratedQueryClient: dehydrate(serverApplication.queryClient),
+      queryStream: new ReadableStream({
+        start: (controller) => controller.close(),
+      }),
+    })
     let duplicateListFetches = 0
     const unsubscribe = browserApplication.queryClient.getQueryCache().subscribe((event) => {
       if (
@@ -52,12 +62,6 @@ describe('TanStack Start hydration and client navigation', () => {
         duplicateListFetches += 1
       }
     })
-    const router = await createTanStackStartRouter({
-      application: browserApplication,
-      history: createMemoryHistory({ initialEntries: ['/'] }),
-      scrollRestoration: false,
-    })
-
     await router.load()
     render(<RouterProvider router={router} />)
 
@@ -99,6 +103,10 @@ describe('TanStack Start hydration and client navigation', () => {
     expect(await screen.findByText('Ready to cancel')).toBeTruthy()
     fireEvent.click(screen.getByRole('button', { name: 'Cancel query' }))
     expect(await screen.findByText('Server interruptions: 1')).toBeTruthy()
+
+    await act(() => router.navigate({ to: '/failure' }))
+    const refetchedFailure = await screen.findByRole('alert')
+    expect(refetchedFailure.textContent).toContain('DiagnosticFailure')
 
     await act(async () => {
       router.history.push('/missing')

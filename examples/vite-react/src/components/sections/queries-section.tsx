@@ -35,7 +35,7 @@ export const QueriesSection = ({ application }: { readonly application: ViteReac
 
   return (
     <section className="space-y-4 rounded-2xl border border-emerald-200 bg-white/90 p-6 shadow-xl shadow-emerald-950/5">
-      <h2 className="text-xl font-bold text-slate-950">Generated queries</h2>
+      <h2 className="text-xl font-bold text-slate-950">Queries and cache keys</h2>
       {users.isPending ? <p className="text-sm text-slate-600">Loading users…</p> : null}
       {users.error === null ? null : <EffectErrorDetails error={users.error} />}
       <UserList application={application} users={users.data} />

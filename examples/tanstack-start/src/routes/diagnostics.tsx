@@ -1,43 +1,28 @@
+import {
+  describeSlowQueryCancellation,
+  useSlowQueryCancellation,
+} from '@effect-rpc-query/example-react'
 import { useMutation } from '@tanstack/react-query'
 import { createFileRoute } from '@tanstack/react-router'
 
 import { ActionButton } from '../components/action-button.tsx'
 import { EffectErrorDetails } from '../components/effect-error-details.tsx'
 import { PageLayout, Panel } from '../components/page-layout.tsx'
-import {
-  type SlowQueryCancellationState,
-  useSlowQueryCancellation,
-} from '../hooks/use-slow-query-cancellation.ts'
-
 export const Route = createFileRoute('/diagnostics')({ component: DiagnosticsPage })
-
-const describeCancellation = (state: SlowQueryCancellationState): string | undefined => {
-  switch (state._tag) {
-    case 'Idle':
-      return undefined
-    case 'Starting':
-      return 'Starting query…'
-    case 'Ready':
-      return 'Ready to cancel'
-    case 'Cancelling':
-      return 'Cancelling query…'
-    case 'Cancelled':
-      return `Server interruptions: ${String(state.interruptions)}`
-    case 'Failed':
-      return 'Slow query failed'
-  }
-}
 
 function DiagnosticsPage() {
   const application = Route.useRouteContext()
   const declaredFailure = useMutation(application.rpcQuery.diagnostics.fail.mutationOptions())
-  const slowQuery = useSlowQueryCancellation(application)
-  const cancellationMessage = describeCancellation(slowQuery.state)
+  const slowQuery = useSlowQueryCancellation({
+    application,
+    operationId: 'tanstack-start-slow-query',
+  })
+  const cancellationMessage = describeSlowQueryCancellation(slowQuery.state)
 
   return (
     <PageLayout
-      description="Failures retain their Effect Cause. Query cancellation interrupts the running Effect on the RPC server."
-      eyebrow="Failures and interruption"
+      description="Generated operations preserve Effect causes. Cancelling the query interrupts its RPC Effect on the server."
+      eyebrow="Effect diagnostics"
       title="Failures and cancellation"
     >
       <div className="mt-8">

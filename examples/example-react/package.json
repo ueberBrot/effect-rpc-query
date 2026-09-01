@@ -1,0 +1,13 @@
+{
+  "name": "@effect-rpc-query/example-react",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "exports": "./src/index.ts",
+  "dependencies": {
+    "@effect-rpc-query/contracts": "workspace:*",
+    "@tanstack/react-query": "catalog:",
+    "effect-rpc-query": "workspace:*",
+    "react": "catalog:"
+  }
+}

@@ -1,6 +1,6 @@
 import type { ButtonHTMLAttributes } from 'react'
 
-interface ActionButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
+export interface ActionButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
   readonly variant?: 'primary' | 'secondary'
 }
 

@@ -35,9 +35,9 @@ function UsersPage() {
 
   return (
     <PageLayout
-      description="The route loader and suspense hook share the generated users query. SSR hydrates the cache for the browser."
-      eyebrow="SSR and hydration"
-      title="Generated queries in TanStack Start"
+      description="The route loader primes a generated users query. After SSR hydration, the suspense hook reads the same cache entry without another request."
+      eyebrow="TanStack Start example"
+      title="Hydrate generated RPC queries"
     >
       <div className="mt-8 grid gap-4 md:grid-cols-2">
         <Panel title="Users">
@@ -54,7 +54,7 @@ function UsersPage() {
         </Panel>
         <Panel title="Cache behavior">
           <p className="mt-3 text-sm leading-6 text-slate-600">
-            Mutations invalidate the generated users key with native TanStack Query filters.
+            Generated key helpers target the users cache after each mutation.
           </p>
           <div className="mt-5 flex flex-wrap gap-3">
             <ActionButton

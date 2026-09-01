@@ -5,8 +5,9 @@ import { startTanStackStartApplication, type TanStackStartApplication } from './
 import { setupQuerySsr } from './lib/query-ssr.ts'
 import { routeTree } from './routeTree.gen.ts'
 
-interface RouterOptions {
+export interface RouterOptions {
   readonly history?: RouterHistory
+  readonly isServer?: boolean
   readonly scrollRestoration?: boolean
 }
 
@@ -23,7 +24,7 @@ const registerBrowserDisposal = (application: TanStackStartApplication): void =>
 }
 
 export const createTanStackStartRouter = async (options: CreateTanStackStartRouterOptions) => {
-  const { history, scrollRestoration = true } = options
+  const { history, isServer, scrollRestoration = true } = options
   const application =
     options.application ?? (await startTanStackStartApplication({ rpcUrl: options.rpcUrl }))
   const router = createRouter({
@@ -35,6 +36,7 @@ export const createTanStackStartRouter = async (options: CreateTanStackStartRout
     defaultPreload: 'intent',
     defaultPreloadStaleTime: 0,
     ...(history === undefined ? {} : { history }),
+    ...(isServer === undefined ? {} : { isServer }),
     routeTree,
     scrollRestoration,
   })

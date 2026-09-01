@@ -1,16 +1,8 @@
-import { exampleRpcGroup } from '@effect-rpc-query/contracts'
-import { type ExampleRpcClient, startExampleRpcClient } from '@effect-rpc-query/contracts/client'
+import {
+  type ExampleRpcQueryUtils,
+  startExampleReactApplication,
+} from '@effect-rpc-query/example-react'
 import { QueryClient } from '@tanstack/react-query'
-import { createRpcQueryUtils, type RunPromiseExit } from 'effect-rpc-query'
-
-const makeExampleRpcQueryUtils = (client: ExampleRpcClient, runPromiseExit: RunPromiseExit) =>
-  createRpcQueryUtils(exampleRpcGroup, {
-    client,
-    keyPrefix: ['vite-react'] as const,
-    runPromiseExit,
-  })
-
-export type ExampleRpcQueryUtils = ReturnType<typeof makeExampleRpcQueryUtils>
 
 export interface ViteReactApplication {
   readonly dispose: () => Promise<void>
@@ -25,44 +17,14 @@ export interface StartViteReactApplicationOptions {
 /** Acquires every caller-owned runtime resource used by the React application. */
 export const startViteReactApplication = async ({
   rpcUrl,
-}: StartViteReactApplicationOptions): Promise<ViteReactApplication> => {
-  const rpcClient = await startExampleRpcClient(rpcUrl)
-  const queryClient = new QueryClient({
-    defaultOptions: {
-      mutations: { retry: false },
-      queries: { retry: false },
-    },
+}: StartViteReactApplicationOptions): Promise<ViteReactApplication> =>
+  startExampleReactApplication({
+    keyPrefix: 'vite-react',
+    queryClient: new QueryClient({
+      defaultOptions: {
+        mutations: { retry: false },
+        queries: { retry: false },
+      },
+    }),
+    rpcUrl,
   })
-  let disposal: Promise<void> | undefined
-  const dispose = () => {
-    disposal ??= (async () => {
-      try {
-        await queryClient.cancelQueries()
-      } finally {
-        queryClient.clear()
-        await rpcClient.dispose()
-      }
-    })()
-    return disposal
-  }
-
-  try {
-    const rpcQuery = makeExampleRpcQueryUtils(
-      rpcClient.client,
-      rpcClient.runPromiseExit satisfies RunPromiseExit,
-    )
-
-    return {
-      dispose,
-      queryClient,
-      rpcQuery,
-    }
-  } catch (cause) {
-    try {
-      await dispose()
-    } catch (cleanupCause) {
-      throw new AggregateError([cause, cleanupCause], 'Application startup and cleanup failed')
-    }
-    throw cause
-  }
-}

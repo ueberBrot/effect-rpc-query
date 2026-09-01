@@ -20,8 +20,8 @@ function FeaturedUserPage() {
 
   return (
     <PageLayout
-      description="The loader prefetches the generated user query. Client navigation reuses the cached result."
-      eyebrow="Loader prefetch"
+      description="The loader primes a generated user query. Typed navigation reads the same cached result."
+      eyebrow="Generated query prefetch"
       title="Featured user"
     >
       <div className="mt-8">

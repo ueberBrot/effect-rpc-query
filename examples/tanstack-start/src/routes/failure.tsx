@@ -16,9 +16,9 @@ function FailurePage() {
 
   return (
     <PageLayout
-      description="Failed queries stay out of dehydrated state, so the browser refetches them through the generated options."
-      eyebrow="Failed SSR query"
-      title="Browser refetch"
+      description="The SSR integration omits failed queries from dehydration. The browser reruns the generated query and preserves its Effect cause."
+      eyebrow="SSR failure handling"
+      title="Refetch failed queries"
     >
       <div className="mt-8">
         <Panel title="Declared query failure">

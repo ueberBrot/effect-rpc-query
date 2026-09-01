@@ -8,7 +8,7 @@
     "dev": "vp dev"
   },
   "dependencies": {
-    "@effect-rpc-query/contracts": "workspace:*",
+    "@effect-rpc-query/example-react": "workspace:*",
     "@tanstack/react-query": "catalog:",
     "@tanstack/react-router": "1.170.32",
     "@tanstack/react-router-ssr-query": "1.167.1",
