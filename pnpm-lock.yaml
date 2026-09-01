@@ -130,21 +130,6 @@ importers:
         specifier: 'catalog:'
         version: 4.0.0-rc.111
 
-  examples/example-react:
-    dependencies:
-      '@effect-rpc-query/contracts':
-        specifier: workspace:*
-        version: link:../contracts
-      '@tanstack/react-query':
-        specifier: 'catalog:'
-        version: 5.102.2(react@19.2.4)
-      effect-rpc-query:
-        specifier: workspace:*
-        version: link:../..
-      react:
-        specifier: 'catalog:'
-        version: 19.2.4
-
   examples/server:
     dependencies:
       '@effect-rpc-query/contracts':
@@ -160,9 +145,9 @@ importers:
 
   examples/tanstack-start:
     dependencies:
-      '@effect-rpc-query/example-react':
+      '@effect-rpc-query/contracts':
         specifier: workspace:*
-        version: link:../example-react
+        version: link:../contracts
       '@tanstack/react-query':
         specifier: 'catalog:'
         version: 5.102.2(react@19.2.4)
@@ -227,9 +212,6 @@ importers:
       '@effect-rpc-query/contracts':
         specifier: workspace:*
         version: link:../contracts
-      '@effect-rpc-query/example-react':
-        specifier: workspace:*
-        version: link:../example-react
       '@tanstack/react-query':
         specifier: 'catalog:'
         version: 5.102.2(react@19.2.4)

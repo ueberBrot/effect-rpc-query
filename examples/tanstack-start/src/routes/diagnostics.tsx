@@ -1,22 +1,19 @@
-import {
-  describeSlowQueryCancellation,
-  useSlowQueryCancellation,
-} from '@effect-rpc-query/example-react'
 import { useMutation } from '@tanstack/react-query'
 import { createFileRoute } from '@tanstack/react-router'
 
 import { ActionButton } from '../components/action-button.tsx'
 import { EffectErrorDetails } from '../components/effect-error-details.tsx'
 import { PageLayout, Panel } from '../components/page-layout.tsx'
+import {
+  describeSlowQueryCancellation,
+  useSlowQueryCancellation,
+} from '../hooks/use-slow-query-cancellation.ts'
 export const Route = createFileRoute('/diagnostics')({ component: DiagnosticsPage })
 
 function DiagnosticsPage() {
   const application = Route.useRouteContext()
   const declaredFailure = useMutation(application.rpcQuery.diagnostics.fail.mutationOptions())
-  const slowQuery = useSlowQueryCancellation({
-    application,
-    operationId: 'tanstack-start-slow-query',
-  })
+  const slowQuery = useSlowQueryCancellation(application)
   const cancellationMessage = describeSlowQueryCancellation(slowQuery.state)
 
   return (

@@ -1,9 +1,9 @@
+import { useMutation } from '@tanstack/react-query'
+
 import {
   describeSlowQueryCancellation,
   useSlowQueryCancellation,
-} from '@effect-rpc-query/example-react'
-import { useMutation } from '@tanstack/react-query'
-
+} from '../../hooks/use-slow-query-cancellation.ts'
 import type { ViteReactApplication } from '../../lib/application.ts'
 import { ActionButton } from '../ui/action-button.tsx'
 import { EffectErrorDetails } from '../ui/effect-error-details.tsx'
@@ -14,10 +14,7 @@ export const DiagnosticsSection = ({
   readonly application: ViteReactApplication
 }) => {
   const declaredFailure = useMutation(application.rpcQuery.diagnostics.fail.mutationOptions())
-  const slowQuery = useSlowQueryCancellation({
-    application,
-    operationId: 'vite-react-slow-query',
-  })
+  const slowQuery = useSlowQueryCancellation(application)
   const message = describeSlowQueryCancellation(slowQuery.state)
 
   return (

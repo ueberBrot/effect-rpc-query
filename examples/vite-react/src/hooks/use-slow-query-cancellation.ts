@@ -1,70 +1,15 @@
-import { exampleRpcGroup, type DiagnosticStatus } from '@effect-rpc-query/contracts'
-import { type ExampleRpcClient, startExampleRpcClient } from '@effect-rpc-query/contracts/client'
-import { type QueryClient, useQuery } from '@tanstack/react-query'
-import { createRpcQueryUtils, type RunPromiseExit } from 'effect-rpc-query'
+import type { DiagnosticStatus } from '@effect-rpc-query/contracts'
+import { useQuery } from '@tanstack/react-query'
 import { useRef, useState } from 'react'
 
-const makeExampleRpcQueryUtils = (
-  client: ExampleRpcClient,
-  runPromiseExit: RunPromiseExit,
-  keyPrefix: string,
-) =>
-  createRpcQueryUtils(exampleRpcGroup, {
-    client,
-    keyPrefix: [keyPrefix] as const,
-    runPromiseExit,
-  })
+import type { ViteReactApplication } from '../lib/application.ts'
 
-export type ExampleRpcQueryUtils = ReturnType<typeof makeExampleRpcQueryUtils>
+const slowInput = {
+  durationMs: 60_000,
+  operationId: 'vite-react-slow-query',
+} as const
 
-export interface StartExampleReactApplicationOptions {
-  readonly keyPrefix: string
-  readonly queryClient: QueryClient
-  readonly rpcUrl: string
-}
-
-export interface StartedExampleReactApplication {
-  readonly dispose: () => Promise<void>
-  readonly queryClient: QueryClient
-  readonly rpcQuery: ExampleRpcQueryUtils
-}
-
-/** Combines app-owned QueryClient policy with the shared RPC resource lifecycle. */
-export const startExampleReactApplication = async ({
-  keyPrefix,
-  queryClient,
-  rpcUrl,
-}: StartExampleReactApplicationOptions): Promise<StartedExampleReactApplication> => {
-  const rpcClient = await startExampleRpcClient(rpcUrl)
-  let disposal: Promise<void> | undefined
-  const dispose = () => {
-    disposal ??= (async () => {
-      try {
-        await queryClient.cancelQueries()
-      } finally {
-        queryClient.clear()
-        await rpcClient.dispose()
-      }
-    })()
-    return disposal
-  }
-
-  try {
-    return {
-      dispose,
-      queryClient,
-      rpcQuery: makeExampleRpcQueryUtils(rpcClient.client, rpcClient.runPromiseExit, keyPrefix),
-    }
-  } catch (cause) {
-    try {
-      await dispose()
-    } catch (cleanupCause) {
-      throw new AggregateError([cause, cleanupCause], 'Application startup and cleanup failed')
-    }
-    throw cause
-  }
-}
-
+// This union describes browser workflow, not data sent by Effect RPC.
 export type SlowQueryCancellationState =
   | { readonly _tag: 'Idle' }
   | { readonly _tag: 'Starting' }
@@ -97,17 +42,8 @@ const delay = (milliseconds: number) =>
     globalThis.setTimeout(resolve, milliseconds)
   })
 
-export interface SlowQueryCancellationOptions {
-  readonly application: Pick<StartedExampleReactApplication, 'queryClient' | 'rpcQuery'>
-  readonly operationId: string
-}
-
-/** Owns the start-observe-cancel-observe flow shared by the React examples. */
-export const useSlowQueryCancellation = ({
-  application: { queryClient, rpcQuery },
-  operationId,
-}: SlowQueryCancellationOptions) => {
-  const slowInput = { durationMs: 60_000, operationId } as const
+/** Coordinates several typed RPC operations as one cancellation demonstration. */
+export const useSlowQueryCancellation = ({ queryClient, rpcQuery }: ViteReactApplication) => {
   const [state, setState] = useState<SlowQueryCancellationState>({ _tag: 'Idle' })
   const baseline = useRef<DiagnosticStatus | undefined>(undefined)
   const slowQuery = useQuery(
@@ -152,6 +88,7 @@ export const useSlowQueryCancellation = ({
 
     setState({ _tag: 'Cancelling' })
     try {
+      // TanStack aborts the query signal; the ready client interrupts the server operation.
       await queryClient.cancelQueries({
         queryKey: rpcQuery.diagnostics.slow.queryKey(slowInput),
       })

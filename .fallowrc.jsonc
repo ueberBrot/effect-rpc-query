@@ -11,6 +11,17 @@
     }
   ],
 
+  // Each executable example keeps its resource ownership and cancellation
+  // workflow in place so readers can understand and copy the integration.
+  // Fingerprints expire when the duplicated code or occurrence count changes.
+  "duplicates": {
+    "ignoredClones": [
+      "dup:c77b3abb6f87acd9-1:2",
+      "dup:c77b3abb6f87acd9-2:2",
+      "dup:c77b3abb6f87acd9-3:2"
+    ]
+  },
+
   // These tools are invoked through Vite+ task and pack configuration, which
   // Fallow cannot discover as dependency usage. Effect and @effect/vitest are
   // required by the no-test-yet foundation and become visible in later issues.
