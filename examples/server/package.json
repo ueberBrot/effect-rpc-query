@@ -2,5 +2,19 @@
   "name": "@effect-rpc-query/server",
   "version": "0.0.0",
   "private": true,
-  "type": "module"
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "scripts": {
+    "dev": "tsx src/main.ts",
+    "start": "tsx src/main.ts"
+  },
+  "dependencies": {
+    "@effect-rpc-query/contracts": "workspace:*",
+    "effect": "catalog:"
+  },
+  "devDependencies": {
+    "tsx": "catalog:"
+  }
 }
