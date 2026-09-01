@@ -27,7 +27,7 @@ export const MutationsSection = ({
 
   return (
     <section className="space-y-4 rounded-2xl border border-emerald-200 bg-white/90 p-6 shadow-xl shadow-emerald-950/5">
-      <h2 className="text-xl font-bold text-slate-950">Mutations and void results</h2>
+      <h2 className="text-xl font-bold text-slate-950">Generated mutations</h2>
       <CreateUserForm application={application} />
       <div className="flex flex-wrap gap-3">
         <ActionButton
@@ -38,10 +38,10 @@ export const MutationsSection = ({
           }
           type="button"
         >
-          Load sample users
+          Seed users
         </ActionButton>
         <ActionButton onClick={() => resetUsers.mutate(undefined)} type="button">
-          Reset list
+          Reset users
         </ActionButton>
         <ActionButton onClick={() => void voidQuery.refetch()} type="button">
           Run void query
@@ -49,10 +49,10 @@ export const MutationsSection = ({
       </div>
       <EffectErrorDetails error={seedUsers.error ?? resetUsers.error} />
       {resetUsers.isSuccess ? (
-        <p className="text-sm">Void mutation returned {String(resetUsers.data)}</p>
+        <p className="text-sm">Reset result: {String(resetUsers.data)}</p>
       ) : null}
       {voidQuery.isSuccess ? (
-        <p className="text-sm">Void query returned {String(voidQuery.data)}</p>
+        <p className="text-sm">Void query result: {String(voidQuery.data)}</p>
       ) : null}
     </section>
   )

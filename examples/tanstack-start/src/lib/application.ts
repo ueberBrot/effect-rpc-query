@@ -6,31 +6,31 @@ import { createRpcQueryUtils, type RunPromiseExit } from 'effect-rpc-query'
 const makeExampleRpcQueryUtils = (client: ExampleRpcClient, runPromiseExit: RunPromiseExit) =>
   createRpcQueryUtils(exampleRpcGroup, {
     client,
-    keyPrefix: ['vite-react'] as const,
+    keyPrefix: ['tanstack-start'] as const,
     runPromiseExit,
   })
 
 export type ExampleRpcQueryUtils = ReturnType<typeof makeExampleRpcQueryUtils>
 
-export interface ViteReactApplication {
+export interface TanStackStartApplication {
   readonly dispose: () => Promise<void>
   readonly queryClient: QueryClient
   readonly rpcQuery: ExampleRpcQueryUtils
 }
 
-export interface StartViteReactApplicationOptions {
+export interface StartTanStackStartApplicationOptions {
   readonly rpcUrl: string
 }
 
-/** Acquires every caller-owned runtime resource used by the React application. */
-export const startViteReactApplication = async ({
+/** Acquires every caller-owned runtime resource used by one Start router. */
+export const startTanStackStartApplication = async ({
   rpcUrl,
-}: StartViteReactApplicationOptions): Promise<ViteReactApplication> => {
+}: StartTanStackStartApplicationOptions): Promise<TanStackStartApplication> => {
   const rpcClient = await startExampleRpcClient(rpcUrl)
   const queryClient = new QueryClient({
     defaultOptions: {
       mutations: { retry: false },
-      queries: { retry: false },
+      queries: { retry: false, staleTime: 60_000 },
     },
   })
   let disposal: Promise<void> | undefined
@@ -47,15 +47,13 @@ export const startViteReactApplication = async ({
   }
 
   try {
-    const rpcQuery = makeExampleRpcQueryUtils(
-      rpcClient.client,
-      rpcClient.runPromiseExit satisfies RunPromiseExit,
-    )
-
     return {
       dispose,
       queryClient,
-      rpcQuery,
+      rpcQuery: makeExampleRpcQueryUtils(
+        rpcClient.client,
+        rpcClient.runPromiseExit satisfies RunPromiseExit,
+      ),
     }
   } catch (cause) {
     try {

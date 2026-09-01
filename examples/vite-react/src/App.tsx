@@ -10,14 +10,14 @@ const ExampleContent = ({ application }: { readonly application: ViteReactApplic
     <main className="mx-auto grid max-w-6xl gap-4 px-5 py-12 md:grid-cols-2">
       <header className="rounded-2xl border border-emerald-200 bg-white/90 p-6 shadow-xl shadow-emerald-950/5 md:col-span-2">
         <p className="mb-2 text-xs font-bold tracking-widest text-emerald-700 uppercase">
-          Effect RPC with TanStack Query
+          Generated TanStack Query options
         </p>
         <h1 className="text-3xl font-bold tracking-tight text-slate-950 sm:text-4xl">
-          Effect RPC in a plain React app
+          Effect RPC queries in React
         </h1>
         <p className="mt-3 max-w-3xl leading-7 text-slate-600">
-          This app owns the RPC client, its lifetime, and the QueryClient. Each control passes
-          generated options directly to React Query.
+          This example passes generated query and mutation options to TanStack Query. It covers
+          cache keys, Effect failures, cancellation, and client disposal.
         </p>
       </header>
 

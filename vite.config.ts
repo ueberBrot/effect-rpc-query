@@ -7,6 +7,7 @@ const ignoredPaths = [
   '.vite/**',
   'coverage/**',
   'dist/**',
+  'examples/tanstack-start/src/routeTree.gen.ts',
   'node_modules/**',
   'playwright-report/**',
   'test-results/**',
@@ -160,8 +161,30 @@ export default defineConfig({
         input: [{ auto: true }, '!examples/vite-react/dist/**'],
         output: ['examples/vite-react/dist/**'],
       },
+      'tanstack-start': {
+        command: 'pnpm --filter @effect-rpc-query/tanstack-start dev',
+        cache: false,
+        dependsOn: ['pack'],
+      },
+      'tanstack-start-dev': {
+        command:
+          'vp run --parallel --log labeled --filter @effect-rpc-query/server --filter @effect-rpc-query/tanstack-start dev',
+        cache: false,
+        dependsOn: ['pack'],
+      },
+      'tanstack-start-build': {
+        command: 'pnpm --filter @effect-rpc-query/tanstack-start build',
+        dependsOn: ['pack'],
+        input: [{ auto: true }, '!examples/tanstack-start/dist/**'],
+        output: ['examples/tanstack-start/dist/**'],
+      },
       validate: {
-        command: ['vp run quality', 'vp run packed-package', 'vp run vite-react-build'],
+        command: [
+          'vp run quality',
+          'vp run packed-package',
+          'vp run vite-react-build',
+          'vp run tanstack-start-build',
+        ],
       },
     },
   },

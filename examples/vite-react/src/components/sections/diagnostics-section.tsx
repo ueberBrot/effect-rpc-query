@@ -13,15 +13,13 @@ const describeSlowQuery = (state: SlowQueryCancellationState): string | undefine
     case 'Idle':
       return undefined
     case 'Starting':
-      return 'Starting slow query...'
+      return 'Starting query…'
     case 'Ready':
       return 'Ready to cancel'
     case 'Cancelling':
-      return 'Cancelling slow query...'
+      return 'Cancelling query…'
     case 'Cancelled':
-      return `Server recorded ${String(state.interruptions)} ${
-        state.interruptions === 1 ? 'interruption' : 'interruptions'
-      }`
+      return `Server interruptions: ${String(state.interruptions)}`
     case 'Failed':
       return 'Slow query failed'
   }
@@ -38,7 +36,7 @@ export const DiagnosticsSection = ({
 
   return (
     <section className="space-y-4 rounded-2xl border border-emerald-200 bg-white/90 p-6 shadow-xl shadow-emerald-950/5">
-      <h2 className="text-xl font-bold text-slate-950">Errors and cancellation</h2>
+      <h2 className="text-xl font-bold text-slate-950">Failures and cancellation</h2>
       <div className="flex flex-wrap gap-3">
         <ActionButton onClick={() => declaredFailure.mutate(undefined)} type="button">
           Trigger declared failure
