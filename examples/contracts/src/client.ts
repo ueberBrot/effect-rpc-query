@@ -58,10 +58,19 @@ export const startExampleRpcClient = async (rpcUrl: string): Promise<StartedExam
   const runtime = ManagedRuntime.make(Layer.empty)
   let disposal: Promise<void> | undefined
   const dispose = () => {
-    disposal ??= Promise.all([
-      Effect.runPromise(Scope.close(clientScope, Exit.void)),
-      runtime.dispose(),
-    ]).then(() => undefined)
+    disposal ??= (async () => {
+      try {
+        await runtime.dispose()
+      } catch (cause) {
+        try {
+          await Effect.runPromise(Scope.close(clientScope, Exit.void))
+        } catch (cleanupCause) {
+          throw new AggregateError([cause, cleanupCause], 'RPC client cleanup failed')
+        }
+        throw cause
+      }
+      await Effect.runPromise(Scope.close(clientScope, Exit.void))
+    })()
     return disposal
   }
 
