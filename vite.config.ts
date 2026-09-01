@@ -59,7 +59,7 @@ export default defineConfig({
   },
   test: {
     fileParallelism: true,
-    include: ['tests/**/*.test.ts'],
+    include: ['examples/**/*.test.ts', 'tests/**/*.test.ts'],
     passWithNoTests: true,
   },
   pack: {
@@ -132,6 +132,10 @@ export default defineConfig({
       },
       quality: {
         command: ['vp run check', 'vp run effect-check', 'vp run fallow', 'vp run test'],
+      },
+      server: {
+        command: 'tsx examples/server/src/main.ts',
+        cache: false,
       },
       validate: {
         command: ['vp run quality', 'vp run packed-package'],

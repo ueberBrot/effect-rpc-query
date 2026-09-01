@@ -15,6 +15,7 @@ const consumerFixtureDirectory = join(repositoryRoot, 'tests', 'packed-consumer'
 const lockfilePath = join(repositoryRoot, 'pnpm-lock.yaml')
 const typeFixtureDirectory = join(repositoryRoot, 'tests', 'types')
 const workspaceConfigPath = join(repositoryRoot, 'pnpm-workspace.yaml')
+const workspaceConfig = readFileSync(workspaceConfigPath, 'utf8')
 const tarballName = `${repositoryManifest.name.replace(/^@/, '').replaceAll('/', '-')}-${repositoryManifest.version}.tgz`
 const tarballPath = join(artifactDirectory, tarballName)
 
@@ -26,8 +27,19 @@ const packedManifest = JSON.parse(
   execFileSync('tar', ['-xOzf', tarballPath, 'package/package.json'], { encoding: 'utf8' }),
 ) as typeof repositoryManifest
 
-const testedVersion = (dependency: keyof typeof repositoryManifest.devDependencies): string =>
-  repositoryManifest.devDependencies[dependency]
+const testedVersion = (dependency: keyof typeof repositoryManifest.devDependencies): string => {
+  const specifier = repositoryManifest.devDependencies[dependency]
+  if (specifier !== 'catalog:') return specifier
+
+  const escapedDependency = dependency.replace(/[.*+?^${}()|[\]\\]/gu, '\\$&')
+  const catalogVersion = new RegExp(`^  ${escapedDependency}: (?<version>\\S+)$`, 'mu').exec(
+    workspaceConfig,
+  )?.groups?.['version']
+  if (catalogVersion === undefined) {
+    throw new Error(`The default catalog must define ${dependency}`)
+  }
+  return catalogVersion
+}
 
 const lockedVersions = (dependency: string): ReadonlyArray<string> => {
   const escapedDependency = dependency.replaceAll('/', '\\/')
@@ -39,9 +51,7 @@ const lockedVersions = (dependency: string): ReadonlyArray<string> => {
     .sort()
 }
 
-const vitestOverride = /^  vitest: (?<version>\S+)$/mu.exec(
-  readFileSync(workspaceConfigPath, 'utf8'),
-)?.groups?.['version']
+const vitestOverride = /^  vitest: (?<version>\S+)$/mu.exec(workspaceConfig)?.groups?.['version']
 if (vitestOverride === undefined) {
   throw new Error('The workspace must pin one Vitest override')
 }

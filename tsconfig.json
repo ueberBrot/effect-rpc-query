@@ -5,6 +5,7 @@
     "lib": ["ES2022", "DOM", "DOM.Iterable"],
     "module": "ESNext",
     "moduleResolution": "Bundler",
+    "allowImportingTsExtensions": true,
     "strict": true,
     "exactOptionalPropertyTypes": true,
     "noUncheckedIndexedAccess": true,
@@ -28,6 +29,12 @@
       }
     ]
   },
-  "include": ["scripts/**/*.mts", "src/**/*.ts", "tests/**/*.ts", "vite.config.ts"],
+  "include": [
+    "examples/**/*.ts",
+    "scripts/**/*.mts",
+    "src/**/*.ts",
+    "tests/**/*.ts",
+    "vite.config.ts"
+  ],
   "exclude": ["dist", "node_modules", "tests/packed-consumer"]
 }

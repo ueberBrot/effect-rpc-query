@@ -40,6 +40,8 @@
   "devDependencies": {
     "@arethetypeswrong/cli": "0.18.5",
     "@changesets/cli": "3.0.1",
+    "@effect-rpc-query/contracts": "workspace:*",
+    "@effect-rpc-query/server": "workspace:*",
     "@effect/tsgo": "0.36.5",
     "@effect/vitest": "4.0.0-rc.111",
     "@playwright/test": "1.62.1",
@@ -49,11 +51,12 @@
     "@types/node": "24.13.3",
     "@types/react": "19.2.14",
     "@types/react-dom": "19.2.3",
-    "effect": "4.0.0-rc.111",
+    "effect": "catalog:",
     "fallow": "3.17.0",
     "publint": "0.3.24",
     "react": "19.2.4",
     "react-dom": "19.2.4",
+    "tsx": "catalog:",
     "typescript": "7.0.2",
     "typescript-5.9": "npm:typescript@5.9.3",
     "unplugin-unused": "0.5.2",
@@ -62,7 +65,7 @@
   },
   "peerDependencies": {
     "@tanstack/query-core": ">=5.102.0 <6",
-    "effect": "4.0.0-rc.111"
+    "effect": "catalog:"
   },
   "packageManager": "pnpm@11.20.0"
 }
