@@ -145,6 +145,12 @@ export default defineConfig({
         cache: false,
         dependsOn: ['pack'],
       },
+      'vite-react-dev': {
+        command:
+          'vp run --parallel --log labeled --filter @effect-rpc-query/server --filter @effect-rpc-query/vite-react dev',
+        cache: false,
+        dependsOn: ['pack'],
+      },
       'vite-react-build': {
         command: 'pnpm --filter @effect-rpc-query/vite-react build',
         dependsOn: ['pack'],

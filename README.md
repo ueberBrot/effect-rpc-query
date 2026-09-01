@@ -6,12 +6,15 @@ The package is under active development for its first release against the Effect
 
 ## Plain React example
 
-Run the shared HTTP RPC server and the private Vite React application in separate terminals:
+Start the shared HTTP RPC server and the private Vite React application from the repository root:
 
 ```sh
-vp run server
-vp run vite-react
+vp run vite-react-dev
 ```
 
-Build the application with `vp run vite-react-build`. The development server proxies `/rpc` to
-`http://127.0.0.1:3001`. Set `VITE_RPC_URL` when the browser must use another RPC URL.
+Vite+ labels each process's output. Open the URL printed by Vite, usually `http://localhost:5173`,
+and press `Ctrl+C` to stop both processes. The development server proxies `/rpc` to
+`http://127.0.0.1:3001`.
+
+Build the application with `vp run vite-react-build`. Set `VITE_RPC_URL` when the browser must use
+another RPC URL.
