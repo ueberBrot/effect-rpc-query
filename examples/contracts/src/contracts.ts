@@ -84,17 +84,21 @@ const DiagnosticsSlow = Rpc.make('diagnostics.slow', {
   success: Schema.String,
 })
 
+export type SlowDiagnosticInput = Rpc.PayloadConstructor<typeof DiagnosticsSlow>
+
 const DiagnosticsCancel = Rpc.make('diagnostics.cancel', {
   payload: { operationId: Schema.String },
   success: Schema.Void,
 })
 
-const DiagnosticsStatus = Rpc.make('diagnostics.status', {
+const DiagnosticsStatusRpc = Rpc.make('diagnostics.status', {
   success: Schema.Struct({
     interrupted: Schema.Int,
     started: Schema.Int,
   }),
 })
+
+export type DiagnosticStatus = Rpc.Success<typeof DiagnosticsStatusRpc>
 
 const DiagnosticsFail = Rpc.make('diagnostics.fail', {
   success: Schema.Never,
@@ -115,7 +119,7 @@ export const exampleRpcGroup = RpcGroup.make(
   TestingSeed,
   DiagnosticsSlow,
   DiagnosticsCancel,
-  DiagnosticsStatus,
+  DiagnosticsStatusRpc,
   DiagnosticsFail,
   DiagnosticsStream,
 )

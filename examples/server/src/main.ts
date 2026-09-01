@@ -3,9 +3,10 @@ import {
   type StartExampleRpcServerOptions,
   startExampleRpcServer,
 } from '@effect-rpc-query/server'
-import { Effect, Runtime } from 'effect'
+import { Effect, Logger, Runtime } from 'effect'
 
 const serverOptions = { port: 3001 } satisfies StartExampleRpcServerOptions
+const developmentLogger = Logger.layer([Logger.consolePretty(), Logger.tracerLogger])
 
 const program = Effect.scoped(
   Effect.gen(function* () {
@@ -28,4 +29,4 @@ const runMain = Runtime.makeRunMain(({ fiber, teardown }) => {
   })
 })
 
-runMain(program.pipe(Effect.orDie))
+runMain(program.pipe(Effect.provide(developmentLogger), Effect.orDie))

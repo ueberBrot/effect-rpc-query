@@ -1,7 +1,8 @@
+import type { DiagnosticStatus } from '@effect-rpc-query/contracts'
 import { type ExampleRpcClient, makeExampleRpcClient } from '@effect-rpc-query/contracts/client'
 import { startExampleRpcServer } from '@effect-rpc-query/server'
 import { describe, expect, it } from '@effect/vitest'
-import { Cause, Deferred, Effect, Exit, Fiber, Result, Scope, Stream } from 'effect'
+import { Cause, Deferred, Effect, Exit, Fiber, Logger, Result, Scope, Stream } from 'effect'
 import { RpcClient } from 'effect/unstable/rpc'
 import { createServer } from 'node:http'
 
@@ -9,7 +10,7 @@ import { acquireNodeServer } from '../src/node-server-resource.ts'
 
 const waitForStatus = Effect.fn('TestExampleRpc.waitForStatus')(function* (
   client: ExampleRpcClient,
-  predicate: (status: { readonly interrupted: number; readonly started: number }) => boolean,
+  predicate: (status: DiagnosticStatus) => boolean,
 ) {
   for (let attempt = 0; attempt < 100; attempt += 1) {
     const status = yield* client('diagnostics.status', undefined)
@@ -31,7 +32,8 @@ describe('example RPC server', () => {
       const preflight = yield* Effect.promise(() =>
         fetch(server.rpcUrl, {
           headers: {
-            'access-control-request-headers': 'content-type,x-example-authorization',
+            'access-control-request-headers':
+              'baggage,content-type,traceparent,tracestate,x-example-authorization',
             'access-control-request-method': 'POST',
             origin: 'http://127.0.0.1:5173',
           },
@@ -40,12 +42,42 @@ describe('example RPC server', () => {
       )
       expect(preflight.status).toBe(204)
       expect(preflight.headers.get('access-control-allow-origin')).toBe('*')
+      expect(preflight.headers.get('access-control-allow-headers')).toBe(
+        'baggage,content-type,traceparent,tracestate,x-example-authorization',
+      )
       expect(preflight.headers.get('access-control-allow-methods')).toContain('POST')
 
       const missing = yield* Effect.promise(() => fetch(`${server.url}/missing`))
       expect(missing.status).toBe(404)
     }),
   )
+
+  it.effect('logs structured HTTP response metadata for RPC requests', () => {
+    const entries: Array<{
+      readonly annotations: Record<string, unknown>
+      readonly message: unknown
+    }> = []
+    const collectingLogger = Logger.make<unknown, void>((options) => {
+      const entry = Logger.formatStructured.log(options)
+      entries.push({ annotations: entry.annotations, message: entry.message })
+    })
+
+    return Effect.gen(function* () {
+      const server = yield* startExampleRpcServer()
+      const client = yield* makeExampleRpcClient(server.rpcUrl)
+
+      yield* client('users.list', undefined)
+
+      expect(entries).toContainEqual({
+        annotations: expect.objectContaining({
+          'http.method': 'POST',
+          'http.status': 200,
+          'http.url': '/rpc/',
+        }),
+        message: 'Sent HTTP response',
+      })
+    }).pipe(Effect.provide(Logger.layer([collectingLogger])))
+  })
 
   it.effect('serves deterministic user state over HTTP and resets it explicitly', () =>
     Effect.gen(function* () {

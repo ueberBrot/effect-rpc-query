@@ -44,6 +44,9 @@ export default defineConfig({
       ],
       newlinesBetween: true,
     },
+    sortTailwindcss: {
+      stylesheet: './examples/vite-react/src/styles/tailwind.css',
+    },
     sortPackageJson: true,
   },
   lint: {
@@ -59,7 +62,7 @@ export default defineConfig({
   },
   test: {
     fileParallelism: true,
-    include: ['examples/**/*.test.ts', 'tests/**/*.test.ts'],
+    include: ['examples/**/*.test.ts', 'examples/**/*.test.tsx', 'tests/**/*.test.ts'],
     passWithNoTests: true,
   },
   pack: {
@@ -91,10 +94,12 @@ export default defineConfig({
     tasks: {
       check: {
         command: 'vp check',
+        dependsOn: ['pack'],
         output: [],
       },
       'effect-check': {
         command: 'effect-tsgo diagnostics --project tsconfig.json --strict',
+        dependsOn: ['pack'],
         output: [],
       },
       pack: {
@@ -124,6 +129,7 @@ export default defineConfig({
       },
       test: {
         command: 'vp test',
+        dependsOn: ['pack'],
         output: [],
       },
       e2e: {
@@ -137,8 +143,25 @@ export default defineConfig({
         command: 'tsx examples/server/src/main.ts',
         cache: false,
       },
+      'vite-react': {
+        command: 'pnpm --filter @effect-rpc-query/vite-react dev',
+        cache: false,
+        dependsOn: ['pack'],
+      },
+      'vite-react-dev': {
+        command:
+          'vp run --parallel --log labeled --filter @effect-rpc-query/server --filter @effect-rpc-query/vite-react dev',
+        cache: false,
+        dependsOn: ['pack'],
+      },
+      'vite-react-build': {
+        command: 'pnpm --filter @effect-rpc-query/vite-react build',
+        dependsOn: ['pack'],
+        input: [{ auto: true }, '!examples/vite-react/dist/**'],
+        output: ['examples/vite-react/dist/**'],
+      },
       validate: {
-        command: ['vp run quality', 'vp run packed-package'],
+        command: ['vp run quality', 'vp run packed-package', 'vp run vite-react-build'],
       },
     },
   },
