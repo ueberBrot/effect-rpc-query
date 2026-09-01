@@ -1,31 +1,12 @@
 import { useMutation } from '@tanstack/react-query'
 
 import {
-  type SlowQueryCancellationState,
+  describeSlowQueryCancellation,
   useSlowQueryCancellation,
 } from '../../hooks/use-slow-query-cancellation.ts'
 import type { ViteReactApplication } from '../../lib/application.ts'
 import { ActionButton } from '../ui/action-button.tsx'
 import { EffectErrorDetails } from '../ui/effect-error-details.tsx'
-
-const describeSlowQuery = (state: SlowQueryCancellationState): string | undefined => {
-  switch (state._tag) {
-    case 'Idle':
-      return undefined
-    case 'Starting':
-      return 'Starting slow query...'
-    case 'Ready':
-      return 'Ready to cancel'
-    case 'Cancelling':
-      return 'Cancelling slow query...'
-    case 'Cancelled':
-      return `Server recorded ${String(state.interruptions)} ${
-        state.interruptions === 1 ? 'interruption' : 'interruptions'
-      }`
-    case 'Failed':
-      return 'Slow query failed'
-  }
-}
 
 export const DiagnosticsSection = ({
   application,
@@ -34,11 +15,15 @@ export const DiagnosticsSection = ({
 }) => {
   const declaredFailure = useMutation(application.rpcQuery.diagnostics.fail.mutationOptions())
   const slowQuery = useSlowQueryCancellation(application)
-  const message = describeSlowQuery(slowQuery.state)
+  const message = describeSlowQueryCancellation(slowQuery.state)
 
   return (
     <section className="space-y-4 rounded-2xl border border-emerald-200 bg-white/90 p-6 shadow-xl shadow-emerald-950/5">
-      <h2 className="text-xl font-bold text-slate-950">Errors and cancellation</h2>
+      <h2 className="text-xl font-bold text-slate-950">Failures and cancellation</h2>
+      <p className="text-sm leading-6 text-slate-600">
+        Generated errors preserve their Effect causes. Cancelling the query interrupts its RPC
+        Effect on the server.
+      </p>
       <div className="flex flex-wrap gap-3">
         <ActionButton onClick={() => declaredFailure.mutate(undefined)} type="button">
           Trigger declared failure

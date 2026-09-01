@@ -25,29 +25,29 @@ export const QueriesSection = ({ application }: { readonly application: ViteReac
       ...rpcQuery.users.list.queryOptions(),
       staleTime: Infinity,
     })
-    setCacheMessage(`Reused ${String(cached?.length ?? 0)} cached users`)
+    setCacheMessage(`Cached users: ${String(cached?.length ?? 0)}`)
   }
 
   const invalidateUserQueries = async () => {
     await invalidateUsers()
-    setInvalidationMessage('User cache invalidated')
+    setInvalidationMessage('User queries invalidated')
   }
 
   return (
     <section className="space-y-4 rounded-2xl border border-emerald-200 bg-white/90 p-6 shadow-xl shadow-emerald-950/5">
-      <h2 className="text-xl font-bold text-slate-950">Queries and caching</h2>
-      {users.isPending ? <p className="text-sm text-slate-600">Loading users...</p> : null}
+      <h2 className="text-xl font-bold text-slate-950">Queries and cache keys</h2>
+      {users.isPending ? <p className="text-sm text-slate-600">Loading users…</p> : null}
       {users.error === null ? null : <EffectErrorDetails error={users.error} />}
       <UserList application={application} users={users.data} />
-      <Suspense fallback={<p className="text-sm text-slate-600">Loading featured user...</p>}>
+      <Suspense fallback={<p className="text-sm text-slate-600">Loading featured user…</p>}>
         <FeaturedUser application={application} />
       </Suspense>
       <div className="flex flex-wrap gap-3">
         <ActionButton onClick={() => void reuseCachedUsers()} type="button">
-          Reuse cached list
+          Read cached users
         </ActionButton>
         <ActionButton onClick={() => void invalidateUserQueries()} type="button">
-          Invalidate user cache
+          Invalidate user queries
         </ActionButton>
       </div>
       {cacheMessage === undefined ? null : <p className="text-sm">{cacheMessage}</p>}

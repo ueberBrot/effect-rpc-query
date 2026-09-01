@@ -1,5 +1,9 @@
 import type { DiagnosticStatus } from '@effect-rpc-query/contracts'
-import { type ExampleRpcClient, makeExampleRpcClient } from '@effect-rpc-query/contracts/client'
+import {
+  type ExampleRpcClient,
+  makeExampleRpcClient,
+  startExampleRpcClient,
+} from '@effect-rpc-query/contracts/client'
 import { startExampleRpcServer } from '@effect-rpc-query/server'
 import { describe, expect, it } from '@effect/vitest'
 import { Cause, Deferred, Effect, Exit, Fiber, Logger, Result, Scope, Stream } from 'effect'
@@ -166,6 +170,37 @@ describe('example RPC server', () => {
       })
       yield* Fiber.interrupt(slow)
       expect(yield* waitForStatus(client, ({ interrupted }) => interrupted === 1)).toEqual({
+        interrupted: 1,
+        started: 1,
+      })
+    }),
+  )
+
+  it.live('finishes active client fibers before closing their RPC scope', () =>
+    Effect.gen(function* () {
+      const server = yield* startExampleRpcServer()
+      const subject = yield* Effect.acquireRelease(
+        Effect.promise(() => startExampleRpcClient(server.rpcUrl)),
+        (client) => Effect.promise(() => client.dispose()).pipe(Effect.orDie),
+      )
+      const observer = yield* makeExampleRpcClient(server.rpcUrl)
+      yield* observer('testing.reset', undefined)
+
+      const running = subject.runPromiseExit(
+        subject.client('diagnostics.slow', {
+          durationMs: 60_000,
+          operationId: 'dispose-active-client',
+        }),
+      )
+
+      expect(yield* waitForStatus(observer, ({ started }) => started === 1)).toEqual({
+        interrupted: 0,
+        started: 1,
+      })
+
+      yield* Effect.promise(() => subject.dispose())
+      expect(Exit.isFailure(yield* Effect.promise(() => running))).toBe(true)
+      expect(yield* waitForStatus(observer, ({ interrupted }) => interrupted === 1)).toEqual({
         interrupted: 1,
         started: 1,
       })

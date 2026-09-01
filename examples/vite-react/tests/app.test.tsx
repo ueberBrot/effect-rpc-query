@@ -31,14 +31,14 @@ describe('plain Vite React integration', () => {
     expect(await screen.findByText('Ada Lovelace')).toBeTruthy()
     expect(await screen.findByText('Featured: Ada Lovelace')).toBeTruthy()
 
-    fireEvent.click(screen.getByRole('button', { name: 'Reuse cached list' }))
-    expect(await screen.findByText('Reused 2 cached users')).toBeTruthy()
+    fireEvent.click(screen.getByRole('button', { name: 'Read cached users' }))
+    expect(await screen.findByText('Cached users: 2')).toBeTruthy()
 
     fireEvent.click(screen.getByRole('button', { name: 'Run void query' }))
-    expect(await screen.findByText('Void query returned null')).toBeTruthy()
+    expect(await screen.findByText('Void query result: null')).toBeTruthy()
 
-    fireEvent.click(screen.getByRole('button', { name: 'Reset list' }))
-    expect(await screen.findByText('Void mutation returned undefined')).toBeTruthy()
+    fireEvent.click(screen.getByRole('button', { name: 'Reset users' }))
+    expect(await screen.findByText('Reset result: undefined')).toBeTruthy()
 
     fireEvent.click(screen.getByRole('button', { name: 'Trigger declared failure' }))
     const failure = await screen.findByRole('alert')
@@ -50,12 +50,12 @@ describe('plain Vite React integration', () => {
   it('seeds and invalidates user queries through generated keys', async () => {
     expect(await screen.findByText('Ada Lovelace')).toBeTruthy()
 
-    fireEvent.click(screen.getByRole('button', { name: 'Load sample users' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Seed users' }))
     expect(await screen.findByText('Grace Hopper')).toBeTruthy()
     expect(screen.getByText('Margaret Hamilton')).toBeTruthy()
 
-    fireEvent.click(screen.getByRole('button', { name: 'Invalidate user cache' }))
-    expect(await screen.findByText('User cache invalidated')).toBeTruthy()
+    fireEvent.click(screen.getByRole('button', { name: 'Invalidate user queries' }))
+    expect(await screen.findByText('User queries invalidated')).toBeTruthy()
   })
 
   it('adds the user details submitted through the form', async () => {
@@ -91,7 +91,7 @@ describe('plain Vite React integration', () => {
     expect(await screen.findByText('Ready to cancel')).toBeTruthy()
 
     fireEvent.click(screen.getByRole('button', { name: 'Cancel query' }))
-    expect(await screen.findByText('Server recorded 1 interruption')).toBeTruthy()
+    expect(await screen.findByText('Server interruptions: 1')).toBeTruthy()
   })
 
   it('disposes its client Scope and runtime idempotently', async () => {

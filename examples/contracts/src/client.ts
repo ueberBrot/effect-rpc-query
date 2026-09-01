@@ -1,4 +1,4 @@
-import { Effect, Layer } from 'effect'
+import { Effect, Exit, Layer, ManagedRuntime, Scope } from 'effect'
 import { FetchHttpClient } from 'effect/unstable/http'
 import { RpcClient, RpcClientError, RpcGroup, RpcSerialization } from 'effect/unstable/rpc'
 
@@ -8,6 +8,15 @@ export type ExampleRpcClient = RpcClient.RpcClient.Flat<
   RpcGroup.Rpcs<typeof exampleRpcGroup>,
   RpcClientError.RpcClientError
 >
+
+export interface StartedExampleRpcClient {
+  readonly client: ExampleRpcClient
+  readonly dispose: () => Promise<void>
+  readonly runPromiseExit: <A, E>(
+    effect: Effect.Effect<A, E>,
+    options?: { readonly signal?: AbortSignal },
+  ) => Promise<Exit.Exit<A, E>>
+}
 
 /** Acquires a caller-owned, scoped flat client for the example HTTP server. */
 export const makeExampleRpcClient = Effect.fn('ExampleRpc.makeExampleRpcClient')(function* (
@@ -42,3 +51,50 @@ export const makeExampleRpcClient = Effect.fn('ExampleRpc.makeExampleRpcClient')
     )
   }) as ExampleRpcClient
 })
+
+/** Starts the ready RPC client resource shared by each executable application. */
+export const startExampleRpcClient = async (rpcUrl: string): Promise<StartedExampleRpcClient> => {
+  const clientScope = await Effect.runPromise(Scope.make())
+  const runtime = ManagedRuntime.make(Layer.empty)
+  let disposal: Promise<void> | undefined
+  const dispose = () => {
+    disposal ??= (async () => {
+      try {
+        await runtime.dispose()
+      } catch (cause) {
+        try {
+          await Effect.runPromise(Scope.close(clientScope, Exit.void))
+        } catch (cleanupCause) {
+          throw new AggregateError([cause, cleanupCause], 'RPC client cleanup failed')
+        }
+        throw cause
+      }
+      await Effect.runPromise(Scope.close(clientScope, Exit.void))
+    })()
+    return disposal
+  }
+
+  try {
+    const client = await runtime.runPromise(
+      makeExampleRpcClient(rpcUrl).pipe(Scope.provide(clientScope)),
+    )
+    return {
+      client,
+      dispose,
+      runPromiseExit: (effect, options) =>
+        runtime.runPromiseExit(
+          RpcClient.withHeaders(effect, {
+            'x-example-authorization': 'allowed',
+          }),
+          options,
+        ),
+    }
+  } catch (cause) {
+    try {
+      await dispose()
+    } catch (cleanupCause) {
+      throw new AggregateError([cause, cleanupCause], 'RPC client startup and cleanup failed')
+    }
+    throw cause
+  }
+}

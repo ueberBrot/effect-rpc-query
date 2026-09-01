@@ -2,11 +2,11 @@ import type { DiagnosticStatus } from '@effect-rpc-query/contracts'
 import { useQuery } from '@tanstack/react-query'
 import { useRef, useState } from 'react'
 
-import type { ViteReactApplication } from '../lib/application.ts'
+import type { TanStackStartApplication } from '../lib/application.ts'
 
 const slowInput = {
   durationMs: 60_000,
-  operationId: 'vite-react-slow-query',
+  operationId: 'tanstack-start-slow-query',
 } as const
 
 // This union describes browser workflow, not data sent by Effect RPC.
@@ -43,7 +43,7 @@ const delay = (milliseconds: number) =>
   })
 
 /** Coordinates several typed RPC operations as one cancellation demonstration. */
-export const useSlowQueryCancellation = ({ queryClient, rpcQuery }: ViteReactApplication) => {
+export const useSlowQueryCancellation = ({ queryClient, rpcQuery }: TanStackStartApplication) => {
   const [state, setState] = useState<SlowQueryCancellationState>({ _tag: 'Idle' })
   const baseline = useRef<DiagnosticStatus | undefined>(undefined)
   const slowQuery = useQuery(
