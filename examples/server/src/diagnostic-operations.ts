@@ -12,15 +12,17 @@ export const makeDiagnosticOperations = Effect.fn('ExampleRpc.makeDiagnosticOper
     const status = yield* Ref.make(initialStatus())
     const active = new Map<string, Set<Deferred.Deferred<void>>>()
 
-    const remove = (operationId: string, cancellation: Deferred.Deferred<void>) =>
-      Effect.sync(() => {
-        const operations = active.get(operationId)
-        if (operations === undefined || !operations.delete(cancellation)) return false
-        if (operations.size === 0) active.delete(operationId)
-        return true
-      })
+    const remove = Effect.fn('ExampleRpc.DiagnosticOperations.remove')(
+      (operationId: string, cancellation: Deferred.Deferred<void>) =>
+        Effect.sync(() => {
+          const operations = active.get(operationId)
+          if (operations === undefined || !operations.delete(cancellation)) return false
+          if (operations.size === 0) active.delete(operationId)
+          return true
+        }),
+    )
 
-    const cancel = (operationId: string) =>
+    const cancel = Effect.fn('ExampleRpc.DiagnosticOperations.cancel')((operationId: string) =>
       Effect.suspend(() => {
         const operations = active.get(operationId)
         return operations === undefined
@@ -28,7 +30,8 @@ export const makeDiagnosticOperations = Effect.fn('ExampleRpc.makeDiagnosticOper
           : Effect.forEach(operations, (cancellation) =>
               Deferred.succeed(cancellation, undefined),
             ).pipe(Effect.asVoid)
-      })
+      }),
+    )
 
     const reset = Effect.suspend(() => {
       const cancellations = Array.from(active.values()).flatMap((operations) =>

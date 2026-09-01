@@ -8,5 +8,11 @@ export const closeNodeServer = (server: Server): Promise<void> =>
     server.closeAllConnections()
   })
 
-export const acquireNodeServer = <A, E, R>(server: Server, acquire: Effect.Effect<A, E, R>) =>
-  Effect.acquireRelease(acquire, () => Effect.promise(() => closeNodeServer(server)))
+export const acquireNodeServer = Effect.fn('ExampleRpc.acquireNodeServer')(function* <A, E, R>(
+  server: Server,
+  acquire: Effect.Effect<A, E, R>,
+) {
+  return yield* Effect.acquireRelease(acquire, () =>
+    Effect.tryPromise(() => closeNodeServer(server)).pipe(Effect.orDie),
+  )
+})
