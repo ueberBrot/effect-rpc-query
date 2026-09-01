@@ -19,7 +19,7 @@ export const QueriesSection = ({ application }: { readonly application: ViteReac
   const invalidateUsers = () => queryClient.invalidateQueries({ queryKey: rpc.users.key() })
 
   const reuseCachedUsers = async () => {
-    const cached = await queryClient.fetchQuery({
+    const cached = await queryClient.query({
       ...rpc.users.list.queryOptions(),
       staleTime: Infinity,
     })

@@ -34,7 +34,7 @@ export const useSlowQueryCancellation = ({ queryClient, rpc }: ViteReactApplicat
   )
 
   const readStatus = () =>
-    queryClient.fetchQuery({
+    queryClient.query({
       ...rpc.diagnostics.status.queryOptions(),
       staleTime: 0,
     })
