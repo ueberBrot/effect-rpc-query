@@ -5,9 +5,6 @@ on:
   push:
     branches:
       - main
-  release:
-    types:
-      - prereleased
   schedule:
     - cron: '17 4 1 * *'
   workflow_call:
@@ -116,7 +113,10 @@ jobs:
     strategy:
       fail-fast: true
       matrix:
-        browser: ${{ (github.event_name == 'pull_request' || github.event_name == 'push') && fromJSON('["chromium"]') || fromJSON('["chromium", "firefox", "webkit"]') }}
+        browser:
+          - chromium
+          - firefox
+          - webkit
 
     steps:
       - *checkout
