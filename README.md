@@ -32,6 +32,19 @@ const options = rpcQuery.users.get.queryOptions({ input: { id: 1 } })
 Read the [documentation](https://ueberbrot.github.io/effect-rpc-query/) for setup, React Query,
 TanStack Start, cache keys, cancellation, failures, and the curated API reference.
 
+## Feature support
+
+| Area           | Included                                                                                        | Outside the package                                                       |
+| -------------- | ----------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------- |
+| Effect RPC     | Unary queries and mutations with inferred inputs, results, failures, and semantic keys          | Streaming RPCs, subscriptions, and direct execution helpers               |
+| TanStack Query | Generated options for ordinary, suspense, conditional, and page-or-cursor queries and mutations | Infinite-query and `streamedQuery` builders                               |
+| Cache behavior | Prefix keys, typed cache access, query cancellation, and native invalidation                    | Automatic invalidation and mutation cancellation                          |
+| Integration    | Query Core, React Query, Router loaders, and TanStack Start                                     | Package hooks, providers, framework adapters, and non-React certification |
+| Ownership      | Caller-supplied RPC client, Query Client, policies, and lifecycle                               | Package-owned transport, persistence, or SSR error serialization          |
+
+See the [full capability matrix](https://ueberbrot.github.io/effect-rpc-query/getting-started/feature-support/)
+for the exact boundary of each feature.
+
 ## Develop
 
 The repository includes executable [Vite React](./examples/vite-react) and
@@ -41,3 +54,11 @@ The repository includes executable [Vite React](./examples/vite-react) and
 
 See the [Dev Container guide](https://ueberbrot.github.io/effect-rpc-query/contributing/dev-container/)
 for the reproducible environment.
+
+## Design influences
+
+The design draws on
+[tRPC's TanStack React Query integration](https://github.com/trpc/trpc/tree/main/packages/tanstack-react-query)
+and [Effect Query](https://github.com/voidhashcom/effect-query). It builds directly on
+[Effect](https://github.com/Effect-TS/effect) and
+[TanStack Query](https://github.com/TanStack/query).

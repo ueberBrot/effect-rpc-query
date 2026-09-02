@@ -50,6 +50,7 @@ export default defineConfig({
           label: 'Start Here',
           items: [
             { label: 'Installation', slug: 'getting-started/installation' },
+            { label: 'Feature Support', slug: 'getting-started/feature-support' },
             {
               label: 'Compatibility and Stability',
               slug: 'getting-started/compatibility-and-stability',
