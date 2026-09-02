@@ -98,6 +98,20 @@ export default defineConfig({
         dependsOn: ['pack'],
         output: [],
       },
+      format: {
+        command: 'vp fmt --check',
+        output: [],
+      },
+      lint: {
+        command: 'vp lint',
+        dependsOn: ['pack'],
+        output: [],
+      },
+      typecheck: {
+        command: 'vp check --no-fmt --no-lint',
+        dependsOn: ['pack'],
+        output: [],
+      },
       'effect-check': {
         command: 'effect-tsgo diagnostics --project tsconfig.json --strict',
         dependsOn: ['pack'],
@@ -139,6 +153,14 @@ export default defineConfig({
       },
       'e2e:chromium': {
         command: 'playwright test --project=chromium',
+        cache: false,
+      },
+      'e2e:firefox': {
+        command: 'playwright test --project=firefox',
+        cache: false,
+      },
+      'e2e:webkit': {
+        command: 'playwright test --project=webkit',
         cache: false,
       },
       quality: {
@@ -198,6 +220,7 @@ export default defineConfig({
           'vp run packed-package',
           'vp run vite-react-build',
           'vp run tanstack-start-build',
+          'vp run e2e:chromium',
         ],
       },
     },
