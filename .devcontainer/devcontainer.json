@@ -1,0 +1,36 @@
+{
+  "name": "effect-rpc-query",
+  "build": {
+    "dockerfile": "Dockerfile"
+  },
+  "remoteUser": "node",
+  "updateRemoteUserUID": true,
+  "mounts": [
+    "source=effect-rpc-query-node-modules,target=${containerWorkspaceFolder}/node_modules,type=volume",
+    "source=effect-rpc-query-pnpm-store,target=/home/node/.local/share/pnpm/store,type=volume",
+    "source=effect-rpc-query-tool-cache,target=/home/node/.cache,type=volume"
+  ],
+  "postCreateCommand": "bash .devcontainer/setup.sh",
+  "remoteEnv": {
+    "PATH": "${containerWorkspaceFolder}/node_modules/.bin:${containerEnv:PATH}"
+  },
+  "forwardPorts": [3000, 3001, 4173, 5173],
+  "portsAttributes": {
+    "3000": {
+      "label": "TanStack Start application",
+      "onAutoForward": "openPreview"
+    },
+    "3001": {
+      "label": "Effect RPC server",
+      "onAutoForward": "silent"
+    },
+    "4173": {
+      "label": "Vite React production preview",
+      "onAutoForward": "openPreview"
+    },
+    "5173": {
+      "label": "Vite React development application",
+      "onAutoForward": "openPreview"
+    }
+  }
+}

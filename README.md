@@ -46,3 +46,28 @@ pnpm exec playwright install --with-deps chromium firefox webkit
 Run the fast Chromium suite with `vp run e2e:chromium`. Run the complete Chromium, Firefox, and
 WebKit suite with `vp run e2e`. Playwright builds and starts the shared RPC server and both
 applications through root Vite+ tasks, then stops every process when the run finishes.
+
+## Optional Dev Container
+
+Prerequisites:
+
+- Docker
+- VS Code with the Dev Containers extension, or another Dev Container client
+
+Open the repository in VS Code and run **Dev Containers: Reopen in Container**. The container uses
+the declared Node and pnpm versions and installs the frozen workspace.
+
+Run the example and test commands above from the attached terminal. The client forwards ports `3000`
+(TanStack Start), `3001` (RPC), `4173` (Vite preview), and `5173` (Vite development).
+
+Verify the toolchain and run all validation tasks:
+
+```sh
+node --version
+pnpm --version
+vp --version
+vp run validate
+```
+
+When updating Node, update `.node-version` and the Dev Container image, then rebuild the container.
+Rebuild after changing `packageManager` too.
