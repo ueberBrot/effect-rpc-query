@@ -137,6 +137,10 @@ export default defineConfig({
         command: 'playwright test',
         cache: false,
       },
+      'e2e:chromium': {
+        command: 'playwright test --project=chromium',
+        cache: false,
+      },
       quality: {
         command: ['vp run check', 'vp run effect-check', 'vp run fallow', 'vp run test'],
       },
@@ -161,6 +165,11 @@ export default defineConfig({
         input: [{ auto: true }, '!examples/vite-react/dist/**'],
         output: ['examples/vite-react/dist/**'],
       },
+      'vite-react-preview': {
+        command: 'vp -C examples/vite-react preview',
+        cache: false,
+        dependsOn: ['vite-react-build'],
+      },
       'tanstack-start': {
         command: 'pnpm --filter @effect-rpc-query/tanstack-start dev',
         cache: false,
@@ -177,6 +186,11 @@ export default defineConfig({
         dependsOn: ['pack'],
         input: [{ auto: true }, '!examples/tanstack-start/dist/**'],
         output: ['examples/tanstack-start/dist/**'],
+      },
+      'tanstack-start-preview': {
+        command: 'vp -C examples/tanstack-start preview',
+        cache: false,
+        dependsOn: ['tanstack-start-build'],
       },
       validate: {
         command: [

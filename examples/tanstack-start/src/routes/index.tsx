@@ -75,6 +75,9 @@ function UsersPage() {
             </ActionButton>
           </div>
           {message === undefined ? null : <p className="mt-4 text-sm">{message}</p>}
+          {resetUsers.isSuccess ? (
+            <p className="mt-4 text-sm">Reset result: {String(resetUsers.data)}</p>
+          ) : null}
         </Panel>
       </div>
     </PageLayout>

@@ -31,8 +31,10 @@
     ]
   },
   "include": [
+    "e2e/**/*.ts",
     "examples/**/*.ts",
     "examples/**/*.tsx",
+    "playwright.config.ts",
     "scripts/**/*.mts",
     "src/**/*.ts",
     "tests/**/*.ts",
