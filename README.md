@@ -34,3 +34,15 @@ to the RPC server.
 
 Build the application with `vp run tanstack-start-build`. Set `EXAMPLE_RPC_URL` to change the RPC
 URL used during server rendering. Set `VITE_RPC_URL` to change the URL used in the browser.
+
+## Browser acceptance tests
+
+Install the browsers and their operating-system dependencies once:
+
+```sh
+pnpm exec playwright install --with-deps chromium firefox webkit
+```
+
+Run the fast Chromium suite with `vp run e2e:chromium`. Run the complete Chromium, Firefox, and
+WebKit suite with `vp run e2e`. Playwright builds and starts the shared RPC server and both
+applications through root Vite+ tasks, then stops every process when the run finishes.
