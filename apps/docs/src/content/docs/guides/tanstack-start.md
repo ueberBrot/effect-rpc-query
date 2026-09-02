@@ -17,7 +17,7 @@ export const Route = createFileRoute('/')({
 function UsersRoute() {
   const { rpcQuery } = Route.useRouteContext()
   const users = useSuspenseQuery(rpcQuery.users.list.queryOptions())
-  return <UserList users={users.data} />
+  return <pre>{JSON.stringify(users.data, null, 2)}</pre>
 }
 ```
 

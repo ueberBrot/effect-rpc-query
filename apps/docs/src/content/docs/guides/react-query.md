@@ -18,7 +18,18 @@ export const Users = ({ rpcQuery }: { rpcQuery: AppRpcQuery }) => {
     }),
   )
 
-  // Render users.data and call removeUser.mutate({ id }).
+  if (users.data === undefined) return null
+
+  return (
+    <ul>
+      {users.data.map((user) => (
+        <li key={user.id}>
+          {user.name}
+          <button onClick={() => removeUser.mutate({ id: user.id })}>Delete</button>
+        </li>
+      ))}
+    </ul>
+  )
 }
 ```
 

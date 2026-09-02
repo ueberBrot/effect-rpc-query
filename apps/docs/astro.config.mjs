@@ -8,7 +8,6 @@ import starlightThemeBlack from 'starlight-theme-black'
 import packageManifest from '../../package.json' with { type: 'json' }
 
 const repositoryUrl = 'https://github.com/ueberBrot/effect-rpc-query'
-const isReleased = packageManifest.version !== '0.0.0'
 
 export default defineConfig({
   base: '/effect-rpc-query',
@@ -26,10 +25,8 @@ export default defineConfig({
         starlightThemeBlack({
           navLinks: [
             {
-              label: isReleased ? `v${packageManifest.version}` : 'Unreleased',
-              link: isReleased
-                ? `${repositoryUrl}/releases/latest`
-                : `${repositoryUrl}/blob/main/package.json`,
+              label: `v${packageManifest.version}`,
+              link: `${repositoryUrl}/blob/main/package.json`,
             },
           ],
         }),
@@ -42,6 +39,10 @@ export default defineConfig({
           label: 'Start Here',
           items: [
             { label: 'Installation', slug: 'getting-started/installation' },
+            {
+              label: 'Compatibility and Stability',
+              slug: 'getting-started/compatibility-and-stability',
+            },
             { label: 'Quick Start', slug: 'getting-started/quick-start' },
           ],
         },

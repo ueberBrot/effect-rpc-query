@@ -10,9 +10,11 @@ mutation ran, and the complete Effect `Cause`:
 import { Cause } from 'effect'
 import { isEffectRpcQueryError } from 'effect-rpc-query'
 
-if (isEffectRpcQueryError(error)) {
-  console.error(error.rpcTag, error.operation)
-  console.error(Cause.pretty(error.cause))
+const logRpcError = (error: unknown) => {
+  if (isEffectRpcQueryError(error)) {
+    console.error(error.rpcTag, error.operation)
+    console.error(Cause.pretty(error.cause))
+  }
 }
 ```
 
