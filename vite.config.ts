@@ -53,7 +53,8 @@ export default defineConfig({
     sortPackageJson: true,
   },
   lint: {
-    ignorePatterns: [...ignoredPaths, ...packedFixtures],
+    // Astro owns diagnostics for the docs package and uses its supported TypeScript 6 compiler.
+    ignorePatterns: [...ignoredPaths, ...packedFixtures, 'apps/docs/**'],
     options: {
       typeAware: true,
       typeCheck: true,
