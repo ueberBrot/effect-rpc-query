@@ -9,18 +9,30 @@ import {
 test.describe('TanStack Start application', () => {
   test.beforeEach(async ({ page }) => prepareExampleApplication(page, tanStackStartApplication))
 
-  test('server-renders and hydrates without a duplicate successful query', async ({ page }) => {
+  test('server-renders and hydrates without a duplicate successful query', async ({
+    browser,
+    page,
+  }) => {
+    const serverRenderedContext = await browser.newContext({ javaScriptEnabled: false })
+    try {
+      const serverRenderedPage = await serverRenderedContext.newPage()
+      const serverRenderedResponse = await serverRenderedPage.goto(tanStackStartApplication.url)
+
+      expect(serverRenderedResponse?.ok()).toBe(true)
+      await expect(serverRenderedPage.getByText('Ada Lovelace', { exact: true })).toBeVisible()
+      await expect(serverRenderedPage.getByText('Edsger Dijkstra', { exact: true })).toBeVisible()
+    } finally {
+      await serverRenderedContext.close()
+    }
+
     let browserListRequests = 0
     page.on('request', (request) => {
       if (recordsRpc(request.postData(), 'users.list')) browserListRequests += 1
     })
 
     const response = await page.reload()
-    const serverRenderedHtml = await response?.text()
 
     expect(response?.ok()).toBe(true)
-    expect(serverRenderedHtml).toContain('Ada Lovelace')
-    expect(serverRenderedHtml).toContain('Edsger Dijkstra')
     await expect(page.getByText('Ada Lovelace', { exact: true })).toBeVisible()
     await expect(page.getByText('Edsger Dijkstra', { exact: true })).toBeVisible()
     await page.getByRole('button', { name: 'Read cached users' }).click()
