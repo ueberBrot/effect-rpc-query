@@ -3,8 +3,12 @@
 
   "ignorePatterns": ["examples/tanstack-start/src/routeTree.gen.ts"],
 
-  // TanStack Start consumes this export through its generated virtual entry.
+  // Framework tooling consumes these exports through convention-generated entries.
   "ignoreExports": [
+    {
+      "file": "playwright.config.ts",
+      "exports": ["default"]
+    },
     {
       "file": "examples/tanstack-start/src/router.tsx",
       "exports": ["getRouter"]
