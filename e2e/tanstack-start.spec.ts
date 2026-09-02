@@ -57,7 +57,11 @@ test.describe('TanStack Start application', () => {
   })
 
   test('mutates and invalidates the hydrated users query', async ({ page }) => {
+    const listResponse = page.waitForResponse(
+      (response) => response.ok() && recordsRpc(response.request().postData(), 'users.list'),
+    )
     await page.getByRole('button', { name: 'Seed users' }).click()
+    await listResponse
 
     await expect(page.getByText('Grace Hopper', { exact: true })).toBeVisible()
     await expect(page.getByText('Margaret Hamilton', { exact: true })).toBeVisible()
