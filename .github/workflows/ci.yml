@@ -97,6 +97,22 @@ jobs:
       - name: Build TanStack Start application
         run: vp run tanstack-start-build
 
+  documentation:
+    name: Documentation
+    needs: source-quality
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    steps:
+      - *checkout
+      - *setup_repository
+
+      - name: Check documentation
+        run: vp run docs-check
+
+      - name: Build documentation
+        run: vp run docs-build
+
   browser:
     name: Playwright (${{ matrix.browser }})
     needs:

@@ -2,72 +2,42 @@
 
 Type-safe TanStack Query utilities generated from Effect RPC definitions.
 
-The package is under active development for its first release against the Effect 4 release candidate.
+`effect-rpc-query` turns dotted unary RPC tags into a typed utility tree. Its builders produce Query
+Core options and semantic cache keys while your application owns the RPC client, Query Client, and
+lifecycle.
 
-## Plain React example
-
-Start the shared HTTP RPC server and the private Vite React application from the repository root:
-
-```sh
-vp run vite-react-dev
-```
-
-Vite+ labels each process's output. Open the URL printed by Vite, usually `http://localhost:5173`,
-and press `Ctrl+C` to stop both processes. The development server proxies `/rpc` to
-`http://127.0.0.1:3001`.
-
-Build the application with `vp run vite-react-build`. Set `VITE_RPC_URL` when the browser must use
-another RPC URL.
-
-## TanStack Start example
-
-Start the shared HTTP RPC server and the private TanStack Start application from the repository
-root:
+## Install
 
 ```sh
-vp run tanstack-start-dev
+pnpm add effect-rpc-query effect @tanstack/query-core
 ```
 
-Open `http://127.0.0.1:3000`, and press `Ctrl+C` to stop both processes. The development server
-proxies browser requests from `/rpc` to `http://127.0.0.1:3001`. Server rendering connects directly
-to the RPC server.
+The current source targets Effect 4, TanStack Query 5, strict TypeScript, ESM, and ES2022. The
+package is under active development before its first stable release.
 
-Build the application with `vp run tanstack-start-build`. Set `EXAMPLE_RPC_URL` to change the RPC
-URL used during server rendering. Set `VITE_RPC_URL` to change the URL used in the browser.
+## Use
 
-## Browser acceptance tests
+```ts
+import { createRpcQueryUtils } from 'effect-rpc-query'
 
-Install the browsers and their operating-system dependencies once:
+const rpcQuery = createRpcQueryUtils(rpcGroup, {
+  client,
+  keyPrefix: ['my-app'] as const,
+  runPromiseExit,
+})
 
-```sh
-pnpm exec playwright install --with-deps chromium firefox webkit
+const options = rpcQuery.users.get.queryOptions({ input: { id: 1 } })
 ```
 
-Run the fast Chromium suite with `vp run e2e:chromium`. Run the complete Chromium, Firefox, and
-WebKit suite with `vp run e2e`. Playwright builds and starts the shared RPC server and both
-applications through root Vite+ tasks, then stops every process when the run finishes.
+Read the [documentation](https://ueberbrot.github.io/effect-rpc-query/) for setup, React Query,
+TanStack Start, cache keys, cancellation, failures, and the curated API reference.
 
-## Optional Dev Container
+## Develop
 
-Prerequisites:
+The repository includes executable [Vite React](./examples/vite-react) and
+[TanStack Start](./examples/tanstack-start) applications. Run `vp run vite-react-dev` or
+`vp run tanstack-start-dev` from the repository root. Run the complete validation suite with
+`vp run validate`.
 
-- Docker
-- VS Code with the Dev Containers extension, or another Dev Container client
-
-Open the repository in VS Code and run **Dev Containers: Reopen in Container**. The container uses
-the declared Node and pnpm versions and installs the frozen workspace.
-
-Run the example and test commands above from the attached terminal. The client forwards ports `3000`
-(TanStack Start), `3001` (RPC), `4173` (Vite preview), and `5173` (Vite development).
-
-Verify the toolchain and run all validation tasks:
-
-```sh
-node --version
-pnpm --version
-vp --version
-vp run validate
-```
-
-When updating Node, update `.node-version` and the Dev Container image, then rebuild the container.
-Rebuild after changing `packageManager` too.
+See the [Dev Container guide](https://ueberbrot.github.io/effect-rpc-query/contributing/dev-container/)
+for the reproducible environment.

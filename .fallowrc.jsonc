@@ -6,6 +6,10 @@
   // Framework tooling consumes these exports through convention-generated entries.
   "ignoreExports": [
     {
+      "file": "apps/docs/astro.config.mjs",
+      "exports": ["default"]
+    },
+    {
       "file": "playwright.config.ts",
       "exports": ["default"]
     },

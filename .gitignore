@@ -3,6 +3,7 @@ dist/
 coverage/
 .vite/
 .vite-hooks/_/
+apps/docs/.astro/
 .fallow/
 .artifacts/
 playwright-report/

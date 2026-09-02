@@ -1,0 +1,36 @@
+---
+title: effect-rpc-query
+description: Type-safe TanStack Query utilities generated from Effect RPC definitions.
+template: splash
+hero:
+  tagline: Build typed query options, mutation options, and semantic cache keys from one Effect RPC group.
+  actions:
+    - text: Get started
+      link: /effect-rpc-query/getting-started/installation/
+      icon: right-arrow
+      variant: primary
+    - text: View on GitHub
+      link: https://github.com/ueberBrot/effect-rpc-query
+      icon: external
+---
+
+`effect-rpc-query` projects dotted unary RPC tags into a typed RPC utility tree. Each leaf builds
+TanStack Query options and stable keys while the application keeps ownership of its RPC client,
+Query Client, and lifecycle.
+
+## What it provides
+
+- One factory that derives utilities from an RPC group and a ready flat client.
+- Semantic cache keys that account for payload defaults and Schema encoding.
+- Query Core options for React Query, loaders, prefetching, and direct cache access.
+- Typed RPC failures that retain the complete Effect Cause.
+
+## Choose a path
+
+- Follow the [quick start](/effect-rpc-query/getting-started/quick-start/) to create utilities and run
+  a query.
+- Use the [React Query guide](/effect-rpc-query/guides/react-query/) for hooks and mutations.
+- Use the [TanStack Start guide](/effect-rpc-query/guides/tanstack-start/) for loaders, SSR, and
+  hydration.
+- Read [compatibility and limits](/effect-rpc-query/reference/compatibility-and-limits/) before
+  adopting the package.
