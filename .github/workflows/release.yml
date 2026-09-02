@@ -39,18 +39,11 @@ jobs:
         with:
           persist-credentials: false
 
-      - &setup_pnpm
-        name: Set up pnpm
-        uses: pnpm/action-setup@0977fd99725f1db4007ccb2928dbb4e90d06cc86 # v6.0.10
-
-      - &setup_vite_plus
-        name: Set up Vite+
-        uses: voidzero-dev/setup-vp@313600b80b104eadebb9111787d37a2e83e014ca # v1.17.0
+      - &setup_repository
+        name: Set up repository
+        uses: ./.github/actions/setup-repository
         with:
-          node-version-file: .node-version
           cache: false
-          run-install: |
-            args: ['--frozen-lockfile']
 
       - name: Select Changesets mode
         id: changesets
@@ -80,8 +73,7 @@ jobs:
 
     steps:
       - *checkout
-      - *setup_pnpm
-      - *setup_vite_plus
+      - *setup_repository
 
       - name: Create or update version pull request
         uses: changesets/action/version@8488615a623b1b9c987934bb89eae8af6a946ac1 # v2.1.1
@@ -103,8 +95,7 @@ jobs:
 
     steps:
       - *checkout
-      - *setup_pnpm
-      - *setup_vite_plus
+      - *setup_repository
 
       - name: Construct package for release packing
         if: needs.select-mode.outputs.mode == 'publish' || github.event_name != 'push'
@@ -162,8 +153,7 @@ jobs:
 
     steps:
       - *checkout
-      - *setup_pnpm
-      - *setup_vite_plus
+      - *setup_repository
 
       - name: Publish verified artifact to npm
         uses: changesets/action/publish@8488615a623b1b9c987934bb89eae8af6a946ac1 # v2.1.1
