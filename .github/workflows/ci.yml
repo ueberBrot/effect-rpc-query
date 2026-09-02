@@ -122,7 +122,7 @@ jobs:
       - *setup_vite_plus
 
       - name: Install ${{ matrix.browser }}
-        run: pnpm exec playwright install --with-deps ${{ matrix.browser }}
+        run: vp exec playwright install --with-deps ${{ matrix.browser }}
 
       - name: Run ${{ matrix.browser }} acceptance tests
         run: vp run e2e:${{ matrix.browser }}
