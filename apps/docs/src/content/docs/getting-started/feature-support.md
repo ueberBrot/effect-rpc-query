@@ -1,6 +1,6 @@
 ---
 title: Feature Support
-description: Check which capabilities the package generates, certifies, leaves to the application, or does not support.
+description: Check which capabilities the package generates, tests, leaves to the application, or does not support.
 ---
 
 `effect-rpc-query` turns unary Effect RPC definitions into semantic keys and ordinary TanStack Query
@@ -9,7 +9,7 @@ Core options. Applications continue to configure TanStack Query and manage the R
 Use these status values to read the matrix:
 
 - **Generated**: the package creates the key, function, or option object.
-- **Certified**: repository fixtures or executable applications verify that generated output works
+- **Tested**: repository fixtures or executable applications verify that generated output works
   with the listed native TanStack API.
 - **Application-owned**: use the upstream Effect, TanStack, or framework API directly.
 - **Not supported**: the package exposes no contract for this capability.
@@ -24,14 +24,14 @@ Use these status values to read the matrix:
 | Conditional queries                                                                                 | Generated         | Payload-bearing queries accept TanStack's exact `skipToken` value.                                                                                                     |
 | Page-number and cursor queries                                                                      | Generated         | Put the page or cursor in an ordinary unary RPC payload; it becomes part of the semantic query key.                                                                    |
 | Query cancellation                                                                                  | Generated         | The query function forwards TanStack's `AbortSignal` to the Effect runner. The client transport must honor interruption.                                               |
-| Query policies and transformations                                                                  | Certified         | Applicable Query Core options pass through, including `select`, `initialData`, retry, freshness, garbage collection, refetch controls, network mode, and metadata.     |
-| Mutation callbacks                                                                                  | Certified         | Applicable mutation options pass through. Build native optimistic updates with `onMutate`, `onError`, `onSuccess`, or `onSettled` and the application's `QueryClient`. |
-| Cache reads, writes, prefetching, invalidation, and refetching                                      | Certified         | Pass generated options or keys to the native `QueryClient` methods.                                                                                                    |
-| React Query                                                                                         | Certified         | Generated options work with ordinary query, suspense, prefetch, and mutation hooks.                                                                                    |
-| TanStack Router and Start                                                                           | Certified         | Generated options work in loaders, server rendering, successful-query hydration, and client navigation.                                                                |
+| Query policies and transformations                                                                  | Tested            | Applicable Query Core options pass through, including `select`, `initialData`, retry, freshness, garbage collection, refetch controls, network mode, and metadata.     |
+| Mutation callbacks                                                                                  | Tested            | Applicable mutation options pass through. Build native optimistic updates with `onMutate`, `onError`, `onSuccess`, or `onSettled` and the application's `QueryClient`. |
+| Cache reads, writes, prefetching, invalidation, and refetching                                      | Tested            | Pass generated options or keys to the native `QueryClient` methods.                                                                                                    |
+| React Query                                                                                         | Tested            | Generated options work with ordinary query, suspense, prefetch, and mutation hooks.                                                                                    |
+| TanStack Router and Start                                                                           | Tested            | Generated options work in loaders, server rendering, successful-query hydration, and client navigation.                                                                |
 | RPC transport and client lifecycle                                                                  | Application-owned | Supply a ready flat RPC client and keep its `Scope` alive. The examples use HTTP; the package does not construct a transport.                                          |
 | Providers, Devtools, persistence, broadcast, and offline policy                                     | Application-owned | Configure these through TanStack Query. The package provides no wrapper or default policy for them.                                                                    |
-| Framework packages and non-React integration                                                        | Application-owned | Use the native framework package and evaluate the integration in the application. This repository certifies React Query only.                                          |
+| Framework packages and non-React integration                                                        | Application-owned | Use the native framework package and evaluate the integration in the application. This repository tests React Query only.                                              |
 | Query-versus-mutation classification                                                                | Application-owned | Every unary leaf offers both builders because Effect RPC definitions do not label reads and writes.                                                                    |
 | Automatic invalidation                                                                              | Not supported     | Mutations do not choose affected queries. Invalidate with generated prefix keys in application callbacks.                                                              |
 | Streaming RPCs and subscriptions                                                                    | Not supported     | Streaming leaves are omitted from the inferred and runtime utility trees. There is no subscription, live-query, buffering, or stream-cache API.                        |

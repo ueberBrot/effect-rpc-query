@@ -37,7 +37,7 @@ TanStack Start, cache keys, cancellation, failures, and the curated API referenc
 | Capability                              | Status            | Boundary                                                                                    |
 | --------------------------------------- | ----------------- | ------------------------------------------------------------------------------------------- |
 | Unary queries and mutations             | Generated         | Typed options, semantic keys, conditional queries, and ordinary page-or-cursor queries      |
-| Native TanStack Query APIs              | Certified         | Query Core, React Query, Router loaders, TanStack Start, and `QueryClient` cache operations |
+| Native TanStack Query APIs              | Tested            | Query Core, React Query, Router loaders, TanStack Start, and `QueryClient` cache operations |
 | Transport and application integration   | Application-owned | RPC client lifetime, providers, policies, Devtools, persistence, and framework integration  |
 | Streams and subscriptions               | Not supported     | Streaming RPCs, subscriptions, live queries, and `streamedQuery`                            |
 | Infinite queries and package automation | Not supported     | Infinite-query builders, automatic invalidation, mutation cancellation, and direct helpers  |
