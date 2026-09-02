@@ -39,6 +39,10 @@ jobs:
         with:
           persist-credentials: false
 
+      - &setup_pnpm
+        name: Set up pnpm
+        uses: pnpm/action-setup@0977fd99725f1db4007ccb2928dbb4e90d06cc86 # v6.0.10
+
       - &setup_vite_plus
         name: Set up Vite+
         uses: voidzero-dev/setup-vp@313600b80b104eadebb9111787d37a2e83e014ca # v1.17.0
@@ -76,6 +80,7 @@ jobs:
 
     steps:
       - *checkout
+      - *setup_pnpm
       - *setup_vite_plus
 
       - name: Create or update version pull request
@@ -98,6 +103,7 @@ jobs:
 
     steps:
       - *checkout
+      - *setup_pnpm
       - *setup_vite_plus
 
       - name: Construct package for release packing
@@ -156,6 +162,7 @@ jobs:
 
     steps:
       - *checkout
+      - *setup_pnpm
       - *setup_vite_plus
 
       - name: Publish verified artifact to npm
