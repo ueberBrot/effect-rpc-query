@@ -30,14 +30,9 @@ jobs:
         with:
           persist-credentials: false
 
-      - &setup_vite_plus
-        name: Set up Vite+
-        uses: voidzero-dev/setup-vp@313600b80b104eadebb9111787d37a2e83e014ca # v1.17.0
-        with:
-          node-version-file: .node-version
-          cache: true
-          run-install: |
-            args: ['--frozen-lockfile']
+      - &setup_repository
+        name: Set up repository
+        uses: ./.github/actions/setup-repository
 
       - name: Verify formatting
         run: vp run format
@@ -68,7 +63,7 @@ jobs:
 
     steps:
       - *checkout
-      - *setup_vite_plus
+      - *setup_repository
 
       - name: Construct and inspect package
         run: vp run pack
@@ -94,7 +89,7 @@ jobs:
 
     steps:
       - *checkout
-      - *setup_vite_plus
+      - *setup_repository
 
       - name: Build Vite React application
         run: vp run vite-react-build
@@ -120,7 +115,7 @@ jobs:
 
     steps:
       - *checkout
-      - *setup_vite_plus
+      - *setup_repository
 
       - name: Install ${{ matrix.browser }}
         run: vp exec playwright install --with-deps ${{ matrix.browser }}
