@@ -35,10 +35,12 @@
   },
   "scripts": {
     "changeset": "changeset",
-    "prepare": "vp config --no-agent && effect-tsgo patch --typescript"
+    "prepare": "vp config --no-agent && effect-tsgo patch --typescript",
+    "version-packages": "changeset version && vp fmt"
   },
   "devDependencies": {
     "@arethetypeswrong/cli": "0.18.5",
+    "@changesets/changelog-github": "1.0.0",
     "@changesets/cli": "3.0.1",
     "@effect-rpc-query/contracts": "workspace:*",
     "@effect-rpc-query/server": "workspace:*",

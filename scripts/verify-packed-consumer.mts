@@ -16,8 +16,11 @@ const lockfilePath = join(repositoryRoot, 'pnpm-lock.yaml')
 const typeFixtureDirectory = join(repositoryRoot, 'tests', 'types')
 const workspaceConfigPath = join(repositoryRoot, 'pnpm-workspace.yaml')
 const workspaceConfig = readFileSync(workspaceConfigPath, 'utf8')
-const tarballName = `${repositoryManifest.name.replace(/^@/, '').replaceAll('/', '-')}-${repositoryManifest.version}.tgz`
-const tarballPath = join(artifactDirectory, tarballName)
+const defaultTarballName = `${repositoryManifest.name.replace(/^@/, '').replaceAll('/', '-')}-${repositoryManifest.version}.tgz`
+const tarballPath = resolve(
+  repositoryRoot,
+  process.env['EFFECT_RPC_QUERY_TARBALL'] ?? join(artifactDirectory, defaultTarballName),
+)
 
 if (!existsSync(tarballPath)) {
   throw new Error(`Packed tarball does not exist: ${tarballPath}`)

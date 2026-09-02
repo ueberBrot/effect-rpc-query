@@ -1,0 +1,24 @@
+{
+  "$schema": "https://unpkg.com/@changesets/config@4.0.0/schema.json",
+  "access": "public",
+  "baseBranch": "main",
+  "bumpVersionsWithWorkspaceProtocolOnly": true,
+  "changedFilePatterns": ["src/**", "package.json"],
+  "changelog": [
+    "@changesets/changelog-github",
+    {
+      "disableThanks": true,
+      "repo": "ueberBrot/effect-rpc-query"
+    }
+  ],
+  "commit": false,
+  "fixed": [],
+  "format": false,
+  "ignore": [],
+  "linked": [],
+  "privatePackages": {
+    "tag": false,
+    "version": false
+  },
+  "updateInternalDependencies": "patch"
+}

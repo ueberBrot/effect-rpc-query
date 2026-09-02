@@ -126,10 +126,14 @@ export default defineConfig({
         command: [
           'pnpm --config.ignore-scripts=true pack --pack-destination .artifacts',
           'fallow dead-code --private-type-leaks --file dist/index.d.mts',
-          'node scripts/verify-packed-consumer.mts',
+          'vp run verify-packed-package',
         ],
         dependsOn: ['pack'],
         output: ['.artifacts/*.tgz'],
+      },
+      'verify-packed-package': {
+        command: 'node scripts/verify-packed-consumer.mts',
+        cache: false,
       },
       fallow: {
         command: [
@@ -220,7 +224,7 @@ export default defineConfig({
           'vp run packed-package',
           'vp run vite-react-build',
           'vp run tanstack-start-build',
-          'vp run e2e:chromium',
+          'vp run e2e',
         ],
       },
     },
