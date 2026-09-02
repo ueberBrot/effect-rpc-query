@@ -5,23 +5,35 @@ on:
   push:
     branches:
       - main
+  release:
+    types:
+      - prereleased
+  schedule:
+    - cron: '17 4 * * 1'
+  workflow_dispatch:
 
 permissions:
   contents: read
 
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
 jobs:
-  quality:
-    name: Quality
+  source-quality:
+    name: Source quality
     runs-on: ubuntu-latest
     timeout-minutes: 15
 
     steps:
-      - name: Check out repository
+      - &checkout
+        name: Check out repository
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
 
-      - name: Set up Vite+
+      - &setup_vite_plus
+        name: Set up Vite+
         uses: voidzero-dev/setup-vp@313600b80b104eadebb9111787d37a2e83e014ca # v1.17.0
         with:
           node-version-file: .node-version
@@ -29,28 +41,97 @@ jobs:
           run-install: |
             args: ['--frozen-lockfile']
 
-      - name: Run source quality gates
-        run: vp run quality
+      - name: Verify formatting
+        run: vp run format
+
+      - name: Construct package prerequisite
+        run: vp run pack
+
+      - name: Run type-aware linting
+        run: vp run lint
+
+      - name: Run TypeScript checking
+        run: vp run typecheck
+
+      - name: Run Effect diagnostics
+        run: vp run effect-check
+
+      - name: Run Vitest
+        run: vp run test
+
+      - name: Run Fallow audits
+        run: vp run fallow
 
   package-contract:
     name: Package contract
-    needs: quality
+    needs: source-quality
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+
+    steps:
+      - *checkout
+      - *setup_vite_plus
+
+      - name: Construct and inspect package
+        run: vp run pack
+
+      - name: Verify packed consumers and type scale
+        run: vp run packed-package
+
+      - name: Preserve verified package artifact
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: package-${{ github.sha }}
+          path: .artifacts/*.tgz
+          if-no-files-found: error
+          include-hidden-files: true
+          compression-level: 0
+          retention-days: 7
+
+  example-builds:
+    name: Example builds
+    needs: source-quality
     runs-on: ubuntu-latest
     timeout-minutes: 15
 
     steps:
-      - name: Check out repository
-        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-        with:
-          persist-credentials: false
+      - *checkout
+      - *setup_vite_plus
 
-      - name: Set up Vite+
-        uses: voidzero-dev/setup-vp@313600b80b104eadebb9111787d37a2e83e014ca # v1.17.0
-        with:
-          node-version-file: .node-version
-          cache: true
-          run-install: |
-            args: ['--frozen-lockfile']
+      - name: Build Vite React application
+        run: vp run vite-react-build
 
-      - name: Verify packed package contract
-        run: vp run packed-package
+      - name: Build TanStack Start application
+        run: vp run tanstack-start-build
+
+  browser:
+    name: Playwright (${{ matrix.browser }})
+    needs:
+      - package-contract
+      - example-builds
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+
+    strategy:
+      fail-fast: true
+      matrix:
+        browser: ${{ (github.event_name == 'pull_request' || github.event_name == 'push') && fromJSON('["chromium"]') || fromJSON('["chromium", "firefox", "webkit"]') }}
+
+    steps:
+      - *checkout
+      - *setup_vite_plus
+
+      - name: Install ${{ matrix.browser }}
+        run: pnpm exec playwright install --with-deps ${{ matrix.browser }}
+
+      - name: Run ${{ matrix.browser }} acceptance tests
+        run: vp run e2e:${{ matrix.browser }}
+
+      - name: Preserve Playwright failure diagnostics
+        if: failure()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: playwright-${{ matrix.browser }}-${{ github.sha }}
+          path: test-results
+          if-no-files-found: ignore
+          retention-days: 7
