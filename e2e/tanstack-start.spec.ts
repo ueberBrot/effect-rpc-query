@@ -16,10 +16,15 @@ test.describe('TanStack Start application', () => {
     })
 
     const response = await page.reload()
+    const serverRenderedHtml = await response?.text()
 
     expect(response?.ok()).toBe(true)
+    expect(serverRenderedHtml).toContain('Ada Lovelace')
+    expect(serverRenderedHtml).toContain('Edsger Dijkstra')
     await expect(page.getByText('Ada Lovelace', { exact: true })).toBeVisible()
     await expect(page.getByText('Edsger Dijkstra', { exact: true })).toBeVisible()
+    await page.getByRole('button', { name: 'Read cached users' }).click()
+    await expect(page.getByText('Cached users: 2')).toBeVisible()
     expect(browserListRequests).toBe(0)
   })
 
