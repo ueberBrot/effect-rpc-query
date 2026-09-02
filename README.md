@@ -34,13 +34,13 @@ TanStack Start, cache keys, cancellation, failures, and the curated API referenc
 
 ## Feature support
 
-| Area           | Included                                                                                        | Outside the package                                                       |
-| -------------- | ----------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------- |
-| Effect RPC     | Unary queries and mutations with inferred inputs, results, failures, and semantic keys          | Streaming RPCs, subscriptions, and direct execution helpers               |
-| TanStack Query | Generated options for ordinary, suspense, conditional, and page-or-cursor queries and mutations | Infinite-query and `streamedQuery` builders                               |
-| Cache behavior | Prefix keys, typed cache access, query cancellation, and native invalidation                    | Automatic invalidation and mutation cancellation                          |
-| Integration    | Query Core, React Query, Router loaders, and TanStack Start                                     | Package hooks, providers, framework adapters, and non-React certification |
-| Ownership      | Caller-supplied RPC client, Query Client, policies, and lifecycle                               | Package-owned transport, persistence, or SSR error serialization          |
+| Capability                              | Status            | Boundary                                                                                    |
+| --------------------------------------- | ----------------- | ------------------------------------------------------------------------------------------- |
+| Unary queries and mutations             | Generated         | Typed options, semantic keys, conditional queries, and ordinary page-or-cursor queries      |
+| Native TanStack Query APIs              | Certified         | Query Core, React Query, Router loaders, TanStack Start, and `QueryClient` cache operations |
+| Transport and application integration   | Application-owned | RPC client lifetime, providers, policies, Devtools, persistence, and framework integration  |
+| Streams and subscriptions               | Not supported     | Streaming RPCs, subscriptions, live queries, and `streamedQuery`                            |
+| Infinite queries and package automation | Not supported     | Infinite-query builders, automatic invalidation, mutation cancellation, and direct helpers  |
 
 See the [full capability matrix](https://ueberbrot.github.io/effect-rpc-query/getting-started/feature-support/)
 for the exact boundary of each feature.
