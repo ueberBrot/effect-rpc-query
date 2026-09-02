@@ -5,6 +5,8 @@ const ignoredPaths = [
   '.artifacts/**',
   '.fallow/**',
   '.vite/**',
+  'apps/docs/.astro/**',
+  'apps/docs/dist/**',
   'coverage/**',
   'dist/**',
   'examples/tanstack-start/src/routeTree.gen.ts',
@@ -51,7 +53,8 @@ export default defineConfig({
     sortPackageJson: true,
   },
   lint: {
-    ignorePatterns: [...ignoredPaths, ...packedFixtures],
+    // Astro owns diagnostics for the docs package and uses its supported TypeScript 6 compiler.
+    ignorePatterns: [...ignoredPaths, ...packedFixtures, 'apps/docs/**'],
     options: {
       typeAware: true,
       typeCheck: true,
@@ -213,6 +216,25 @@ export default defineConfig({
         input: [{ auto: true }, '!examples/tanstack-start/dist/**'],
         output: ['examples/tanstack-start/dist/**'],
       },
+      docs: {
+        command: 'pnpm --filter @effect-rpc-query/docs dev',
+        cache: false,
+      },
+      'docs-build': {
+        command: 'pnpm --filter @effect-rpc-query/docs build',
+        dependsOn: ['docs-check'],
+        input: [{ auto: true }, '!apps/docs/dist/**'],
+        output: ['apps/docs/dist/**'],
+      },
+      'docs-check': {
+        command: 'pnpm --filter @effect-rpc-query/docs check',
+        output: [],
+      },
+      'docs-preview': {
+        command: 'pnpm --filter @effect-rpc-query/docs preview',
+        cache: false,
+        dependsOn: ['docs-build'],
+      },
       'tanstack-start-preview': {
         command: 'vp -C examples/tanstack-start preview',
         cache: false,
@@ -224,6 +246,7 @@ export default defineConfig({
           'vp run packed-package',
           'vp run vite-react-build',
           'vp run tanstack-start-build',
+          'vp run docs-build',
           'vp run e2e',
         ],
       },

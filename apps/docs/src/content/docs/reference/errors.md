@@ -1,0 +1,34 @@
+---
+title: Errors
+description: Reference for configuration, key-generation, and RPC execution errors.
+---
+
+## `EffectRpcQueryConfigError`
+
+Thrown while constructing the utility tree. Its `code` is one of:
+
+- `InvalidKeyPrefix`
+- `InvalidRpcPath`
+- `RpcPathCollision`
+- `MissingKeyEncoder`
+- `UnknownKeyEncoder`
+
+It can also expose `rpcTag`, `path`, and an underlying `cause`.
+
+## `EffectRpcQueryKeyError`
+
+Thrown synchronously while preparing a payload-specific key. It exposes `rpcTag`, `cause`, and one
+of these codes:
+
+- `PayloadConstructionFailed`
+- `PayloadEncodingFailed`
+- `KeyEncoderFailed`
+- `InvalidKeyValue`
+
+## `EffectRpcQueryError<E>`
+
+Thrown when the RPC runner returns a failed `Exit`. It exposes `rpcTag`, `operation`, and the full
+`Cause.Cause<E>`. Use `isEffectRpcQueryError(value)` as the runtime guard within one JavaScript
+realm; the guard uses `instanceof`.
+
+A rejected runner promise passes through unchanged because no Effect `Cause` exists to preserve.
