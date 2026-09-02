@@ -1,6 +1,10 @@
 {
   "$schema": "./node_modules/fallow/schema.json",
 
+  // Astro copies this browser entry from public/ and loads it through the
+  // Starlight head configuration, which static import analysis cannot follow.
+  "entry": ["apps/docs/public/package-version.js"],
+
   "ignorePatterns": ["examples/tanstack-start/src/routeTree.gen.ts"],
 
   // Framework tooling consumes these exports through convention-generated entries.

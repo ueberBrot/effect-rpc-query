@@ -5,13 +5,8 @@ on:
     branches:
       - main
     paths:
-      - '.github/actions/setup-repository/**'
       - '.github/workflows/deploy-docs.yml'
       - 'apps/docs/**'
-      - 'package.json'
-      - 'pnpm-lock.yaml'
-      - 'pnpm-workspace.yaml'
-      - 'vite.config.ts'
   workflow_dispatch:
 
 permissions:

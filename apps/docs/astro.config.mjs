@@ -8,9 +8,11 @@ import starlightThemeBlack from 'starlight-theme-black'
 import packageManifest from '../../package.json' with { type: 'json' }
 
 const repositoryUrl = 'https://github.com/ueberBrot/effect-rpc-query'
+const docsBase = '/effect-rpc-query'
+const packageUrl = 'https://www.npmjs.com/package/effect-rpc-query'
 
 export default defineConfig({
-  base: '/effect-rpc-query',
+  base: docsBase,
   integrations: [
     starlight({
       description: 'Type-safe TanStack Query utilities generated from Effect RPC definitions.',
@@ -18,6 +20,15 @@ export default defineConfig({
         baseUrl: `${repositoryUrl}/edit/main/apps/docs/`,
       },
       lastUpdated: true,
+      head: [
+        {
+          tag: 'script',
+          attrs: {
+            defer: true,
+            src: `${docsBase}/package-version.js`,
+          },
+        },
+      ],
       logo: {
         src: './src/assets/icon.svg',
       },
@@ -26,7 +37,7 @@ export default defineConfig({
           navLinks: [
             {
               label: `v${packageManifest.version}`,
-              link: `${repositoryUrl}/blob/main/package.json`,
+              link: packageUrl,
             },
           ],
         }),
