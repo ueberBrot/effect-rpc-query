@@ -1,1 +1,1 @@
-FROM mcr.microsoft.com/devcontainers/typescript-node:5.0.3-24-bookworm@sha256:d7e88ca9d7e48412c4f9afed316dac5a830e194c10bf0bea5912f524e14925dc
+FROM mcr.microsoft.com/devcontainers/typescript-node:5.1.2-24-bookworm@sha256:3c84ba4842b181e699f9494842dbf737a3c96cc3a6028dd83f9a9d9b6f059d1a

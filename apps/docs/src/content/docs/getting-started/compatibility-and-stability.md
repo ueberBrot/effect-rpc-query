@@ -3,7 +3,7 @@ title: Compatibility and Stability
 description: Check the supported package versions, module format, and pre-1.0 policy.
 ---
 
-The current source is tested with the Effect `4.0.0-rc.111` release candidate and TanStack Query
+The current source is tested with the Effect `4.0.0-rc.112` release candidate and TanStack Query
 `5.102.x`. The published Query Core peer range is `>=5.102.0 <6`.
 
 Strict TypeScript 5.9 is the compiler floor. Packed consumers are checked with TypeScript 5.9 and 7.

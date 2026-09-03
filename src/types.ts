@@ -368,10 +368,9 @@ export type RequiredEncoderRpcs<Group extends RpcGroup.Any> =
 export type KeyEncoders<Group extends RpcGroup.Any> = {
   readonly [R in RequiredEncoderRpcs<Group> as R['_tag']]: KeyEncoder<R>
 } & Partial<{
-  readonly [R in Exclude<
-    PayloadBearingUnaryRpcs<Group>,
-    RequiredEncoderRpcs<Group>
-  > as R['_tag']]: KeyEncoder<R>
+  readonly [
+    R in Exclude<PayloadBearingUnaryRpcs<Group>, RequiredEncoderRpcs<Group>> as R['_tag']
+  ]: KeyEncoder<R>
 }>
 
 /** Makes the encoder map optional only when no RPC requires an override. */

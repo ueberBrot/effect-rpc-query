@@ -10,8 +10,8 @@
     "preview": "astro preview"
   },
   "dependencies": {
-    "@astrojs/starlight": "0.41.7",
-    "astro": "7.2.4",
+    "@astrojs/starlight": "0.41.9",
+    "astro": "7.2.9",
     "starlight-links-validator": "0.25.3",
     "starlight-theme-black": "0.7.1"
   },

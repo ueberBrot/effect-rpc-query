@@ -35,9 +35,10 @@ const testedVersion = (dependency: keyof typeof repositoryManifest.devDependenci
   if (specifier !== 'catalog:') return specifier
 
   const escapedDependency = dependency.replace(/[.*+?^${}()|[\]\\]/gu, '\\$&')
-  const catalogVersion = new RegExp(`^  ${escapedDependency}: (?<version>\\S+)$`, 'mu').exec(
-    workspaceConfig,
-  )?.groups?.['version']
+  const catalogVersion = new RegExp(
+    `^  ['"]?${escapedDependency}['"]?: (?<version>\\S+)$`,
+    'mu',
+  ).exec(workspaceConfig)?.groups?.['version']
   if (catalogVersion === undefined) {
     throw new Error(`The default catalog must define ${dependency}`)
   }
@@ -70,9 +71,8 @@ deepStrictEqual(packedManifest.exports, {
 })
 deepStrictEqual(packedManifest.peerDependencies, {
   '@tanstack/query-core': '>=5.102.0 <6',
-  effect: '4.0.0-rc.111',
+  effect: testedVersion('effect'),
 })
-equal(packedManifest.peerDependencies.effect, testedVersion('effect'))
 equal('engines' in packedManifest, false)
 
 const publicBarrel = readFileSync(join(repositoryRoot, 'src', 'index.ts'), 'utf8')
@@ -209,7 +209,6 @@ const verifyConsumer = (peer: (typeof peerCases)[number]): void => {
       .replaceAll('__LABEL__', peer.label)
       .replaceAll('__QUERY_CORE_VERSION__', peer.queryCoreVersion)
       .replaceAll('__REACT_QUERY_VERSION__', peer.reactQueryVersion)
-      .replaceAll('__REACT_ROUTER_VERSION__', testedVersion('@tanstack/react-router'))
       .replaceAll('__NODE_TYPES_VERSION__', testedVersion('@types/node'))
       .replaceAll('__REACT_TYPES_VERSION__', testedVersion('@types/react'))
       .replaceAll('__REACT_DOM_TYPES_VERSION__', testedVersion('@types/react-dom'))

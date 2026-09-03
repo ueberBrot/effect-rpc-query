@@ -45,30 +45,29 @@
     "@changesets/config": "4.0.0",
     "@effect-rpc-query/contracts": "workspace:*",
     "@effect-rpc-query/server": "workspace:*",
-    "@effect/tsgo": "0.36.5",
-    "@effect/vitest": "4.0.0-rc.111",
+    "@effect/tsgo": "0.38.0",
+    "@effect/vitest": "4.0.0-rc.112",
     "@playwright/test": "1.62.1",
-    "@tanstack/query-core": "5.102.2",
-    "@tanstack/react-query": "5.102.2",
-    "@tanstack/react-router": "1.169.2",
+    "@tanstack/query-core": "catalog:",
+    "@tanstack/react-query": "catalog:",
     "@types/node": "24.13.3",
-    "@types/react": "19.2.14",
-    "@types/react-dom": "19.2.3",
+    "@types/react": "catalog:",
+    "@types/react-dom": "catalog:",
     "effect": "catalog:",
-    "fallow": "3.17.0",
+    "fallow": "3.19.0",
     "publint": "0.3.24",
-    "react": "19.2.4",
-    "react-dom": "19.2.4",
+    "react": "catalog:",
+    "react-dom": "catalog:",
     "tsx": "catalog:",
     "typescript": "7.0.2",
     "typescript-5.9": "npm:typescript@5.9.3",
-    "unplugin-unused": "0.5.2",
-    "vite": "npm:@voidzero-dev/vite-plus-core@0.2.9",
-    "vite-plus": "0.2.9"
+    "unplugin-unused": "0.5.7",
+    "vite": "catalog:",
+    "vite-plus": "catalog:"
   },
   "peerDependencies": {
     "@tanstack/query-core": ">=5.102.0 <6",
     "effect": "catalog:"
   },
-  "packageManager": "pnpm@11.20.0"
+  "packageManager": "pnpm@11.24.0"
 }
