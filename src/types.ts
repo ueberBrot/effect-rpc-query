@@ -27,7 +27,7 @@ export type JsonValue = JsonPrimitive | { readonly [key: string]: JsonValue } | 
  * TanStack rejects `undefined` query data, so possible `undefined` values become
  * `null`. Mutation results keep the RPC success type unchanged.
  */
-export type QueryData<A> = undefined extends A ? Exclude<A, undefined> | null : A
+export type QueryData<A> = undefined extends A ? Exclude<A, undefined | void> | null : A
 
 /** Runs an RPC Effect and returns its Exit, optionally forwarding an abort signal. */
 export type RunPromiseExit<R = never> = <A, E>(

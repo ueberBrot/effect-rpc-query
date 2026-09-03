@@ -317,26 +317,26 @@ void payloadlessPages
 
 // @ts-expect-error payload-bearing infinite queries require an input mapper or skipToken
 utils.users.pages.infiniteOptions({ getNextPageParam: () => undefined, initialPageParam: 0 })
-// @ts-expect-error payloadless infinite queries do not accept an input mapper
 utils.health.ping.infiniteOptions({
   getNextPageParam: () => undefined,
   initialPageParam: 0,
+  // @ts-expect-error payloadless infinite queries do not accept an input mapper
   input: () => undefined,
 })
-// @ts-expect-error infinite input mappers must return the RPC payload constructor input
-utils.users.pages.infiniteOptions({
+utils.users.pages.infiniteOptions<number, never>({
   getNextPageParam: () => undefined,
   initialPageParam: 0,
+  // @ts-expect-error infinite input mappers must return the RPC payload constructor input
   input: () => ({ cursor: 'invalid' }),
 })
-utils.users.pages.infiniteOptions({
+utils.users.pages.infiniteOptions<number, never>({
   getNextPageParam: () => undefined,
   initialPageParam: 0,
   input: (cursor: number) => ({ cursor }),
   // @ts-expect-error the package owns the infinite-query function
   queryFn: async () => ({ nextCursor: null, users: [] }),
 })
-utils.users.pages.infiniteOptions({
+utils.users.pages.infiniteOptions<number, never>({
   getNextPageParam: () => undefined,
   initialPageParam: 0,
   input: (cursor: number) => ({ cursor }),
