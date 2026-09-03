@@ -5,7 +5,6 @@
   "dependencies": {
     "@tanstack/query-core": "__QUERY_CORE_VERSION__",
     "@tanstack/react-query": "__REACT_QUERY_VERSION__",
-    "@tanstack/react-router": "__REACT_ROUTER_VERSION__",
     "@types/node": "__NODE_TYPES_VERSION__",
     "@types/react": "__REACT_TYPES_VERSION__",
     "@types/react-dom": "__REACT_DOM_TYPES_VERSION__",

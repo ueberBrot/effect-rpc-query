@@ -5,7 +5,7 @@ description: Supported runtimes, frameworks, RPC shapes, and stability boundarie
 
 ## Supported integration boundary
 
-- Effect `4.0.0-rc.111` is the currently tested version.
+- Effect `4.0.0-rc.112` is the currently tested version.
 - TanStack Query Core `>=5.102.0 <6` is the supported peer range.
 - Query Core, React Query, React Router loaders, and TanStack Start are covered by repository tests
   or executable applications.

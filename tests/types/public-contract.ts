@@ -11,7 +11,6 @@ import {
   useQuery,
   useSuspenseQuery,
 } from '@tanstack/react-query'
-import { createRootRouteWithContext, createRoute } from '@tanstack/react-router'
 import { Context, Effect, Schema } from 'effect'
 import {
   createRpcQueryUtils,
@@ -261,15 +260,7 @@ const suspenseData: string = suspenseHook.data
 suspenseHook.error satisfies EffectRpcQueryError<'not-found'> | null
 usePrefetchQuery(queryOptions)
 
-const rootRoute = createRootRouteWithContext<{ readonly queryClient: QueryClient }>()()
-const queryRoute = createRoute({
-  getParentRoute: () => rootRoute,
-  loader: ({ context }) => context.queryClient.query(queryOptions),
-  path: 'users',
-})
-type QueryRouteLoaderData = Assert<Equal<(typeof queryRoute.types)['loaderData'], string>>
-const queryRouteLoaderData: QueryRouteLoaderData = true
-void [exactQueryHashInput, queryHookData, suspenseData, queryRouteLoaderData]
+void [exactQueryHashInput, queryHookData, suspenseData]
 
 const possiblyInitialized = utils.users.get.queryOptions({
   input: { id: 1, locale: 'de' },

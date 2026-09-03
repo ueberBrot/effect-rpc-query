@@ -2,9 +2,12 @@
 
 set -euo pipefail
 
-readonly repository_root="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")/.." && pwd -P)"
-readonly expected_node_version="$(tr -d '[:space:]' < "${repository_root}/.node-version")"
-readonly actual_node_version="$(node --version)"
+repository_root="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")/.." && pwd -P)"
+readonly repository_root
+expected_node_version="$(tr -d '[:space:]' < "${repository_root}/.node-version")"
+readonly expected_node_version
+actual_node_version="$(node --version)"
+readonly actual_node_version
 
 sudo chown -R "$(id -u):$(id -g)" \
   "${repository_root}/node_modules" \
