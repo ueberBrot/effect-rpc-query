@@ -1,4 +1,4 @@
-import { useQuery, useSuspenseQuery } from '@tanstack/react-query'
+import { useInfiniteQuery, useQuery, useSuspenseQuery } from '@tanstack/react-query'
 import { Suspense, useState } from 'react'
 
 import type { ViteReactApplication } from '../../lib/application.ts'
@@ -16,6 +16,14 @@ const FeaturedUser = ({ application }: { readonly application: ViteReactApplicat
 export const QueriesSection = ({ application }: { readonly application: ViteReactApplication }) => {
   const { queryClient, rpcQuery } = application
   const users = useQuery(rpcQuery.users.list.queryOptions())
+  const userPages = useInfiniteQuery(
+    rpcQuery.users.page.infiniteOptions({
+      getNextPageParam: (lastPage) => lastPage.nextCursor ?? undefined,
+      initialPageParam: 0,
+      input: (cursor: number) => ({ cursor, pageSize: 1 }),
+    }),
+  )
+  const infiniteUsers = userPages.data?.pages.flatMap((page) => page.users) ?? []
   const [cacheMessage, setCacheMessage] = useState<string>()
   const [invalidationMessage, setInvalidationMessage] = useState<string>()
   const invalidateUsers = () => queryClient.invalidateQueries({ queryKey: rpcQuery.users.key() })
@@ -42,7 +50,17 @@ export const QueriesSection = ({ application }: { readonly application: ViteReac
       <Suspense fallback={<p className="text-sm text-slate-600">Loading featured user…</p>}>
         <FeaturedUser application={application} />
       </Suspense>
+      <p className="text-sm text-slate-600">
+        Infinite users: {infiniteUsers.map((user) => user.name).join(', ')}
+      </p>
       <div className="flex flex-wrap gap-3">
+        <ActionButton
+          disabled={!userPages.hasNextPage || userPages.isFetchingNextPage}
+          onClick={() => void userPages.fetchNextPage()}
+          type="button"
+        >
+          Load next user page
+        </ActionButton>
         <ActionButton onClick={() => void reuseCachedUsers()} type="button">
           Read cached users
         </ActionButton>

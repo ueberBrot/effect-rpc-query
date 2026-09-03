@@ -60,6 +60,33 @@ describe('createRpcQueryUtils semantic keys', () => {
     }),
   )
 
+  it.effect('builds distinct immutable infinite keys from normalized payloads', () =>
+    Effect.gen(function* () {
+      const client = yield* makeClient()
+      const utils = createRpcQueryUtils(group, {
+        client,
+        keyPrefix: ['tenant', 42] as const,
+      })
+
+      const infiniteKey = utils.users.get.infiniteKey({ id: 1 })
+
+      expect(infiniteKey).toEqual([
+        'tenant',
+        42,
+        'users',
+        'get',
+        'infinite',
+        { id: 1, locale: 'en' },
+      ])
+      expect(infiniteKey).toEqual(utils.users.get.infiniteKey({ id: 1, locale: 'en' }))
+      expect(infiniteKey).not.toEqual(utils.users.get.queryKey({ id: 1 }))
+      expect(infiniteKey).not.toEqual(utils.users.get.mutationKey())
+      expect(Object.isFrozen(infiniteKey)).toBe(true)
+      expect(Object.isFrozen(infiniteKey.at(-1))).toBe(true)
+      expect(utils.health.ping.infiniteKey()).toEqual(['tenant', 42, 'health', 'ping', 'infinite'])
+    }),
+  )
+
   it.effect('constructs and canonically encodes supported query-stable payload Schemas', () =>
     Effect.gen(function* () {
       class ClassPayload extends Schema.Class<ClassPayload>('ClassPayload')({

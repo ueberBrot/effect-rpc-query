@@ -11,6 +11,8 @@ Each unary RPC leaf also exposes:
 | --------------------------- | ---------------------------------------------------------------------------------------------------------- |
 | `queryKey(input?)`          | Payload-specific, data-tagged query key. Payload-bearing RPCs require constructor input.                   |
 | `queryOptions(options?)`    | Fresh Query Core options with owned `queryFn`, `queryKey`, and `queryKeyHashFn`.                           |
+| `infiniteKey(input?)`       | Data-tagged infinite-query key derived from the initial page's payload.                                    |
+| `infiniteOptions(options)`  | Fresh infinite-query options that map each `pageParam` to an RPC payload.                                  |
 | `mutationKey()`             | Immutable operation key shared by mutations of this RPC.                                                   |
 | `mutationOptions(options?)` | Fresh mutation options with owned `mutationFn` and `mutationKey`. Variables arrive when the mutation runs. |
 
@@ -34,3 +36,35 @@ const options =
 
 `skipToken` is valid only for payload-bearing query options. It is not accepted by key or mutation
 builders, and skipped options are unsuitable for suspense and prefetch-only hooks.
+
+## Build an infinite query
+
+Map each page parameter to the unary RPC payload. The initial mapped payload also determines the
+semantic cache key.
+
+```ts
+const userPages = useInfiniteQuery(
+  rpcQuery.users.page.infiniteOptions({
+    initialPageParam: 0,
+    input: (cursor) => ({ cursor, pageSize: 20 }),
+    getNextPageParam: (lastPage) => lastPage.nextCursor ?? undefined,
+  }),
+)
+
+const initialKey = rpcQuery.users.page.infiniteKey({ cursor: 0, pageSize: 20 })
+```
+
+Payloadless RPCs omit `input`. To disable a payload-bearing infinite query, set its `input` field to
+the exact sentinel:
+
+```ts
+const options = rpcQuery.users.page.infiniteOptions({
+  initialPageParam: 0,
+  input: skipToken,
+  getNextPageParam: () => undefined,
+})
+```
+
+The builder forwards applicable Query Core options but owns `queryFn`, `queryKey`, and
+`queryKeyHashFn`. Each page runs through the same Effect runner and cancellation signal as an
+ordinary query.

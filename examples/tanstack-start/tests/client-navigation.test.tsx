@@ -67,6 +67,10 @@ describe('TanStack Start hydration and client navigation', () => {
 
     expect(await screen.findByText('Ada Lovelace')).toBeTruthy()
     expect(duplicateListFetches).toBe(0)
+    expect(await screen.findByText('Infinite users: Ada Lovelace')).toBeTruthy()
+
+    fireEvent.click(screen.getByRole('button', { name: 'Load next user page' }))
+    expect(await screen.findByText('Infinite users: Ada Lovelace, Edsger Dijkstra')).toBeTruthy()
 
     await act(() => router.navigate({ to: '/details' }))
     expect(await screen.findByRole('heading', { name: 'Featured user' })).toBeTruthy()

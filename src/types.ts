@@ -1,5 +1,7 @@
 import type {
   DataTag,
+  InfiniteData,
+  InfiniteQueryObserverOptions,
   InitialDataFunction,
   MutationObserverOptions,
   NonUndefinedGuard,
@@ -25,7 +27,7 @@ export type JsonValue = JsonPrimitive | { readonly [key: string]: JsonValue } | 
  * TanStack rejects `undefined` query data, so possible `undefined` values become
  * `null`. Mutation results keep the RPC success type unchanged.
  */
-export type QueryData<A> = undefined extends A ? Exclude<A, undefined> | null : A
+export type QueryData<A> = undefined extends A ? Exclude<A, undefined | void> | null : A
 
 /** Runs an RPC Effect and returns its Exit, optionally forwarding an abort signal. */
 export type RunPromiseExit<R = never> = <A, E>(
@@ -95,6 +97,11 @@ export type QueryOperationKey<Prefix extends readonly JsonValue[], R extends Rpc
   ...RpcKey<Prefix, R>,
   'query',
 ]
+
+export type InfiniteOperationKey<
+  Prefix extends readonly JsonValue[],
+  R extends Rpc.Any,
+> = readonly [...RpcKey<Prefix, R>, 'infinite']
 
 /** A payload-specific key carrying Query Core's inferred data and error tags. */
 export type ConcreteQueryKey<
@@ -264,8 +271,129 @@ export type QueryKeyBuilder<R extends Rpc.Any, Prefix extends readonly JsonValue
     ? () => ConcreteQueryKey<Prefix, R, ClientError>
     : (input: Rpc.PayloadConstructor<R>) => ConcreteQueryKey<Prefix, R, ClientError>
 
+/** A payload-specific infinite key carrying Query Core's inferred data and error tags. */
+export type ConcreteInfiniteKey<
+  Prefix extends readonly JsonValue[],
+  R extends Rpc.Any,
+  ClientError,
+  PageParam = unknown,
+> = DataTag<
+  void extends Rpc.PayloadConstructor<R>
+    ? InfiniteOperationKey<Prefix, R>
+    : readonly [...InfiniteOperationKey<Prefix, R>, JsonValue],
+  InfiniteData<QueryData<Rpc.Success<R>>, PageParam>,
+  EffectRpcQueryError<RpcFailure<R, ClientError>>
+>
+
+export type OwnedInfiniteOption = 'queryFn' | 'queryKey' | 'queryKeyHashFn'
+
+/** Infinite-query inputs after removing fields owned by this package. */
+export type InfiniteInputOptions<
+  R extends Rpc.Any,
+  Prefix extends readonly JsonValue[],
+  ClientError,
+  Selected,
+  PageParam,
+> = Omit<
+  InfiniteQueryObserverOptions<
+    QueryData<Rpc.Success<R>>,
+    EffectRpcQueryError<RpcFailure<R, ClientError>>,
+    Selected,
+    ConcreteInfiniteKey<Prefix, R, ClientError, PageParam>,
+    PageParam
+  >,
+  OwnedInfiniteOption
+>
+
+/** Infinite-query options generated for one unary RPC. */
+export type RpcInfiniteOptions<
+  R extends Rpc.Any,
+  Prefix extends readonly JsonValue[],
+  ClientError,
+  Selected,
+  PageParam,
+> = InfiniteInputOptions<R, Prefix, ClientError, Selected, PageParam> & {
+  /** Runs one RPC page derived from TanStack's current page parameter. */
+  readonly queryFn: QueryFunction<
+    QueryData<Rpc.Success<R>>,
+    ConcreteInfiniteKey<Prefix, R, ClientError, PageParam>,
+    PageParam
+  >
+  /** The concrete, data-tagged key derived from the initial page. */
+  readonly queryKey: ConcreteInfiniteKey<Prefix, R, ClientError, PageParam>
+  /** Query Core's stable hash for the canonical semantic key. */
+  readonly queryKeyHashFn: QueryKeyHashFunction<
+    ConcreteInfiniteKey<Prefix, R, ClientError, PageParam>
+  >
+}
+
+/** Query Core options returned when a payload-bearing infinite query uses `skipToken`. */
+export type SkippedRpcInfiniteOptions<
+  R extends Rpc.Any,
+  Prefix extends readonly JsonValue[],
+  ClientError,
+  PageParam,
+> = Omit<
+  InfiniteQueryObserverOptions<
+    QueryData<Rpc.Success<R>>,
+    EffectRpcQueryError<RpcFailure<R, ClientError>>,
+    InfiniteData<QueryData<Rpc.Success<R>>, PageParam>,
+    InfiniteOperationKey<Prefix, R>,
+    PageParam
+  >,
+  OwnedInfiniteOption
+> & {
+  /** Query Core's exact skip sentinel. */
+  readonly queryFn: SkipToken
+  /** The operation prefix, which contains no unconstructed payload. */
+  readonly queryKey: InfiniteOperationKey<Prefix, R>
+  /** Query Core's stable hash for the operation key. */
+  readonly queryKeyHashFn: QueryKeyHashFunction<InfiniteOperationKey<Prefix, R>>
+}
+
+/** Builds infinite-query options from page parameters or the exact skip sentinel. */
+export type InfiniteOptionsBuilder<
+  R extends Rpc.Any,
+  Prefix extends readonly JsonValue[],
+  ClientError,
+> =
+  void extends Rpc.PayloadConstructor<R>
+    ? <PageParam, Selected = InfiniteData<QueryData<Rpc.Success<R>>, PageParam>>(
+        options: InfiniteInputOptions<R, Prefix, ClientError, Selected, PageParam>,
+      ) => RpcInfiniteOptions<R, Prefix, ClientError, Selected, PageParam>
+    : {
+        <PageParam, Selected = InfiniteData<QueryData<Rpc.Success<R>>, PageParam>>(
+          options: InfiniteInputOptions<R, Prefix, ClientError, Selected, PageParam> & {
+            readonly input: (pageParam: PageParam) => Rpc.PayloadConstructor<R>
+          },
+        ): RpcInfiniteOptions<R, Prefix, ClientError, Selected, PageParam>
+        <PageParam>(
+          options: Omit<
+            SkippedRpcInfiniteOptions<R, Prefix, ClientError, PageParam>,
+            OwnedInfiniteOption
+          > & {
+            readonly input: SkipToken
+          },
+        ): SkippedRpcInfiniteOptions<R, Prefix, ClientError, PageParam>
+      }
+
+export type InfiniteKeyBuilder<
+  R extends Rpc.Any,
+  Prefix extends readonly JsonValue[],
+  ClientError,
+> =
+  void extends Rpc.PayloadConstructor<R>
+    ? () => ConcreteInfiniteKey<Prefix, R, ClientError>
+    : (input: Rpc.PayloadConstructor<R>) => ConcreteInfiniteKey<Prefix, R, ClientError>
+
 /** The key and option builders exposed at one unary RPC path. */
 export interface RpcQueryLeaf<R extends Rpc.Any, Prefix extends readonly JsonValue[], ClientError> {
+  /** Builds a semantic, data-tagged infinite-query key from constructor input. */
+  readonly infiniteKey: InfiniteKeyBuilder<R, Prefix, ClientError>
+
+  /** Builds fresh Query Core infinite-query options from a page-input mapper or `skipToken`. */
+  readonly infiniteOptions: InfiniteOptionsBuilder<R, Prefix, ClientError>
+
   /** Returns the immutable key prefix for this RPC. */
   readonly key: () => RpcKey<Prefix, R>
 

@@ -30,6 +30,10 @@ describe('plain Vite React integration', () => {
   it('uses generated options with ordinary, suspense, and mutation hooks', async () => {
     expect(await screen.findByText('Ada Lovelace')).toBeTruthy()
     expect(await screen.findByText('Featured: Ada Lovelace')).toBeTruthy()
+    expect(await screen.findByText('Infinite users: Ada Lovelace')).toBeTruthy()
+
+    fireEvent.click(screen.getByRole('button', { name: 'Load next user page' }))
+    expect(await screen.findByText('Infinite users: Ada Lovelace, Edsger Dijkstra')).toBeTruthy()
 
     fireEvent.click(screen.getByRole('button', { name: 'Read cached users' }))
     expect(await screen.findByText('Cached users: 2')).toBeTruthy()

@@ -5,6 +5,7 @@ import {
   ExampleAuthorizationError,
   type SeedUser,
   User,
+  UserPage,
 } from '@effect-rpc-query/contracts'
 import { Effect, Layer, Ref, Stream } from 'effect'
 
@@ -115,6 +116,18 @@ const handlersLayer = exampleRpcGroup.toLayer(
       ),
       'users.list': Effect.fn('ExampleRpc.users.list')(() =>
         Ref.get(state).pipe(Effect.map((current) => current.users)),
+      ),
+      'users.page': Effect.fn('ExampleRpc.users.page')(
+        ({ cursor, pageSize }: { readonly cursor: number; readonly pageSize: number }) =>
+          Ref.get(state).pipe(
+            Effect.map((current) => {
+              const nextCursor = cursor + pageSize
+              return new UserPage({
+                nextCursor: nextCursor < current.users.length ? nextCursor : null,
+                users: current.users.slice(cursor, nextCursor),
+              })
+            }),
+          ),
       ),
     })
   }),

@@ -52,6 +52,8 @@ describe('createRpcQueryUtils configuration', () => {
     '__proto__.child',
     'prototype.child',
     'constructor.child',
+    'namespace.infiniteKey',
+    'namespace.infiniteOptions',
     'namespace.key',
     'namespace.queryKey',
     'namespace.mutationKey',

@@ -16,7 +16,7 @@ export type EffectRpcQueryKeyErrorCode =
   | 'InvalidKeyValue'
 
 /** The TanStack operation that executed an RPC. */
-export type RpcOperation = 'query' | 'mutation'
+export type RpcOperation = 'infinite' | 'mutation' | 'query'
 
 /** Safe metadata identifying the configuration entry that failed. */
 export interface EffectRpcQueryConfigErrorOptions {

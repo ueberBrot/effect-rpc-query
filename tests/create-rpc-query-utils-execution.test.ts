@@ -1,5 +1,11 @@
 import { describe, expect, it } from '@effect/vitest'
-import { CancelledError, MutationObserver, QueryClient, QueryObserver } from '@tanstack/query-core'
+import {
+  CancelledError,
+  InfiniteQueryObserver,
+  MutationObserver,
+  QueryClient,
+  QueryObserver,
+} from '@tanstack/query-core'
 import { Context, Deferred, Effect, Equal, Exit, Schema } from 'effect'
 import { Rpc, RpcGroup } from 'effect/unstable/rpc'
 
@@ -14,6 +20,77 @@ import {
 import { group, makeClient, makeRpcTestClient } from './fixtures/effect-rpc'
 
 describe('createRpcQueryUtils execution boundaries', () => {
+  it.effect('executes and advances infinite queries through Query Core', () =>
+    Effect.gen(function* () {
+      const ListPage = Rpc.make('pages.list', {
+        payload: {
+          cursor: Schema.Int,
+          pageSize: Schema.Int.pipe(
+            Schema.optionalKey,
+            Schema.withConstructorDefault(Effect.succeed(2)),
+          ),
+        },
+        success: Schema.Struct({
+          cursor: Schema.Int,
+          nextCursor: Schema.NullOr(Schema.Int),
+          values: Schema.Array(Schema.Int),
+        }),
+      })
+      const pagesGroup = RpcGroup.make(ListPage)
+      const executedCursors: Array<number> = []
+      const client = yield* makeRpcTestClient(pagesGroup, {
+        'pages.list': Effect.fn('TestRpc.pages.list')(({ cursor, pageSize }) =>
+          Effect.sync(() => {
+            executedCursors.push(cursor)
+            return {
+              cursor,
+              nextCursor: cursor < 2 ? cursor + 1 : null,
+              values: Array.from({ length: pageSize }, (_, index) => cursor * pageSize + index),
+            }
+          }),
+        ),
+      })
+      const queryClient = new QueryClient()
+      const utils = createRpcQueryUtils(pagesGroup, {
+        client,
+        keyPrefix: ['app'] as const,
+      })
+      const options = utils.pages.list.infiniteOptions({
+        getNextPageParam: (lastPage) => lastPage.nextCursor ?? undefined,
+        initialPageParam: 0,
+        input: (cursor) => ({ cursor }),
+        meta: { source: 'infinite-test' },
+        staleTime: Number.POSITIVE_INFINITY,
+      })
+
+      const first = yield* Effect.promise(() => queryClient.fetchInfiniteQuery(options))
+      expect(first).toEqual({
+        pageParams: [0],
+        pages: [{ cursor: 0, nextCursor: 1, values: [0, 1] }],
+      })
+      expect(options.queryKey).toEqual(utils.pages.list.infiniteKey({ cursor: 0 }))
+      expect(options.meta).toEqual({ source: 'infinite-test' })
+
+      const observer = new InfiniteQueryObserver(queryClient, options)
+      const second = yield* Effect.promise(() => observer.fetchNextPage())
+      expect(second.data).toEqual({
+        pageParams: [0, 1],
+        pages: [
+          { cursor: 0, nextCursor: 1, values: [0, 1] },
+          { cursor: 1, nextCursor: 2, values: [2, 3] },
+        ],
+      })
+      expect(queryClient.getQueryData(options.queryKey)).toEqual(second.data)
+
+      yield* Effect.promise(() =>
+        queryClient.invalidateQueries({ queryKey: utils.pages.list.infiniteKey({ cursor: 0 }) }),
+      )
+      yield* Effect.promise(() => queryClient.refetchQueries({ queryKey: options.queryKey }))
+      yield* Effect.promise(() => new QueryClient().prefetchInfiniteQuery(options))
+      expect(executedCursors).toEqual([0, 1, 0, 1, 0])
+    }),
+  )
+
   it.effect('executes mutation variables without invalidating cached queries', () =>
     Effect.gen(function* () {
       const Read = Rpc.make('counter.read', { success: Schema.Finite })
@@ -237,6 +314,43 @@ describe('createRpcQueryUtils execution boundaries', () => {
     }),
   )
 
+  it.effect('interrupts infinite page execution when Query Core cancels', () =>
+    Effect.gen(function* () {
+      const SlowPage = Rpc.make('diagnostics.slow-page', {
+        payload: { cursor: Schema.Int },
+        success: Schema.String,
+      })
+      const slowGroup = RpcGroup.make(SlowPage)
+      const started = yield* Deferred.make<void>()
+      const interrupted = yield* Deferred.make<void>()
+      const client = yield* makeRpcTestClient(slowGroup, {
+        'diagnostics.slow-page': Effect.fn('TestRpc.diagnostics.slow-page')(
+          function* () {
+            yield* Deferred.succeed(started, undefined)
+            return yield* Effect.never
+          },
+          Effect.onInterrupt(() => Deferred.succeed(interrupted, undefined).pipe(Effect.asVoid)),
+        ),
+      })
+      const queryClient = new QueryClient()
+      const utils = createRpcQueryUtils(slowGroup, {
+        client,
+        keyPrefix: ['app'] as const,
+      })
+      const options = utils.diagnostics['slow-page'].infiniteOptions({
+        getNextPageParam: () => undefined,
+        initialPageParam: 0,
+        input: (cursor: number) => ({ cursor }),
+      })
+
+      const query = queryClient.fetchInfiniteQuery(options)
+      yield* Deferred.await(started)
+      yield* Effect.promise(() => queryClient.cancelQueries({ queryKey: options.queryKey }))
+      yield* Deferred.await(interrupted)
+      yield* Effect.promise(() => expect(query).rejects.toBeInstanceOf(CancelledError))
+    }),
+  )
+
   it.effect('passes user callback errors through untouched', () =>
     Effect.gen(function* () {
       const callbackError = new Error('select failed')
@@ -332,6 +446,71 @@ describe('createRpcQueryUtils execution boundaries', () => {
       expect(Equal.equals((error as EffectRpcQueryError<unknown>).cause, directExit.cause)).toBe(
         true,
       )
+    }),
+  )
+
+  it.effect('preserves declared-failure and defect Causes from infinite pages', () =>
+    Effect.gen(function* () {
+      const Declared = Rpc.make('pages.declared', {
+        success: Schema.String,
+        error: Schema.Literal('declared-failure'),
+      })
+      const Defect = Rpc.make('pages.defect', { success: Schema.String })
+      const failureGroup = RpcGroup.make(Declared, Defect)
+      const defect = new Error('page defect')
+      const client = yield* makeRpcTestClient(failureGroup, {
+        'pages.declared': () => Effect.fail('declared-failure' as const),
+        'pages.defect': () => Effect.die(defect),
+      })
+      const utils = createRpcQueryUtils(failureGroup, {
+        client,
+        keyPrefix: ['app'] as const,
+      })
+
+      const failures = [
+        {
+          directExit: yield* Effect.exit(client('pages.declared', undefined as never)),
+          query: () =>
+            new QueryClient({ defaultOptions: { queries: { retry: false } } })
+              .fetchInfiniteQuery(
+                utils.pages.declared.infiniteOptions({
+                  getNextPageParam: () => undefined,
+                  initialPageParam: 0,
+                }),
+              )
+              .catch((value: unknown) => value),
+          tag: 'pages.declared',
+        },
+        {
+          directExit: yield* Effect.exit(client('pages.defect', undefined as never)),
+          query: () =>
+            new QueryClient({ defaultOptions: { queries: { retry: false } } })
+              .fetchInfiniteQuery(
+                utils.pages.defect.infiniteOptions({
+                  getNextPageParam: () => undefined,
+                  initialPageParam: 0,
+                }),
+              )
+              .catch((value: unknown) => value),
+          tag: 'pages.defect',
+        },
+      ] as const
+
+      for (const { directExit, query, tag } of failures) {
+        if (Exit.isSuccess(directExit)) {
+          throw new Error(`Expected ${tag} to fail`)
+        }
+        const error = yield* Effect.promise(query)
+
+        expect(error).toMatchObject({
+          _tag: 'EffectRpcQueryError',
+          operation: 'infinite',
+          rpcTag: tag,
+        })
+        expect(Equal.equals((error as EffectRpcQueryError<unknown>).cause, directExit.cause)).toBe(
+          true,
+        )
+      }
     }),
   )
 

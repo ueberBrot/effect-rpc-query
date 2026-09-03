@@ -15,6 +15,11 @@ export class SeedUser extends Schema.Class<SeedUser>('SeedUser')({
   name: Schema.String,
 }) {}
 
+export class UserPage extends Schema.Class<UserPage>('UserPage')({
+  nextCursor: Schema.NullOr(Schema.Int),
+  users: Schema.Array(User),
+}) {}
+
 export class DiagnosticFailure extends Schema.TaggedError<DiagnosticFailure>()(
   'DiagnosticFailure',
   {
@@ -48,6 +53,14 @@ const UsersGet = Rpc.make('users.get', {
 
 const UsersList = Rpc.make('users.list', {
   success: Schema.Array(User),
+})
+
+const UsersPage = Rpc.make('users.page', {
+  payload: {
+    cursor: Schema.Int,
+    pageSize: Schema.Int,
+  },
+  success: UserPage,
 })
 
 const UsersCreate = Rpc.make('users.create', {
@@ -113,6 +126,7 @@ const DiagnosticsStream = Rpc.make('diagnostics.stream', {
 export const exampleRpcGroup = RpcGroup.make(
   UsersGet,
   UsersList,
+  UsersPage,
   UsersCreate,
   UsersDelete,
   TestingReset,

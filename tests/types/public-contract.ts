@@ -1,14 +1,18 @@
 // fallow-ignore-file code-duplication
 // This fixture stays self-contained so built-declaration checks exercise the full public contract.
 import {
+  type InfiniteData,
   MutationObserver,
   QueryClient,
   skipToken as queryCoreSkipToken,
 } from '@tanstack/query-core'
 import {
   skipToken as reactQuerySkipToken,
+  useInfiniteQuery,
+  usePrefetchInfiniteQuery,
   usePrefetchQuery,
   useQuery,
+  useSuspenseInfiniteQuery,
   useSuspenseQuery,
 } from '@tanstack/react-query'
 import { Context, Effect, Schema } from 'effect'
@@ -45,6 +49,20 @@ const GetUser = Rpc.make('users.get', {
 })
 
 const Ping = Rpc.make('health.ping', { success: Schema.Void })
+const ListPages = Rpc.make('users.pages', {
+  payload: {
+    cursor: Schema.Int,
+    locale: Schema.String.pipe(
+      Schema.optionalKey,
+      Schema.withConstructorDefault(Effect.succeed('en')),
+    ),
+  },
+  success: Schema.Struct({
+    nextCursor: Schema.NullOr(Schema.Int),
+    users: Schema.Array(Schema.Struct({ id: Schema.Int, name: Schema.String })),
+  }),
+  error: Schema.Literal('page-failure'),
+})
 const Secure = Rpc.make('admin.secure', {
   success: Schema.String,
 }).middleware(AuthMiddleware)
@@ -103,6 +121,7 @@ const ClassRead = Rpc.make('classes.read', {
 
 const group = RpcGroup.make(
   GetUser,
+  ListPages,
   Ping,
   Secure,
   Watch,
@@ -136,7 +155,14 @@ type Equal<Left, Right> =
     ? true
     : false
 type Assert<Condition extends true> = Condition
-type ExpectedLeafInterface = 'key' | 'mutationKey' | 'mutationOptions' | 'queryKey' | 'queryOptions'
+type ExpectedLeafInterface =
+  | 'infiniteKey'
+  | 'infiniteOptions'
+  | 'key'
+  | 'mutationKey'
+  | 'mutationOptions'
+  | 'queryKey'
+  | 'queryOptions'
 type ExactLeafInterface = Assert<
   Equal<keyof (typeof utils)['projects']['by-id']['find'], ExpectedLeafInterface>
 >
@@ -207,6 +233,116 @@ createRpcQueryUtils(group, {
 })
 
 const queryClient = new QueryClient()
+
+const infiniteOptions = utils.users.pages.infiniteOptions({
+  getNextPageParam: (lastPage, allPages, lastPageParam, allPageParams) => {
+    lastPage satisfies {
+      readonly nextCursor: number | null
+      readonly users: ReadonlyArray<{ readonly id: number; readonly name: string }>
+    }
+    allPages satisfies ReadonlyArray<typeof lastPage>
+    lastPageParam satisfies number
+    allPageParams satisfies ReadonlyArray<number>
+    return lastPage.nextCursor ?? undefined
+  },
+  getPreviousPageParam: (_firstPage, _allPages, firstPageParam, allPageParams) => {
+    firstPageParam satisfies number
+    allPageParams satisfies ReadonlyArray<number>
+    return firstPageParam > 0 ? firstPageParam - 1 : undefined
+  },
+  initialPageParam: 0,
+  input: (cursor: number) => ({ cursor }),
+  meta: { source: 'fixture' },
+  networkMode: 'offlineFirst',
+  retry: (_count, error) => {
+    error satisfies EffectRpcQueryError<'page-failure'>
+    return false
+  },
+  select: (data) => data.pages.flatMap((page) => page.users.map((user) => user.name)),
+})
+const infiniteHook = useInfiniteQuery(infiniteOptions)
+const infiniteHookData: ReadonlyArray<string> | undefined = infiniteHook.data
+infiniteHook.error satisfies EffectRpcQueryError<'page-failure'> | null
+void infiniteHookData
+
+const fetchableInfiniteOptions = utils.users.pages.infiniteOptions({
+  getNextPageParam: (lastPage) => lastPage.nextCursor ?? undefined,
+  initialPageParam: 0,
+  input: (cursor: number) => ({ cursor }),
+})
+const fetchedPages: Promise<
+  InfiniteData<
+    {
+      readonly nextCursor: number | null
+      readonly users: ReadonlyArray<{ readonly id: number; readonly name: string }>
+    },
+    number
+  >
+> = queryClient.fetchInfiniteQuery(fetchableInfiniteOptions)
+void fetchedPages
+usePrefetchInfiniteQuery(fetchableInfiniteOptions)
+
+const infiniteKey = utils.users.pages.infiniteKey({ cursor: 0 })
+infiniteKey satisfies readonly ['app', 'users', 'pages', 'infinite', JsonValue]
+const cachedPages = queryClient.getQueryData(fetchableInfiniteOptions.queryKey)
+cachedPages?.pageParams satisfies ReadonlyArray<number> | undefined
+cachedPages?.pages satisfies
+  | ReadonlyArray<{
+      readonly nextCursor: number | null
+      readonly users: ReadonlyArray<{ readonly id: number; readonly name: string }>
+    }>
+  | undefined
+queryClient.invalidateQueries({ queryKey: infiniteKey })
+queryClient.refetchQueries({ queryKey: fetchableInfiniteOptions.queryKey })
+
+const skippedInfinite = utils.users.pages.infiniteOptions({
+  getNextPageParam: () => undefined,
+  initialPageParam: 0,
+  input: skipToken,
+})
+skippedInfinite.queryFn satisfies typeof queryCoreSkipToken
+useInfiniteQuery(skippedInfinite)
+// @ts-expect-error suspense infinite queries cannot use the skip sentinel
+useSuspenseInfiniteQuery(skippedInfinite)
+// @ts-expect-error prefetch-only infinite hooks cannot use the skip sentinel
+usePrefetchInfiniteQuery(skippedInfinite)
+
+const payloadlessInfinite = utils.health.ping.infiniteOptions({
+  getNextPageParam: () => undefined,
+  initialPageParam: 0,
+})
+const payloadlessPages: Promise<InfiniteData<null, number>> =
+  queryClient.fetchInfiniteQuery(payloadlessInfinite)
+void payloadlessPages
+
+// @ts-expect-error payload-bearing infinite queries require an input mapper or skipToken
+utils.users.pages.infiniteOptions({ getNextPageParam: () => undefined, initialPageParam: 0 })
+utils.health.ping.infiniteOptions({
+  getNextPageParam: () => undefined,
+  initialPageParam: 0,
+  // @ts-expect-error payloadless infinite queries do not accept an input mapper
+  input: () => undefined,
+})
+utils.users.pages.infiniteOptions<number, never>({
+  getNextPageParam: () => undefined,
+  initialPageParam: 0,
+  // @ts-expect-error infinite input mappers must return the RPC payload constructor input
+  input: () => ({ cursor: 'invalid' }),
+})
+utils.users.pages.infiniteOptions<number, never>({
+  getNextPageParam: () => undefined,
+  initialPageParam: 0,
+  input: (cursor: number) => ({ cursor }),
+  // @ts-expect-error the package owns the infinite-query function
+  queryFn: async () => ({ nextCursor: null, users: [] }),
+})
+utils.users.pages.infiniteOptions<number, never>({
+  getNextPageParam: () => undefined,
+  initialPageParam: 0,
+  input: (cursor: number) => ({ cursor }),
+  // @ts-expect-error the package owns the infinite-query key
+  queryKey: ['custom'],
+})
 
 const selected = utils.users.get.queryOptions({
   input: { id: 1 },
