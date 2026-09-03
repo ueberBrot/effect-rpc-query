@@ -35,7 +35,14 @@ describe('TanStack Start server rendering', () => {
 
       expect(html).toContain('Ada Lovelace')
       expect(html).toContain('Edsger Dijkstra')
+      expect(html).toMatch(/Infinite users:.*Ada Lovelace/)
       expect(queryClient.getQueryData(rpcQuery.users.list.queryKey())).toHaveLength(2)
+      expect(
+        queryClient.getQueryData(rpcQuery.users.page.infiniteKey({ cursor: 0, pageSize: 1 })),
+      ).toMatchObject({
+        pageParams: [0],
+        pages: [{ users: [{ name: 'Ada Lovelace' }] }],
+      })
     } finally {
       await router.options.context.dispose()
     }

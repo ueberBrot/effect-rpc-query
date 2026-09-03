@@ -56,6 +56,18 @@ test.describe('TanStack Start application', () => {
     expect(browserListRequests).toBe(0)
   })
 
+  test('hydrates and advances an infinite query', async ({ page }) => {
+    await expect(page.getByText('Infinite users: Ada Lovelace')).toBeVisible()
+
+    const nextPageResponse = page.waitForResponse(
+      (response) => response.ok() && recordsRpc(response.request().postData(), 'users.page'),
+    )
+    await page.getByRole('button', { name: 'Load next user page' }).click()
+    await nextPageResponse
+
+    await expect(page.getByText('Infinite users: Ada Lovelace, Edsger Dijkstra')).toBeVisible()
+  })
+
   test('mutates and invalidates the hydrated users query', async ({ page }) => {
     const listResponse = page.waitForResponse(
       (response) => response.ok() && recordsRpc(response.request().postData(), 'users.list'),

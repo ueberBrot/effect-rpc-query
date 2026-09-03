@@ -99,6 +99,19 @@ describe('createRpcQueryUtils', () => {
         queryKey: ['app', 'users', 'get', 'query'],
       })
       expect(skipped.queryKeyHashFn(skipped.queryKey)).toBe(JSON.stringify(skipped.queryKey))
+
+      const skippedInfinite = utils.users.get.infiniteOptions({
+        getNextPageParam: () => undefined,
+        initialPageParam: 0,
+        input: skipToken,
+      })
+      expect(skippedInfinite).toMatchObject({
+        queryFn: queryCoreSkipToken,
+        queryKey: ['app', 'users', 'get', 'infinite'],
+      })
+      expect(skippedInfinite.queryKeyHashFn(skippedInfinite.queryKey)).toBe(
+        JSON.stringify(skippedInfinite.queryKey),
+      )
     }),
   )
 
@@ -119,6 +132,8 @@ describe('createRpcQueryUtils', () => {
       expect(Object.getPrototypeOf(utils)).toBe(Object.prototype)
       expect(Reflect.ownKeys(utils)).toEqual(['key', 'status', 'billing-history'])
       expect(Object.keys(utils['billing-history']['list all']).sort()).toEqual([
+        'infiniteKey',
+        'infiniteOptions',
         'key',
         'mutationKey',
         'mutationOptions',
@@ -142,8 +157,21 @@ describe('createRpcQueryUtils', () => {
         keyPrefix: ['app'] as const,
       })
       const queryMeta = { source: 'caller' }
+      const infiniteMeta = { source: 'infinite-caller' }
       const mutationMeta = { source: 'caller' }
 
+      const firstInfinite = utils.users.get.infiniteOptions({
+        getNextPageParam: () => undefined,
+        initialPageParam: 0,
+        input: (id: number) => ({ id }),
+        meta: infiniteMeta,
+      })
+      const secondInfinite = utils.users.get.infiniteOptions({
+        getNextPageParam: () => undefined,
+        initialPageParam: 0,
+        input: (id: number) => ({ id }),
+        meta: infiniteMeta,
+      })
       const firstQuery = utils.users.get.queryOptions({ input: { id: 1 }, meta: queryMeta })
       const secondQuery = utils.users.get.queryOptions({ input: { id: 1 }, meta: queryMeta })
       const firstMutation = utils.users.get.mutationOptions({ meta: mutationMeta })
@@ -152,12 +180,16 @@ describe('createRpcQueryUtils', () => {
       expect(Object.isFrozen(utils)).toBe(true)
       expect(Object.isFrozen(utils.users)).toBe(true)
       expect(Object.isFrozen(utils.users.get)).toBe(true)
+      expect(Object.isFrozen(firstInfinite)).toBe(false)
       expect(Object.isFrozen(firstQuery)).toBe(false)
       expect(Object.isFrozen(firstMutation)).toBe(false)
+      expect(firstInfinite).not.toBe(secondInfinite)
       expect(firstQuery).not.toBe(secondQuery)
       expect(firstMutation).not.toBe(secondMutation)
+      expect(firstInfinite.meta).toBe(infiniteMeta)
       expect(firstQuery.meta).toBe(queryMeta)
       expect(firstMutation.meta).toBe(mutationMeta)
+      expect(Object.isFrozen(infiniteMeta)).toBe(false)
       expect(Object.isFrozen(queryMeta)).toBe(false)
       expect(Object.isFrozen(mutationMeta)).toBe(false)
     }),

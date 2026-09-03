@@ -1,20 +1,33 @@
-import { useMutation, useSuspenseQuery } from '@tanstack/react-query'
+import { useMutation, useSuspenseInfiniteQuery, useSuspenseQuery } from '@tanstack/react-query'
 import { createFileRoute } from '@tanstack/react-router'
 import { useState } from 'react'
 
 import { ActionButton } from '../components/action-button.tsx'
 import { PageLayout, Panel } from '../components/page-layout.tsx'
+import type { TanStackStartApplication } from '../lib/application.ts'
+
+const userPagesOptions = (rpcQuery: TanStackStartApplication['rpcQuery']) =>
+  rpcQuery.users.page.infiniteOptions({
+    getNextPageParam: (lastPage) => lastPage.nextCursor ?? undefined,
+    initialPageParam: 0,
+    input: (cursor: number) => ({ cursor, pageSize: 1 }),
+  })
 
 export const Route = createFileRoute('/')({
   component: UsersPage,
   loader: async ({ context }) => {
-    await context.queryClient.ensureQueryData(context.rpcQuery.users.list.queryOptions())
+    await Promise.all([
+      context.queryClient.ensureQueryData(context.rpcQuery.users.list.queryOptions()),
+      context.queryClient.ensureInfiniteQueryData(userPagesOptions(context.rpcQuery)),
+    ])
   },
 })
 
 function UsersPage() {
   const { queryClient, rpcQuery } = Route.useRouteContext()
   const users = useSuspenseQuery(rpcQuery.users.list.queryOptions())
+  const userPages = useSuspenseInfiniteQuery(userPagesOptions(rpcQuery))
+  const infiniteUsers = userPages.data.pages.flatMap((page) => page.users)
   const [message, setMessage] = useState<string>()
   const invalidateUsers = () => queryClient.invalidateQueries({ queryKey: rpcQuery.users.key() })
   const seedUsers = useMutation(
@@ -56,7 +69,17 @@ function UsersPage() {
           <p className="mt-3 text-sm leading-6 text-slate-600">
             Generated key helpers target the users cache after each mutation.
           </p>
+          <p className="mt-3 text-sm leading-6 text-slate-600">
+            Infinite users: {infiniteUsers.map((user) => user.name).join(', ')}
+          </p>
           <div className="mt-5 flex flex-wrap gap-3">
+            <ActionButton
+              disabled={!userPages.hasNextPage || userPages.isFetchingNextPage}
+              onClick={() => void userPages.fetchNextPage()}
+              type="button"
+            >
+              Load next user page
+            </ActionButton>
             <ActionButton
               onClick={() =>
                 seedUsers.mutate({

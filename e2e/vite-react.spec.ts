@@ -25,6 +25,18 @@ test.describe('plain Vite React application', () => {
     await expect(page.getByText('Ada Lovelace', { exact: true })).toBeVisible()
   })
 
+  test('loads and accumulates infinite-query pages', async ({ page }) => {
+    await expect(page.getByText('Infinite users: Ada Lovelace')).toBeVisible()
+
+    const nextPageResponse = page.waitForResponse(
+      (response) => response.ok() && recordsRpc(response.request().postData(), 'users.page'),
+    )
+    await page.getByRole('button', { name: 'Load next user page' }).click()
+    await nextPageResponse
+
+    await expect(page.getByText('Infinite users: Ada Lovelace, Edsger Dijkstra')).toBeVisible()
+  })
+
   test('mutates users and explicitly invalidates through generated keys', async ({ page }) => {
     await page.getByRole('button', { name: 'Seed users' }).click()
     await expect(page.getByText('Grace Hopper', { exact: true })).toBeVisible()

@@ -14,6 +14,8 @@ import type { CreateRpcQueryUtilsOptions, JsonValue, RpcQueryUtils, RunPromiseEx
 const reservedPathSegments = new Set([
   '__proto__',
   'constructor',
+  'infiniteKey',
+  'infiniteOptions',
   'key',
   'mutationKey',
   'mutationOptions',
@@ -234,7 +236,7 @@ const preparePayload = (
 
 const execute = async (
   rpc: AdaptedUnaryRpc,
-  operation: 'mutation' | 'query',
+  operation: 'infinite' | 'mutation' | 'query',
   input: unknown,
   runPromiseExit: RunPromiseExit<unknown>,
   signal?: AbortSignal,
@@ -248,7 +250,7 @@ const execute = async (
   }
 
   // TanStack rejects successful undefined query data; mutations keep it unchanged.
-  return operation === 'query' && exit.value === undefined ? null : exit.value
+  return operation !== 'mutation' && exit.value === undefined ? null : exit.value
 }
 
 const defineKey = (target: Record<string, unknown>, parts: ReadonlyArray<JsonValue | string>) => {
@@ -281,8 +283,53 @@ const createLeaf = (
   runPromiseExit: RunPromiseExit<unknown>,
 ) => {
   const rpcKey = freezeKey(rpcKeyParts)
+  const infiniteOperationKey = freezeKey([...rpcKey, 'infinite'])
   const queryOperationKey = freezeKey([...rpcKey, 'query'])
   const mutationKey = freezeKey([...rpcKey, 'mutation'])
+
+  const infiniteKey = (input?: unknown) =>
+    prepareQuery(rpc, input, infiniteOperationKey, keyEncoder).key
+
+  const infiniteOptions = (argument: Record<string, unknown>) => {
+    const options = { ...argument }
+    const input = options['input']
+    delete options['input']
+
+    if (rpc.keyPayload._tag !== 'Payloadless' && input === skipToken) {
+      return {
+        ...options,
+        queryFn: skipToken,
+        queryKey: infiniteOperationKey,
+        queryKeyHashFn: hashCanonicalKey,
+      }
+    }
+
+    const initialPageParam = options['initialPageParam']
+    const inputForPage =
+      rpc.keyPayload._tag === 'Payloadless'
+        ? () => undefined
+        : (input as (pageParam: unknown) => unknown)
+    const initialInput = inputForPage(initialPageParam)
+    const prepared = prepareQuery(rpc, initialInput, infiniteOperationKey, keyEncoder)
+
+    return {
+      ...options,
+      queryFn: ({
+        pageParam,
+        signal,
+      }: {
+        readonly pageParam: unknown
+        readonly signal: AbortSignal
+      }) => {
+        const pageInput = inputForPage(pageParam)
+        const normalizedInput =
+          rpc.keyPayload._tag === 'Payloadless' ? undefined : rpc.keyPayload.make(pageInput)
+        return execute(rpc, 'infinite', normalizedInput, runPromiseExit, signal)
+      },
+      queryKey: prepared.key,
+      queryKeyHashFn: hashCanonicalKey,
+    }
+  }
 
   const queryKey = (input?: unknown) => prepareQuery(rpc, input, queryOperationKey, keyEncoder).key
 
@@ -321,6 +368,8 @@ const createLeaf = (
   })
 
   return Object.freeze({
+    infiniteKey,
+    infiniteOptions,
     key: () => rpcKey,
     mutationKey: () => mutationKey,
     mutationOptions,
