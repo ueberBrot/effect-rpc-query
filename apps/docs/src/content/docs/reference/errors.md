@@ -29,6 +29,6 @@ of these codes:
 
 Thrown when the RPC runner returns a failed `Exit`. It exposes `rpcTag`, `operation`, and the full
 `Cause.Cause<E>`. Use `isEffectRpcQueryError(value)` as the runtime guard within one JavaScript
-realm; the guard uses `instanceof`.
+realm; the guard uses `instanceof`. The operation is `query`, `infinite`, or `mutation`.
 
 A rejected runner promise passes through unchanged because no Effect `Cause` exists to preserve.

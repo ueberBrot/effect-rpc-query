@@ -3,8 +3,8 @@ title: Handle Failures
 description: Inspect RPC Causes and distinguish configuration and key errors.
 ---
 
-A failed RPC `Exit` becomes `EffectRpcQueryError`. The error records the RPC tag, whether a query or
-mutation ran, and the complete Effect `Cause`:
+A failed RPC `Exit` becomes `EffectRpcQueryError`. The error records the RPC tag, whether a query,
+infinite query, or mutation ran, and the complete Effect `Cause`:
 
 ```ts
 import { Cause } from 'effect'

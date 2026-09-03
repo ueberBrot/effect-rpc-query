@@ -33,7 +33,8 @@ await createUser.mutate({ name: 'Ada' })
 ```
 
 Dotted tags become nested paths: `users.get` becomes `rpcQuery.users.get`. Each unary RPC leaf has
-`key`, `queryKey`, `mutationKey`, `queryOptions`, and `mutationOptions` builders.
+`key`, `queryKey`, `infiniteKey`, `mutationKey`, `queryOptions`, `infiniteOptions`, and
+`mutationOptions` builders.
 
 When the application stops, cancel active queries before disposing the ready RPC client:
 

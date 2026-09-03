@@ -16,7 +16,8 @@ description: Supported runtimes, frameworks, RPC shapes, and stability boundarie
 ## Limits
 
 - Only unary RPCs appear in the utility tree. Streaming RPCs are omitted.
-- The package has no infinite-query builder or page-parameter contract.
+- Infinite queries map each TanStack `pageParam` to one unary RPC payload. They do not adapt
+  streaming RPCs or AsyncIterables.
 - Leaves expose option and key builders, not a direct RPC execution helper.
 - The caller owns RPC client acquisition, `Scope`, transport, Query Client, providers, router, SSR,
   hydration, and disposal.
