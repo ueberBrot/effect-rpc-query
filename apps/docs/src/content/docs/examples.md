@@ -4,7 +4,8 @@ description: Run the repository's React Query and TanStack Start applications.
 ---
 
 The repository contains two complete applications. Both use the same contracts and Effect RPC
-handler implementation, but each hosts HTTP differently.
+handler implementation, but each hosts HTTP differently. Both RPC endpoints accept request bodies
+up to 1 MiB and return HTTP 413 for larger bodies.
 
 | Example                                                                                           | Demonstrates                                                                                         | RPC host                                          | Application URL         |
 | ------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------- | ------------------------------------------------- | ----------------------- |
@@ -27,6 +28,10 @@ vp run tanstack-start-dev
 
 This task starts one full-stack process. The browser and server-rendering client both call the
 Start-owned `/rpc` route.
+
+Server rendering uses `http://127.0.0.1:3000/rpc`. If the Start server listens elsewhere, set the
+server-only `EXAMPLE_RPC_ORIGIN` environment variable to its HTTP(S) origin, without a path,
+credentials, query, or fragment. The browser uses the relative `/rpc` endpoint.
 
 ## Build the examples
 

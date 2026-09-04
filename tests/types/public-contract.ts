@@ -16,6 +16,7 @@ import {
   useSuspenseQuery,
 } from '@tanstack/react-query'
 import { Context, Effect, Schema } from 'effect'
+import type { Redacted } from 'effect'
 import {
   createRpcQueryUtils,
   EffectRpcQueryEmptyStreamError,
@@ -121,6 +122,48 @@ const SecretList = Rpc.make('secrets.list', {
   payload: Schema.Array(Schema.Union([Schema.String, Schema.Redacted(Schema.String)])),
   success: Schema.String,
 })
+
+interface RecursiveSecret {
+  readonly children: readonly RecursiveSecret[]
+  readonly secret: Redacted.Redacted<string>
+}
+const RecursiveSecret = Schema.Struct({
+  children: Schema.Array(
+    Schema.suspend((): Schema.Codec<RecursiveSecret, unknown> => RecursiveSecret),
+  ),
+  secret: Schema.RedactedFromValue(Schema.String),
+})
+const recursiveSecretGroup = RpcGroup.make(
+  Rpc.make('recursive.read', {
+    payload: RecursiveSecret,
+    success: Schema.String,
+  }),
+)
+declare const recursiveSecretClient: RpcClient.RpcClient.Flat<
+  RpcGroup.Rpcs<typeof recursiveSecretGroup>
+>
+// @ts-expect-error recursive redacted payloads require a safe key encoder
+createRpcQueryUtils(recursiveSecretGroup, { client: recursiveSecretClient, keyPrefix: ['app'] })
+createRpcQueryUtils(recursiveSecretGroup, {
+  client: recursiveSecretClient,
+  keyPrefix: ['app'],
+  keyEncoders: { 'recursive.read': () => 'subject' },
+})
+
+const nestedSecretGroup = RpcGroup.make(
+  Rpc.make('nested.read', {
+    payload: Schema.Struct({
+      value: Schema.Union([
+        Schema.String,
+        Schema.Struct({ value: Schema.String, secret: Schema.RedactedFromValue(Schema.String) }),
+      ]),
+    }),
+    success: Schema.String,
+  }),
+)
+declare const nestedSecretClient: RpcClient.RpcClient.Flat<RpcGroup.Rpcs<typeof nestedSecretGroup>>
+// @ts-expect-error nested redacted payloads require a safe encoder even when assignable to an ancestor
+createRpcQueryUtils(nestedSecretGroup, { client: nestedSecretClient, keyPrefix: ['app'] })
 
 class ClassPayload extends Schema.Class<ClassPayload>('ClassPayload')({
   id: Schema.Finite,

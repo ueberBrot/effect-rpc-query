@@ -1,4 +1,5 @@
 import { describe, expect, it } from '@effect/vitest'
+import { dehydrate, hydrate, QueryClient } from '@tanstack/query-core'
 import { Effect, Schema, SchemaTransformation } from 'effect'
 import { Rpc, RpcGroup } from 'effect/unstable/rpc'
 
@@ -12,6 +13,30 @@ import {
 import { group, makeClient, makeRpcTestClient } from './fixtures/effect-rpc'
 
 describe('createRpcQueryUtils semantic keys', () => {
+  it.effect(
+    'shares cache identity across generated options, key-only operations, and hydration',
+    () =>
+      Effect.gen(function* () {
+        const client = yield* makeClient()
+        const utils = createRpcQueryUtils(group, {
+          client,
+          keyPrefix: ['app', { z: 2, a: [1] }],
+        })
+        const options = utils.users.get.queryOptions({ input: { id: 1 } })
+        const queryClient = new QueryClient()
+        const user = yield* Effect.promise(() => queryClient.fetchQuery(options))
+        expect(queryClient.getQueryData(options.queryKey)).toEqual(user)
+        queryClient.setQueryData(options.queryKey, { ...user, name: 'Updated' })
+        expect(
+          queryClient.getQueryCache().find({ queryKey: options.queryKey, exact: true })?.state.data,
+        ).toEqual({ ...user, name: 'Updated' })
+        expect(queryClient.getQueryCache().findAll({ queryKey: utils.key() })).toHaveLength(1)
+        const hydrated = new QueryClient()
+        hydrate(hydrated, JSON.parse(JSON.stringify(dehydrate(queryClient))))
+        expect(hydrated.getQueryData(options.queryKey)).toEqual({ ...user, name: 'Updated' })
+      }),
+  )
+
   it.effect('owns a normalized, deeply frozen copy of the key prefix', () =>
     Effect.gen(function* () {
       const mutableNamespace = {

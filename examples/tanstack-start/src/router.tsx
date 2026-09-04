@@ -1,6 +1,5 @@
 import { createRouter, type RouterHistory } from '@tanstack/react-router'
 import { createIsomorphicFn } from '@tanstack/react-start'
-import { getRequestUrl } from '@tanstack/react-start/server'
 
 import { ErrorPage, NotFoundPage, PendingPage } from './components/router-status.tsx'
 import { startTanStackStartApplication, type TanStackStartApplication } from './lib/application.ts'
@@ -61,7 +60,20 @@ export const createTanStackStartRouter = async (options: CreateTanStackStartRout
 }
 
 const rpcUrl = createIsomorphicFn()
-  .server(() => new URL('/rpc', getRequestUrl()).href)
+  .server(() => {
+    const origin = new URL(process.env['EXAMPLE_RPC_ORIGIN'] ?? 'http://127.0.0.1:3000')
+    if (
+      !['http:', 'https:'].includes(origin.protocol) ||
+      origin.username !== '' ||
+      origin.password !== '' ||
+      origin.pathname !== '/' ||
+      origin.search !== '' ||
+      origin.hash !== ''
+    ) {
+      throw new Error('EXAMPLE_RPC_ORIGIN must be an HTTP(S) origin without credentials')
+    }
+    return new URL('/rpc', origin).href
+  })
   .client(() => '/rpc')
 
 export const getRouter = () => createTanStackStartRouter({ rpcUrl: rpcUrl() })

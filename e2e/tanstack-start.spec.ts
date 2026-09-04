@@ -1,10 +1,56 @@
 import { expect, test } from '@playwright/test'
+import { createServer, request as nodeRequest } from 'node:http'
 
 import {
   prepareExampleApplication,
   recordsRpc,
   tanStackStartApplication,
 } from './example-application.ts'
+
+test('Start rejects an oversized upload before the sender ends the request', async () => {
+  const status = await new Promise<number | undefined>((resolve, reject) => {
+    const request = nodeRequest(
+      `${tanStackStartApplication.url}/rpc`,
+      { method: 'POST' },
+      (response) => {
+        response.resume()
+        response.once('end', () => {
+          request.destroy()
+          resolve(response.statusCode)
+        })
+      },
+    )
+    request.once('error', reject)
+    request.setTimeout(1000, () => request.destroy(new Error('Request timed out')))
+    request.write(' '.repeat(1024 * 1024 + 1))
+  })
+  expect(status).toBe(413)
+})
+
+test('SSR keeps its RPC destination independent of incoming host headers', async ({ request }) => {
+  let redirectedRequests = 0
+  const destination = createServer((_request, response) => {
+    redirectedRequests += 1
+    response.writeHead(500).end()
+  })
+  await new Promise<void>((resolve) => destination.listen(0, '127.0.0.1', resolve))
+  try {
+    const address = destination.address()
+    if (address === null || typeof address === 'string') throw new Error('Expected TCP listener')
+    const host = `127.0.0.1:${String(address.port)}`
+    const response = await request.get(`${tanStackStartApplication.url}/details`, {
+      headers: { host, 'x-forwarded-host': host, 'x-forwarded-proto': 'http' },
+    })
+    expect(redirectedRequests).toBe(0)
+    expect(response.ok()).toBe(true)
+    expect(await response.text()).toContain('Ada Lovelace')
+  } finally {
+    destination.closeAllConnections()
+    await new Promise<void>((resolve, reject) =>
+      destination.close((error) => (error ? reject(error) : resolve())),
+    )
+  }
+})
 
 test.describe('TanStack Start application', () => {
   test.beforeEach(async ({ page }) => prepareExampleApplication(page, tanStackStartApplication))

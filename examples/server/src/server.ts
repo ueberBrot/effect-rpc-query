@@ -25,11 +25,7 @@ const nodeHeaders = (request: IncomingMessage): Headers => {
   return headers
 }
 
-const toWebRequest = (
-  request: IncomingMessage,
-  response: ServerResponse,
-  origin: string,
-): Request => {
+const toWebRequest = (request: IncomingMessage, response: ServerResponse, url: URL): Request => {
   const controller = new AbortController()
   request.once('aborted', () => controller.abort())
   request.once('close', () => {
@@ -41,7 +37,7 @@ const toWebRequest = (
 
   const method = request.method ?? 'GET'
   const hasBody = method !== 'GET' && method !== 'HEAD'
-  return new Request(new URL(request.url ?? '/', origin), {
+  return new Request(url, {
     body: hasBody ? (Readable.toWeb(request) as ReadableStream) : undefined,
     duplex: hasBody ? 'half' : undefined,
     headers: nodeHeaders(request),
@@ -98,7 +94,15 @@ export const startExampleRpcServer = Effect.fn('ExampleRpc.startExampleRpcServer
     const address = server.address()
     const port = typeof address === 'object' && address !== null ? address.port : 0
     const origin = `http://${host}:${String(port)}`
-    const path = new URL(request.url ?? '/', origin).pathname
+    let url: URL
+    try {
+      url = new URL(request.url ?? '/', origin)
+    } catch {
+      response.statusCode = 400
+      response.end()
+      return
+    }
+    const path = url.pathname
     const isRpcPath = path === '/rpc' || path === '/rpc/'
 
     if (request.method === 'GET' && path === '/health') {
@@ -122,7 +126,16 @@ export const startExampleRpcServer = Effect.fn('ExampleRpc.startExampleRpcServer
     }
 
     setCorsHeaders(response)
-    void webHandler(toWebRequest(request, response, origin))
+    let webRequest: Request
+    try {
+      webRequest = toWebRequest(request, response, url)
+    } catch {
+      response.statusCode = 400
+      response.end()
+      return
+    }
+    void Promise.resolve()
+      .then(() => webHandler(webRequest))
       .then((webResponse) => writeWebResponse(webResponse, response))
       .catch((cause: unknown) => {
         console.error(cause)

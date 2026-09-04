@@ -71,6 +71,13 @@ const containsUnsafeKeyEncoding = (value: unknown, seen = new WeakSet<object>())
     if (representation?.id === 'effect/schema/Redacted') {
       return true
     }
+    if (SchemaAST.isSuspend(value)) {
+      try {
+        if (containsUnsafeKeyEncoding(value.thunk(), seen)) return true
+      } catch {
+        return true
+      }
+    }
   }
 
   return Object.values(value).some((child) =>

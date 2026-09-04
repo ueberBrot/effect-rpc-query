@@ -752,17 +752,25 @@ export type RpcQueryUtils<
     : never
 >
 
+export type HasSeenType<A, Seen> = Seen extends unknown
+  ? (<T>() => T extends A ? 1 : 2) extends <T>() => T extends Seen ? 1 : 2
+    ? true
+    : false
+  : never
+
 /** Recursively detects explicit redacted values in a payload's decoded type. */
-export type ContainsRedacted<A> =
+export type ContainsRedacted<A, Seen = never> =
   A extends Redacted.Redacted<unknown>
     ? true
-    : A extends readonly (infer Value)[]
-      ? ContainsRedacted<Value>
-      : A extends object
-        ? true extends { readonly [Key in keyof A]: ContainsRedacted<A[Key]> }[keyof A]
-          ? true
+    : true extends HasSeenType<A, Seen>
+      ? false
+      : A extends readonly (infer Value)[]
+        ? ContainsRedacted<Value, Seen | A>
+        : A extends object
+          ? true extends { readonly [Key in keyof A]: ContainsRedacted<A[Key], Seen | A> }[keyof A]
+            ? true
+            : false
           : false
-        : false
 
 /** Whether default synchronous encoding is unsafe or requires Effect services. */
 export type NeedsKeyEncoder<R extends Rpc.Any> = [PayloadSchema<R>['EncodingServices']] extends [
