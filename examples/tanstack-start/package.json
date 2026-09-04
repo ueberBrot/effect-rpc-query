@@ -9,6 +9,7 @@
   },
   "dependencies": {
     "@effect-rpc-query/contracts": "workspace:*",
+    "@effect-rpc-query/server": "workspace:*",
     "@tanstack/react-query": "catalog:",
     "@tanstack/react-router": "1.170.32",
     "@tanstack/react-router-ssr-query": "1.167.1",
@@ -19,7 +20,6 @@
     "react-dom": "catalog:"
   },
   "devDependencies": {
-    "@effect-rpc-query/server": "workspace:*",
     "@tailwindcss/vite": "catalog:",
     "@testing-library/react": "catalog:",
     "@types/react": "catalog:",

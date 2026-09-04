@@ -127,7 +127,7 @@ export default defineConfig({
       },
       'packed-package': {
         command: [
-          'pnpm --config.ignore-scripts=true pack --pack-destination .artifacts',
+          'vp pm pack --pack-destination .artifacts -- --config.ignore-scripts=true',
           'fallow dead-code --private-type-leaks --file dist/index.d.mts',
           'vp run verify-packed-package',
         ],
@@ -174,13 +174,8 @@ export default defineConfig({
         command: ['vp run check', 'vp run effect-check', 'vp run fallow', 'vp run test'],
       },
       server: {
-        command: 'tsx examples/server/src/main.ts',
+        command: 'vp run --filter @effect-rpc-query/server dev',
         cache: false,
-      },
-      'vite-react': {
-        command: 'pnpm --filter @effect-rpc-query/vite-react dev',
-        cache: false,
-        dependsOn: ['pack'],
       },
       'vite-react-dev': {
         command:
@@ -189,7 +184,7 @@ export default defineConfig({
         dependsOn: ['pack'],
       },
       'vite-react-build': {
-        command: 'pnpm --filter @effect-rpc-query/vite-react build',
+        command: 'vp run --filter @effect-rpc-query/vite-react build',
         dependsOn: ['pack'],
         input: [{ auto: true }, '!examples/vite-react/dist/**'],
         output: ['examples/vite-react/dist/**'],
@@ -199,39 +194,33 @@ export default defineConfig({
         cache: false,
         dependsOn: ['vite-react-build'],
       },
-      'tanstack-start': {
-        command: 'pnpm --filter @effect-rpc-query/tanstack-start dev',
-        cache: false,
-        dependsOn: ['pack'],
-      },
       'tanstack-start-dev': {
-        command:
-          'vp run --parallel --log labeled --filter @effect-rpc-query/server --filter @effect-rpc-query/tanstack-start dev',
+        command: 'vp run --filter @effect-rpc-query/tanstack-start dev',
         cache: false,
         dependsOn: ['pack'],
       },
       'tanstack-start-build': {
-        command: 'pnpm --filter @effect-rpc-query/tanstack-start build',
+        command: 'vp run --filter @effect-rpc-query/tanstack-start build',
         dependsOn: ['pack'],
         input: [{ auto: true }, '!examples/tanstack-start/dist/**'],
         output: ['examples/tanstack-start/dist/**'],
       },
       docs: {
-        command: 'pnpm --filter @effect-rpc-query/docs dev',
+        command: 'vp run --filter @effect-rpc-query/docs dev',
         cache: false,
       },
       'docs-build': {
-        command: 'pnpm --filter @effect-rpc-query/docs build',
+        command: 'vp run --filter @effect-rpc-query/docs build',
         dependsOn: ['docs-check'],
         input: [{ auto: true }, '!apps/docs/dist/**'],
         output: ['apps/docs/dist/**'],
       },
       'docs-check': {
-        command: 'pnpm --filter @effect-rpc-query/docs check',
+        command: 'vp run --filter @effect-rpc-query/docs check',
         output: [],
       },
       'docs-preview': {
-        command: 'pnpm --filter @effect-rpc-query/docs preview',
+        command: 'vp run --filter @effect-rpc-query/docs preview',
         cache: false,
         dependsOn: ['docs-build'],
       },

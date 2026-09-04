@@ -9,7 +9,8 @@ Reopen in Container** in VS Code.
 The container installs the declared Node and pnpm versions with the frozen workspace. It forwards
 ports `3000`, `3001`, `4173`, and `5173` for the examples and previews.
 
-Start either executable application with its shared RPC server:
+Start either executable application. Vite React starts its standalone RPC server, while TanStack
+Start hosts RPC in its own server route:
 
 ```sh
 vp run vite-react-dev

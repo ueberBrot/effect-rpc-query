@@ -15,5 +15,5 @@ React applications also need the React adapter:
 pnpm add @tanstack/react-query
 ```
 
-Review [compatibility and stability](/effect-rpc-query/getting-started/compatibility-and-stability/)
-before continuing to the [quick start](/effect-rpc-query/getting-started/quick-start/).
+Continue with the [quick start](/effect-rpc-query/getting-started/quick-start/). Before adopting the
+package, review [compatibility and stability](/effect-rpc-query/getting-started/compatibility-and-stability/).
