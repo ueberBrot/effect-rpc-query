@@ -5,12 +5,20 @@ This glossary defines the project-specific language for deriving TanStack Query 
 ## Generated API
 
 **RPC utility tree**:
-A nested object derived from literal Effect RPC tags. Branches represent RPC namespaces; unary leaves provide typed key and option builders.
+A nested object derived from literal Effect RPC tags. Branches represent RPC namespaces; unary and streaming leaves provide their typed key and option builders.
 _Avoid_: Router, generated client
 
 **Query data**:
 The successful RPC value presented to TanStack Query. A successful runtime `undefined` becomes `null`; mutation data remains unchanged.
 _Avoid_: RPC success value when it is `undefined`
+
+**Accumulated streamed query**:
+A streaming RPC view that caches every emitted value in order. Refetches may reset, append to, or replace the cached sequence.
+_Avoid_: Live query, infinite query
+
+**Live query**:
+A streaming RPC view that caches only the latest emitted value. Completion preserves that value; completion before the first value produces a package error.
+_Avoid_: Accumulated streamed query, subscription
 
 ## Payloads and keys
 

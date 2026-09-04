@@ -1,11 +1,10 @@
-import { experimental_streamedQuery, skipToken } from '@tanstack/query-core'
+import { skipToken } from '@tanstack/query-core'
 import type { QueryKey } from '@tanstack/query-core'
-import { Cause, Effect, Exit, Stream } from 'effect'
+import { Effect, Exit } from 'effect'
 import type { Rpc, RpcClient, RpcGroup } from 'effect/unstable/rpc'
 
 import {
   EffectRpcQueryConfigError,
-  EffectRpcQueryEmptyStreamError,
   EffectRpcQueryError,
   EffectRpcQueryKeyError,
   type RpcOperation,
@@ -17,6 +16,7 @@ import {
   type AdaptedStreamingRpc,
   type AdaptedUnaryRpc,
 } from './internal/effect-rpc-adapter'
+import { makeStreamQuery } from './internal/streamed-query-adapter'
 import type { CreateRpcQueryUtilsOptions, JsonValue, RpcQueryUtils, RunPromiseExit } from './types'
 
 const reservedPathSegments = new Set([
@@ -265,105 +265,6 @@ const execute = async (
   return operation !== 'mutation' && exit.value === undefined ? null : exit.value
 }
 
-const abortableAsyncIterable = <A>(
-  source: AsyncIterable<A>,
-  signal: AbortSignal,
-): AsyncIterable<A> => ({
-  [Symbol.asyncIterator]() {
-    const iterator = source[Symbol.asyncIterator]()
-    let closePromise: Promise<IteratorResult<A>> | undefined
-    const detach = () => signal.removeEventListener('abort', onAbort)
-    const close = () => {
-      closePromise ??= Promise.resolve(iterator.return?.()).then((result) => {
-        detach()
-        return result ?? ({ done: true, value: undefined } as IteratorResult<A>)
-      })
-      return closePromise
-    }
-    const onAbort = () => {
-      void close().catch(() => undefined)
-    }
-    signal.addEventListener('abort', onAbort, { once: true })
-
-    return {
-      async next() {
-        if (signal.aborted) {
-          return close()
-        }
-        try {
-          const result = await iterator.next()
-          if (result.done) {
-            detach()
-          }
-          return result
-        } catch (cause) {
-          detach()
-          throw cause
-        }
-      },
-      return: close,
-      async throw(cause?: unknown) {
-        detach()
-        if (iterator.throw !== undefined) {
-          return iterator.throw(cause)
-        }
-        await close()
-        throw cause
-      },
-    }
-  },
-})
-
-const requireFirstStreamValue = <A>(
-  source: AsyncIterable<A>,
-  rpcTag: string,
-): AsyncIterable<A> => ({
-  [Symbol.asyncIterator]() {
-    const iterator = source[Symbol.asyncIterator]()
-    let emitted = false
-    return {
-      async next() {
-        const result = await iterator.next()
-        if (result.done && !emitted) {
-          throw new EffectRpcQueryEmptyStreamError(rpcTag)
-        }
-        emitted = true
-        return result
-      },
-      return: (value?: unknown) =>
-        iterator.return?.(value) ?? Promise.resolve({ done: true, value: undefined }),
-      async throw(cause?: unknown) {
-        if (iterator.throw !== undefined) {
-          return iterator.throw(cause)
-        }
-        await iterator.return?.()
-        throw cause
-      },
-    }
-  },
-})
-
-const streamAsyncIterable = async (
-  rpc: AdaptedStreamingRpc,
-  operation: 'live' | 'streamed',
-  input: unknown,
-  runPromiseExit: RunPromiseExit<unknown>,
-  signal: AbortSignal,
-): Promise<AsyncIterable<unknown>> => {
-  const stream = rpc.invoke(input).pipe(
-    Stream.catchCauseIf(
-      (cause) => !Cause.hasInterruptsOnly(cause),
-      (cause) => Stream.fail(new EffectRpcQueryError(rpc.tag, operation, cause)),
-    ),
-  )
-  // Capture the runner's Context so iterator pulls use the caller-owned runtime.
-  const exit = await runPromiseExit(Stream.toAsyncIterableEffect(stream), { signal })
-  if (Exit.isFailure(exit)) {
-    throw new EffectRpcQueryError(rpc.tag, operation, exit.cause)
-  }
-  return abortableAsyncIterable(exit.value, signal)
-}
-
 const defineKey = (target: Record<string, unknown>, parts: ReadonlyArray<JsonValue | string>) => {
   const key = freezeKey(parts)
   target['key'] = () => key
@@ -522,27 +423,15 @@ const createStreamingLeaf = (
     delete options['input']
     delete options['refetchMode']
 
-    const streamFn = async ({ signal }: { readonly signal: AbortSignal }) => {
-      const iterable = await streamAsyncIterable(
-        rpc,
-        operation,
-        prepared.input,
-        runPromiseExit,
-        signal,
-      )
-      return operation === 'live' ? requireFirstStreamValue(iterable, rpc.tag) : iterable
-    }
-    const queryFn =
-      operation === 'live'
-        ? experimental_streamedQuery({
-            initialValue: undefined,
-            reducer: (_latest: unknown, value: unknown) => value,
-            streamFn,
-          })
-        : experimental_streamedQuery({
-            ...(refetchMode === undefined ? {} : { refetchMode }),
-            streamFn,
-          })
+    const queryFn = makeStreamQuery({
+      input: prepared.input,
+      policy:
+        operation === 'live'
+          ? { _tag: 'Live' }
+          : { _tag: 'Accumulated', ...(refetchMode === undefined ? {} : { refetchMode }) },
+      rpc,
+      runPromiseExit,
+    })
 
     return {
       ...options,
