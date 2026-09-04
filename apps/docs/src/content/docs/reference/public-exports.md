@@ -23,6 +23,3 @@ All supported imports come from `effect-rpc-query`.
 | `SkipToken`                      | Type of the exported skip sentinel.                                |
 | `EffectRpcQueryConfigErrorCode`  | Stable configuration error-code union.                             |
 | `EffectRpcQueryKeyErrorCode`     | Stable key error-code union.                                       |
-
-The package does not generate TypeDoc output. This page documents the small public surface directly
-and links each export to its role in the integration.
