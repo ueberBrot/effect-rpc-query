@@ -1,6 +1,6 @@
 ---
 title: Public Exports
-description: Curated reference for the package root exports.
+description: Package-root values and types.
 ---
 
 All supported imports come from `effect-rpc-query`.

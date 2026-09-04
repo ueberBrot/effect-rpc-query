@@ -5,8 +5,7 @@ description: Supported runtimes, frameworks, RPC shapes, and stability boundarie
 
 ## Supported integration boundary
 
-The repository manifest remains at `0.0.0` until the first npm publication. The documented release
-target is `0.1.0`.
+The first npm release targets `0.1.0`; until then, the repository manifest remains at `0.0.0`.
 
 - Effect `4.0.0-rc.112` is the currently tested version.
 - TanStack Query Core `>=5.102.0 <6` is the supported peer range.
