@@ -101,7 +101,7 @@ const adaptKeyPayload = (payloadSchema: Rpc.AnyWithProps['payloadSchema']): Adap
 }
 
 /**
- * Extracts RPCs and isolates the Effect RC's request map, stream check,
+ * Extracts RPCs and isolates the Effect RPC's request map, stream check,
  * payload Schema, and flat-client call shape from the public implementation.
  */
 export const extractRpcs = <Rpcs extends Rpc.Any, ClientError>(

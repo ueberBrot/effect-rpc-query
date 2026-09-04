@@ -120,19 +120,25 @@ describe('createRpcQueryUtils streaming execution', () => {
     }),
   )
 
-  it.effect('preserves stream failure and defect Causes', () =>
+  it.effect('preserves stream, RPC, and defect Causes', () =>
     Effect.gen(function* () {
       const Declared = Rpc.make('events.declared', {
         success: Schema.String,
         error: Schema.Literal('stream-failure'),
         stream: true,
       }).setError(Schema.Literal('rpc-failure'))
+      const StreamFailure = Rpc.make('events.stream-failure', {
+        success: Schema.String,
+        error: Schema.Literal('stream-failure'),
+        stream: true,
+      })
       const Defect = Rpc.make('events.defect', { success: Schema.String, stream: true })
-      const streamGroup = RpcGroup.make(Declared, Defect)
+      const streamGroup = RpcGroup.make(Declared, StreamFailure, Defect)
       const defect = new Error('stream defect')
       const client = yield* makeRpcTestClient(streamGroup, {
         'events.declared': () => Stream.fail('rpc-failure' as const),
         'events.defect': () => Stream.die(defect),
+        'events.stream-failure': () => Stream.fail('stream-failure' as const),
       })
       const utils = createRpcQueryUtils(streamGroup, {
         client,
@@ -146,6 +152,12 @@ describe('createRpcQueryUtils streaming execution', () => {
           fetch: () => queryClient.fetchQuery(utils.events.declared.streamedOptions()),
           operation: 'streamed',
           tag: 'events.declared',
+        },
+        {
+          direct: yield* Effect.exit(Stream.runCollect(client('events.stream-failure', undefined))),
+          fetch: () => queryClient.fetchQuery(utils.events['stream-failure'].streamedOptions()),
+          operation: 'streamed',
+          tag: 'events.stream-failure',
         },
         {
           direct: yield* Effect.exit(Stream.runCollect(client('events.defect', undefined))),
@@ -193,37 +205,42 @@ describe('createRpcQueryUtils streaming execution', () => {
     }),
   )
 
-  it.effect('interrupts and finalizes a stream when Query Core cancels it', () =>
-    Effect.gen(function* () {
-      const Watch = Rpc.make('events.watch', { success: Schema.String, stream: true })
-      const streamGroup = RpcGroup.make(Watch)
-      const waiting = yield* Deferred.make<void>()
-      const finalized = yield* Deferred.make<void>()
-      const source = Stream.make('ready').pipe(
-        Stream.concat(
-          Stream.fromEffect(
-            Deferred.succeed(waiting, undefined).pipe(Effect.andThen(Effect.never)),
+  it('interrupts and finalizes a stream when Query Core cancels it', async () => {
+    const Watch = Rpc.make('events.watch', { success: Schema.String, stream: true })
+    const streamGroup = RpcGroup.make(Watch)
+    const waiting = Effect.runSync(Deferred.make<void>())
+    const interrupted = Effect.runSync(Deferred.make<void>())
+    const finalized = Effect.runSync(Deferred.make<void>())
+    const source = Stream.make('ready').pipe(
+      Stream.concat(
+        Stream.fromEffect(
+          Deferred.succeed(waiting, undefined).pipe(
+            Effect.andThen(Effect.never),
+            Effect.onInterrupt(() => Deferred.succeed(interrupted, undefined).pipe(Effect.asVoid)),
           ),
         ),
-        Stream.ensuring(Deferred.succeed(finalized, undefined).pipe(Effect.asVoid)),
-      )
-      const client = ((_tag: string, _payload: unknown) => source) as RpcClient.RpcClient.Flat<
-        RpcGroup.Rpcs<typeof streamGroup>
-      >
-      const queryClient = new QueryClient()
-      const utils = createRpcQueryUtils(streamGroup, {
-        client,
-        keyPrefix: ['app'] as const,
-      })
-      const options = utils.events.watch.streamedOptions()
+      ),
+      Stream.ensuring(Deferred.succeed(finalized, undefined).pipe(Effect.asVoid)),
+    )
+    const client = ((_tag: string, _payload: unknown) => source) as RpcClient.RpcClient.Flat<
+      RpcGroup.Rpcs<typeof streamGroup>
+    >
+    const queryClient = new QueryClient()
+    const utils = createRpcQueryUtils(streamGroup, {
+      client,
+      keyPrefix: ['app'] as const,
+    })
+    const options = utils.events.watch.streamedOptions()
 
-      const query = queryClient.fetchQuery(options).catch((cause: unknown) => cause)
-      yield* Deferred.await(waiting)
-      yield* Effect.promise(() => queryClient.cancelQueries({ queryKey: options.queryKey }))
-      yield* Deferred.await(finalized)
-      expect(yield* Effect.promise(() => query)).toEqual(['ready'])
-    }),
-  )
+    const query = queryClient.fetchQuery(options).catch((cause: unknown) => cause)
+    await Effect.runPromise(Deferred.await(waiting))
+    await queryClient.cancelQueries({ queryKey: options.queryKey })
+    await new Promise<void>((resolve) => globalThis.setTimeout(resolve, 10))
+
+    expect(Effect.runSync(Deferred.isDone(interrupted))).toBe(true)
+    expect(Effect.runSync(Deferred.isDone(finalized))).toBe(true)
+    expect(await query).toEqual(['ready'])
+  })
 
   it.effect('finalizes the previous active stream before refetching', () =>
     Effect.gen(function* () {
