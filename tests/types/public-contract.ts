@@ -78,7 +78,9 @@ const Watch = Rpc.make('events.watch', {
   success: Schema.String,
   error: Schema.Literal('watch-failure'),
   stream: true,
-}).middleware(AuthMiddleware)
+})
+  .setError(Schema.Literal('watch-rpc-failure'))
+  .middleware(AuthMiddleware)
 const AuditWatch = Rpc.make('events.audit.watch', {
   success: Schema.String,
   stream: true,
@@ -261,14 +263,16 @@ const streamedOptions = utils.events.watch.streamedOptions({
   networkMode: 'offlineFirst',
   refetchMode: 'append',
   retry: (_count, error) => {
-    error satisfies EffectRpcQueryError<'unauthorized' | 'watch-failure'>
+    error satisfies EffectRpcQueryError<'unauthorized' | 'watch-failure' | 'watch-rpc-failure'>
     return false
   },
   select: (values) => values.join(', '),
 })
 const streamedHook = useQuery(streamedOptions)
 const streamedHookData: string | undefined = streamedHook.data
-streamedHook.error satisfies EffectRpcQueryError<'unauthorized' | 'watch-failure'> | null
+streamedHook.error satisfies EffectRpcQueryError<
+  'unauthorized' | 'watch-failure' | 'watch-rpc-failure'
+> | null
 const streamedResult: Promise<ReadonlyArray<string>> = queryClient.fetchQuery(streamedOptions)
 const streamedKey = utils.events.watch.streamedKey({ channel: 'news' })
 streamedKey satisfies readonly ['app', 'events', 'watch', 'streamed', JsonValue]
@@ -286,7 +290,7 @@ const liveHook = useQuery(liveOptions)
 const liveHookData: number | undefined = liveHook.data
 liveHook.error satisfies
   | EffectRpcQueryEmptyStreamError
-  | EffectRpcQueryError<'unauthorized' | 'watch-failure'>
+  | EffectRpcQueryError<'unauthorized' | 'watch-failure' | 'watch-rpc-failure'>
   | null
 const liveResult: Promise<string> = queryClient.fetchQuery(liveOptions)
 const liveKey = utils.events.watch.liveKey({ channel: 'news' })
@@ -320,7 +324,9 @@ const clientFailureUtils = createRpcQueryUtils<typeof group, typeof keyPrefix, '
 clientFailureUtils.events.watch.streamedOptions({
   input: { channel: 'news' },
   retry: (_count, error) => {
-    error satisfies EffectRpcQueryError<'client-failure' | 'unauthorized' | 'watch-failure'>
+    error satisfies EffectRpcQueryError<
+      'client-failure' | 'unauthorized' | 'watch-failure' | 'watch-rpc-failure'
+    >
     return false
   },
 })

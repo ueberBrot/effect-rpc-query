@@ -1,5 +1,5 @@
 import { describe, expect, it } from '@effect/vitest'
-import { QueryClient, skipToken } from '@tanstack/query-core'
+import { QueryClient, QueryObserver, skipToken } from '@tanstack/query-core'
 import { Cause, Deferred, Effect, Equal, Exit, Schema, Stream } from 'effect'
 import { Rpc, RpcClient, RpcGroup } from 'effect/unstable/rpc'
 
@@ -126,12 +126,12 @@ describe('createRpcQueryUtils streaming execution', () => {
         success: Schema.String,
         error: Schema.Literal('stream-failure'),
         stream: true,
-      })
+      }).setError(Schema.Literal('rpc-failure'))
       const Defect = Rpc.make('events.defect', { success: Schema.String, stream: true })
       const streamGroup = RpcGroup.make(Declared, Defect)
       const defect = new Error('stream defect')
       const client = yield* makeRpcTestClient(streamGroup, {
-        'events.declared': () => Stream.fail('stream-failure' as const),
+        'events.declared': () => Stream.fail('rpc-failure' as const),
         'events.defect': () => Stream.die(defect),
       })
       const utils = createRpcQueryUtils(streamGroup, {
@@ -222,6 +222,83 @@ describe('createRpcQueryUtils streaming execution', () => {
       yield* Effect.promise(() => queryClient.cancelQueries({ queryKey: options.queryKey }))
       yield* Deferred.await(finalized)
       expect(yield* Effect.promise(() => query)).toEqual(['ready'])
+    }),
+  )
+
+  it.effect('finalizes the previous active stream before refetching', () =>
+    Effect.gen(function* () {
+      const Watch = Rpc.make('events.watch', { success: Schema.String, stream: true })
+      const streamGroup = RpcGroup.make(Watch)
+      const firstStarted = yield* Deferred.make<void>()
+      const firstFinalized = yield* Deferred.make<void>()
+      const secondStarted = yield* Deferred.make<void>()
+      const secondFinalized = yield* Deferred.make<void>()
+      let run = 0
+      const client = ((_tag: string, _payload: unknown) => {
+        run += 1
+        const started = run === 1 ? firstStarted : secondStarted
+        const finalized = run === 1 ? firstFinalized : secondFinalized
+        return Stream.make(`run-${String(run)}`).pipe(
+          Stream.concat(
+            Stream.fromEffect(
+              Deferred.succeed(started, undefined).pipe(Effect.andThen(Effect.never)),
+            ),
+          ),
+          Stream.ensuring(Deferred.succeed(finalized, undefined).pipe(Effect.asVoid)),
+        )
+      }) as RpcClient.RpcClient.Flat<RpcGroup.Rpcs<typeof streamGroup>>
+      const queryClient = new QueryClient()
+      const options = createRpcQueryUtils(streamGroup, {
+        client,
+        keyPrefix: ['app'] as const,
+      }).events.watch.streamedOptions()
+
+      const firstFetch = queryClient.fetchQuery(options).catch((cause: unknown) => cause)
+      yield* Deferred.await(firstStarted)
+      const refetch = queryClient
+        .refetchQueries({ exact: true, queryKey: options.queryKey })
+        .catch((cause: unknown) => cause)
+      yield* Deferred.await(firstFinalized)
+      yield* Deferred.await(secondStarted)
+      yield* Effect.promise(() =>
+        queryClient.cancelQueries({ queryKey: options.queryKey }).catch(() => undefined),
+      )
+      yield* Deferred.await(secondFinalized)
+
+      yield* Effect.promise(() => firstFetch)
+      expect(run).toBe(2)
+      yield* Effect.promise(() => refetch)
+    }),
+  )
+
+  it.effect('finalizes an active stream when its last observer unsubscribes', () =>
+    Effect.gen(function* () {
+      const Watch = Rpc.make('events.watch', { success: Schema.String, stream: true })
+      const streamGroup = RpcGroup.make(Watch)
+      const started = yield* Deferred.make<void>()
+      const finalized = yield* Deferred.make<void>()
+      const source = Stream.make('ready').pipe(
+        Stream.concat(
+          Stream.fromEffect(
+            Deferred.succeed(started, undefined).pipe(Effect.andThen(Effect.never)),
+          ),
+        ),
+        Stream.ensuring(Deferred.succeed(finalized, undefined).pipe(Effect.asVoid)),
+      )
+      const client = ((_tag: string, _payload: unknown) => source) as RpcClient.RpcClient.Flat<
+        RpcGroup.Rpcs<typeof streamGroup>
+      >
+      const queryClient = new QueryClient()
+      const options = createRpcQueryUtils(streamGroup, {
+        client,
+        keyPrefix: ['app'] as const,
+      }).events.watch.streamedOptions()
+      const observer = new QueryObserver(queryClient, options)
+      const unsubscribe = observer.subscribe(() => undefined)
+
+      yield* Deferred.await(started)
+      unsubscribe()
+      yield* Deferred.await(finalized)
     }),
   )
 
