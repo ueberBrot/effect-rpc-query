@@ -5,8 +5,8 @@ const NavigationAnchor = forwardRef<HTMLAnchorElement, ComponentPropsWithoutRef<
   ({ className, ...props }, ref) => (
     <a
       className={[
-        'inline-block rounded-full px-3 py-2 font-bold no-underline transition-colors',
-        'text-slate-600 hover:bg-emerald-50 hover:text-emerald-800',
+        'inline-block border border-transparent px-3 py-2 text-sm font-bold no-underline transition-colors',
+        'text-zinc-400 hover:border-violet-900 hover:bg-violet-950/30 hover:text-violet-200',
         className,
       ]
         .filter(Boolean)

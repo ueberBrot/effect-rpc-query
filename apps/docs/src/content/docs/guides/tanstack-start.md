@@ -52,3 +52,39 @@ canonical payload.
 The executable [TanStack Start example](https://github.com/ueberBrot/effect-rpc-query/tree/main/examples/tanstack-start)
 shows the complete integration, including handler cleanup for server-route requests and hot module
 replacement.
+
+## Dehydrate an open stream
+
+Completed query data, including a completed stream's cached value, uses TanStack's normal
+dehydration contract. An open stream remains in `fetchStatus: 'fetching'`, so a server loader must
+capture a successful snapshot and cancel the query before dehydration can finish:
+
+```ts
+const fetchStreamSnapshot = async (queryClient, options) => {
+  let stopWatching = () => {}
+  const snapshotReady = new Promise((resolve, reject) => {
+    const inspect = () => {
+      const state = queryClient.getQueryState(options.queryKey)
+      if (state?.status === 'success') resolve()
+      if (state?.status === 'error') reject(state.error)
+    }
+    stopWatching = queryClient.getQueryCache().subscribe(inspect)
+    inspect()
+  })
+  const fetching = queryClient.fetchQuery(options)
+
+  try {
+    await snapshotReady
+    await queryClient.cancelQueries({ exact: true, queryKey: options.queryKey })
+    return await fetching
+  } catch (error) {
+    await fetching.catch(() => undefined)
+    throw error
+  } finally {
+    stopWatching()
+  }
+}
+```
+
+Cancellation closes the stream iterator and its Effect resources. The browser hydrates the server
+snapshot, then may refetch according to ordinary TanStack policies.

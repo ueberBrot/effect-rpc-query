@@ -67,21 +67,27 @@ describe('TanStack Start hydration and client navigation', () => {
 
     expect(await screen.findByText('Ada Lovelace')).toBeTruthy()
     expect(duplicateListFetches).toBe(0)
-    expect(await screen.findByText('Infinite users: Ada Lovelace')).toBeTruthy()
-    expect(await screen.findByText('Accumulated diagnostics: first, second')).toBeTruthy()
-    expect(await screen.findByText('Live diagnostic: second')).toBeTruthy()
+    expect(await screen.findByText('4 of 12 loaded')).toBeTruthy()
+    expect(await screen.findByText('Page 1: 4 users')).toBeTruthy()
+    expect(
+      await screen.findByText('4 updates retained', undefined, { timeout: 3_000 }),
+    ).toBeTruthy()
+    expect(await screen.findByText('Current state: Ready')).toBeTruthy()
 
-    fireEvent.click(screen.getByRole('button', { name: 'Load next user page' }))
-    expect(await screen.findByText('Infinite users: Ada Lovelace, Edsger Dijkstra')).toBeTruthy()
+    fireEvent.click(screen.getByRole('button', { name: 'Load next 4 users' }))
+    expect(await screen.findByText('Page 2: 4 users')).toBeTruthy()
+    expect(await screen.findByText('8 of 12 loaded')).toBeTruthy()
 
     await act(() => router.navigate({ to: '/details' }))
     expect(await screen.findByRole('heading', { name: 'Featured user' })).toBeTruthy()
     expect(await screen.findByText('Ada Lovelace')).toBeTruthy()
 
     await act(() => router.navigate({ to: '/' }))
-    fireEvent.click(await screen.findByRole('button', { name: 'Seed users' }))
+    fireEvent.click(
+      await screen.findByRole('button', { name: 'Add Grace Hopper' }, { timeout: 4_000 }),
+    )
     expect(await screen.findByText('Grace Hopper')).toBeTruthy()
-    expect(await screen.findByText('Margaret Hamilton')).toBeTruthy()
+    expect(await screen.findByText('13 users in one response')).toBeTruthy()
 
     unsubscribe()
   })

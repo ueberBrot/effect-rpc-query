@@ -1,3 +1,19 @@
 # Use canonical semantic JSON for payload keys
 
-Query keys use a synchronous JSON representation of the normalized payload rather than raw constructor input or transport bytes. The default path constructs the payload, Schema-encodes it, and copies it into a deeply frozen canonical form with sorted object keys and normalized numbers; a typed, tag-keyed encoder may replace Schema encoding. Schemas that require encoding services or contain an explicit `Schema.Redacted` require a custom encoder, callers remain responsible for other sensitive fields, and values outside strict JSON—including sparse arrays, cycles, and non-plain objects—are rejected.
+Status: Accepted.
+
+## Context
+
+Raw constructor input and transport bytes do not provide stable semantic cache identity.
+
+## Decision
+
+Query keys use a synchronous JSON representation of the normalized payload. The default path
+constructs the payload, Schema-encodes it, and copies it into a deeply frozen canonical form with
+sorted object keys and normalized numbers. A typed, tag-keyed encoder may replace Schema encoding.
+
+## Consequences
+
+Schemas that require encoding services or contain an explicit `Schema.Redacted` require a custom
+encoder. Callers remain responsible for other sensitive fields. Values outside strict JSON,
+including sparse arrays, cycles, and non-plain objects, are rejected.

@@ -17,6 +17,7 @@ export class SeedUser extends Schema.Class<SeedUser>('SeedUser')({
 
 export class UserPage extends Schema.Class<UserPage>('UserPage')({
   nextCursor: Schema.NullOr(Schema.Int),
+  total: Schema.Int,
   users: Schema.Array(User),
 }) {}
 

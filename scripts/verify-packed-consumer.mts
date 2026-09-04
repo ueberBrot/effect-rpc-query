@@ -176,7 +176,7 @@ const peerCases = [
 const runTypeScript = (
   consumerDirectory: string,
   compiler: (typeof compilerCases)[number],
-  project: 'tsconfig.json' | 'tsconfig.type-scale.json',
+  project: 'tsconfig.json' | 'tsconfig.tanstack-start.json' | 'tsconfig.type-scale.json',
   extendedDiagnostics: boolean,
 ): void => {
   console.log(`Verifying ${project} with ${compiler.label}`)
@@ -203,6 +203,10 @@ const verifyConsumer = (peer: (typeof peerCases)[number]): void => {
       join(typeFixtureDirectory, 'public-contract.ts'),
       join(consumerDirectory, 'public-contract.ts'),
     )
+    cpSync(
+      join(typeFixtureDirectory, 'tanstack-start-contract.ts'),
+      join(consumerDirectory, 'tanstack-start-contract.ts'),
+    )
     cpSync(join(typeFixtureDirectory, 'type-scale.ts'), join(consumerDirectory, 'type-scale.ts'))
 
     const manifestTemplate = readFileSync(join(consumerDirectory, 'package.template.json'), 'utf8')
@@ -210,6 +214,12 @@ const verifyConsumer = (peer: (typeof peerCases)[number]): void => {
       .replaceAll('__LABEL__', peer.label)
       .replaceAll('__QUERY_CORE_VERSION__', peer.queryCoreVersion)
       .replaceAll('__REACT_QUERY_VERSION__', peer.reactQueryVersion)
+      .replaceAll('__REACT_ROUTER_VERSION__', testedVersion('@tanstack/react-router'))
+      .replaceAll(
+        '__REACT_ROUTER_SSR_QUERY_VERSION__',
+        testedVersion('@tanstack/react-router-ssr-query'),
+      )
+      .replaceAll('__REACT_START_VERSION__', testedVersion('@tanstack/react-start'))
       .replaceAll('__NODE_TYPES_VERSION__', testedVersion('@types/node'))
       .replaceAll('__REACT_TYPES_VERSION__', testedVersion('@types/react'))
       .replaceAll('__REACT_DOM_TYPES_VERSION__', testedVersion('@types/react-dom'))
@@ -228,6 +238,7 @@ const verifyConsumer = (peer: (typeof peerCases)[number]): void => {
 
     for (const compiler of compilerCases) {
       runTypeScript(consumerDirectory, compiler, 'tsconfig.json', false)
+      runTypeScript(consumerDirectory, compiler, 'tsconfig.tanstack-start.json', false)
       runTypeScript(
         consumerDirectory,
         compiler,

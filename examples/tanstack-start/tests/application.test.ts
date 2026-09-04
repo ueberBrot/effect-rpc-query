@@ -32,7 +32,9 @@ describe('TanStack Start application ownership', () => {
     const options = ownedApplication.rpcQuery.users.list.queryOptions()
     const users = await ownedApplication.queryClient.ensureQueryData(options)
 
-    expect(users.map(({ name }) => name)).toEqual(['Ada Lovelace', 'Edsger Dijkstra'])
+    expect(users).toHaveLength(12)
+    expect(users[0]?.name).toBe('Ada Lovelace')
+    expect(users[11]?.name).toBe('James Gosling')
     expect(ownedApplication.queryClient.getQueryData(options.queryKey)).toEqual(users)
 
     await Promise.all([ownedApplication.dispose(), ownedApplication.dispose()])

@@ -21,6 +21,8 @@ test.describe('TanStack Start application', () => {
       expect(serverRenderedResponse?.ok()).toBe(true)
       await expect(serverRenderedPage.getByText('Ada Lovelace', { exact: true })).toBeVisible()
       await expect(serverRenderedPage.getByText('Edsger Dijkstra', { exact: true })).toBeVisible()
+      await expect(serverRenderedPage.getByText('Connection opened', { exact: true })).toBeVisible()
+      await expect(serverRenderedPage.getByText('Current state: Connection opened')).toBeVisible()
     } finally {
       await serverRenderedContext.close()
     }
@@ -35,9 +37,14 @@ test.describe('TanStack Start application', () => {
     expect(response?.ok()).toBe(true)
     await expect(page.getByText('Ada Lovelace', { exact: true })).toBeVisible()
     await expect(page.getByText('Edsger Dijkstra', { exact: true })).toBeVisible()
-    await page.getByRole('button', { name: 'Read cached users' }).click()
-    await expect(page.getByText('Cached users: 2')).toBeVisible()
+    await page.getByRole('button', { name: 'Read cached directory' }).click()
+    await expect(page.getByText('Cached directory: 12 users')).toBeVisible()
     expect(browserListRequests).toBe(0)
+  })
+
+  test('hydrates stream snapshots and refetches their remaining values', async ({ page }) => {
+    await expect(page.getByText('4 updates retained')).toBeVisible()
+    await expect(page.getByText('Current state: Ready')).toBeVisible()
   })
 
   test('navigates on the client and reuses the hydrated cache', async ({ page }) => {
@@ -46,23 +53,26 @@ test.describe('TanStack Start application', () => {
     await expect(page.getByText('Ada Lovelace', { exact: true })).toBeVisible()
 
     await page.getByRole('link', { name: 'Users' }).click()
-    await expect(page.getByRole('heading', { name: 'Hydrate generated RPC queries' })).toBeVisible()
+    await expect(
+      page.getByRole('heading', { name: 'Compare full queries, pages, and streams' }),
+    ).toBeVisible()
     let browserListRequests = 0
     page.on('request', (request) => {
       if (recordsRpc(request.postData(), 'users.list')) browserListRequests += 1
     })
-    await page.getByRole('button', { name: 'Read cached users' }).click()
-    await expect(page.getByText('Cached users: 2')).toBeVisible()
+    await page.getByRole('button', { name: 'Read cached directory' }).click()
+    await expect(page.getByText('Cached directory: 12 users')).toBeVisible()
     expect(browserListRequests).toBe(0)
   })
 
   test('hydrates and advances an infinite query', async ({ page }) => {
-    await expect(page.getByText('Infinite users: Ada Lovelace')).toBeVisible()
+    await expect(page.getByText('4 of 12 loaded')).toBeVisible()
+    await expect(page.getByText('Page 1: 4 users')).toBeVisible()
 
     const nextPageResponse = page.waitForResponse(
       (response) => response.ok() && recordsRpc(response.request().postData(), 'users.page'),
     )
-    await page.getByRole('button', { name: 'Load next user page' }).click()
+    await page.getByRole('button', { name: 'Load next 4 users' }).click()
     const rpcResponse = await nextPageResponse
 
     const rpcUrl = new URL(rpcResponse.url())
@@ -70,18 +80,19 @@ test.describe('TanStack Start application', () => {
     expect(rpcUrl.origin).toBe(new URL(tanStackStartApplication.url).origin)
     expect(rpcUrl.pathname).toBe('/rpc/')
 
-    await expect(page.getByText('Infinite users: Ada Lovelace, Edsger Dijkstra')).toBeVisible()
+    await expect(page.getByText('Page 2: 4 users')).toBeVisible()
+    await expect(page.getByText('8 of 12 loaded')).toBeVisible()
   })
 
   test('mutates and invalidates the hydrated users query', async ({ page }) => {
     const listResponse = page.waitForResponse(
       (response) => response.ok() && recordsRpc(response.request().postData(), 'users.list'),
     )
-    await page.getByRole('button', { name: 'Seed users' }).click()
+    await page.getByRole('button', { name: 'Add Grace Hopper' }).click()
     await listResponse
 
     await expect(page.getByText('Grace Hopper', { exact: true })).toBeVisible()
-    await expect(page.getByText('Margaret Hamilton', { exact: true })).toBeVisible()
+    await expect(page.getByText('13 users in one response')).toBeVisible()
   })
 
   test('shows declared failures and externally visible cancellation', async ({ page }) => {

@@ -5,7 +5,7 @@ export const EffectErrorDetails = ({ error }: { readonly error: unknown }) => {
   if (isEffectRpcQueryError(error)) {
     return (
       <p
-        className="border-l-4 border-red-700 bg-red-50 p-3 text-sm whitespace-pre-wrap text-red-900"
+        className="border border-l-4 border-red-900/80 border-l-red-600 bg-red-950/50 p-3 text-sm whitespace-pre-wrap text-red-200"
         role="alert"
       >
         {error.name} from {error.rpcTag} ({error.operation})
@@ -17,7 +17,7 @@ export const EffectErrorDetails = ({ error }: { readonly error: unknown }) => {
 
   return error instanceof Error ? (
     <p
-      className="border-l-4 border-red-700 bg-red-50 p-3 text-sm whitespace-pre-wrap text-red-900"
+      className="border border-l-4 border-red-900/80 border-l-red-600 bg-red-950/50 p-3 text-sm whitespace-pre-wrap text-red-200"
       role="alert"
     >
       {error.name}: {error.message}

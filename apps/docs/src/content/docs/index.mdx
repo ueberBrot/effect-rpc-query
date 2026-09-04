@@ -14,15 +14,15 @@ hero:
       icon: external
 ---
 
-`effect-rpc-query` projects dotted unary RPC tags into a typed RPC utility tree. Each leaf builds
-TanStack Query options and stable keys while the application keeps ownership of its RPC client,
-Query Client, and lifecycle.
+`effect-rpc-query` projects dotted unary and streaming RPC tags into a typed RPC utility tree. Each
+leaf builds TanStack Query options and stable keys while the application keeps ownership of its RPC
+client, Query Client, and lifecycle.
 
 ## What it provides
 
 - One factory that derives utilities from an RPC group and a ready flat client.
 - Semantic cache keys that account for payload defaults and Schema encoding.
-- Query Core options for React Query, loaders, prefetching, and direct cache access.
+- Query Core options for ordinary, infinite, accumulated-stream, live, and mutation use.
 - Typed RPC failures that retain the complete Effect Cause.
 
 ## Choose a path

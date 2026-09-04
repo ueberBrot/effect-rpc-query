@@ -31,4 +31,12 @@ Thrown when the RPC runner returns a failed `Exit`. It exposes `rpcTag`, `operat
 `Cause.Cause<E>`. Use `isEffectRpcQueryError(value)` as the runtime guard within one JavaScript
 realm; the guard uses `instanceof`. The operation is `query`, `infinite`, or `mutation`.
 
+Streaming failures use the same class and preserve RPC, stream, middleware, client, defect, and
+interruption Causes. Their operation is `streamed` or `live`.
+
 A rejected runner promise passes through unchanged because no Effect `Cause` exists to preserve.
+
+## `EffectRpcQueryEmptyStreamError`
+
+Thrown when a live query's stream completes before emitting a value. It exposes the streaming RPC's
+`rpcTag`. Accumulated streams return an empty array instead.

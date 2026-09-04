@@ -46,6 +46,14 @@ const createUser = useMutation(rpcQuery.users.create.mutationOptions())
 createUser.mutate({ name: 'Ada' })
 ```
 
+Streaming RPCs use the ordinary `useQuery` and `useSuspenseQuery` hooks. Choose whether the cache
+should retain every value or only the latest value:
+
+```ts
+const events = useQuery(rpcQuery.events.watch.streamedOptions())
+const latestEvent = useQuery(rpcQuery.events.watch.liveOptions())
+```
+
 The package owns each generated `queryFn`, `queryKey`, `queryKeyHashFn`, `mutationFn`, and
-`mutationKey`. Other Query options, including `select`, `retry`, and lifecycle callbacks, retain
-their normal TanStack types.
+`mutationKey`. Stream builders own the same query fields. Other Query options, including `select`,
+`retry`, and lifecycle callbacks, retain their normal TanStack types.

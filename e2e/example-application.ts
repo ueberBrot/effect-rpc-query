@@ -6,12 +6,12 @@ export interface ExampleApplication {
 }
 
 export const tanStackStartApplication = {
-  heading: 'Hydrate generated RPC queries',
+  heading: 'Compare full queries, pages, and streams',
   url: 'http://127.0.0.1:3000',
 } satisfies ExampleApplication
 
 export const viteReactApplication = {
-  heading: 'Generated Effect RPC options in React',
+  heading: 'Compare full queries, pages, and streams',
   url: 'http://127.0.0.1:4173',
 } satisfies ExampleApplication
 
@@ -22,8 +22,7 @@ export const prepareExampleApplication = async (
 ): Promise<void> => {
   await page.goto(application.url)
   await expect(page.getByRole('heading', { name: application.heading })).toBeVisible()
-  await page.getByRole('button', { name: 'Reset users' }).click()
-  await expect(page.getByText('Reset result: undefined')).toBeVisible()
+  await page.getByRole('button', { name: 'Reset directory' }).click()
   await expect(page.getByText('Ada Lovelace', { exact: true })).toBeVisible()
   await page.reload()
   await expect(page.getByText('Ada Lovelace', { exact: true })).toBeVisible()

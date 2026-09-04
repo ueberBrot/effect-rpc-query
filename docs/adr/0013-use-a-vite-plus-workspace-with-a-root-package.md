@@ -1,3 +1,19 @@
 # Use a Vite+ workspace with a root package
 
-The repository begins as a Vite+ pnpm workspace with the publishable `effect-rpc-query` package permanently at the root. Private packages under `examples/` provide shared RPC contracts, one standalone HTTP RPC server, a plain Vite React client, and a TanStack Start application; both clients use the same server, and Start server functions and WebSocket transport remain outside the initial scope. Future public packages may live under `packages/`, but examples remain private; this accepts Vite+'s beta status to gain one task graph without creating a speculative core package or later moving the root release path.
+Status: Amended by ADR 0019.
+
+## Context
+
+The repository needs one task graph without a speculative package split or a later move of the
+initial release path.
+
+## Decision
+
+Use a Vite+ pnpm workspace with the publishable `effect-rpc-query` package permanently at the root.
+Keep examples private. Future public packages may live under `packages/`.
+
+## Consequences
+
+The workspace accepts Vite+'s beta status. Private examples share RPC contracts and hosting code.
+ADR 0019 supersedes this decision's original requirement that both browser examples use the
+standalone server.

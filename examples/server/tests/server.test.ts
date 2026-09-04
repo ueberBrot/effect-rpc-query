@@ -89,26 +89,23 @@ describe('example RPC server', () => {
       const client = yield* makeExampleRpcClient(server.rpcUrl)
       yield* client('testing.reset', undefined)
 
-      expect(yield* client('users.list', undefined)).toEqual([
-        { id: 1, locale: 'en', name: 'Ada Lovelace' },
-        { id: 2, locale: 'de', name: 'Edsger Dijkstra' },
-      ])
+      const initialDirectory = yield* client('users.list', undefined)
+      expect(initialDirectory).toHaveLength(12)
+      expect(initialDirectory[0]).toEqual({ id: 1, locale: 'en', name: 'Ada Lovelace' })
+      expect(initialDirectory[11]).toEqual({ id: 12, locale: 'en', name: 'James Gosling' })
 
       expect(yield* client('users.create', { name: 'Grace Hopper' })).toEqual({
-        id: 3,
+        id: 13,
         locale: 'en',
         name: 'Grace Hopper',
       })
 
       expect(yield* client('testing.reset', undefined)).toBeUndefined()
-      expect(yield* client('users.list', undefined)).toEqual([
-        { id: 1, locale: 'en', name: 'Ada Lovelace' },
-        { id: 2, locale: 'de', name: 'Edsger Dijkstra' },
-      ])
+      expect(yield* client('users.list', undefined)).toEqual(initialDirectory)
     }),
   )
 
-  it.effect('seeds deterministically and exposes defaults, failures, middleware, and streams', () =>
+  it.live('seeds deterministically and exposes defaults, failures, middleware, and streams', () =>
     Effect.gen(function* () {
       const server = yield* startExampleRpcServer()
       const client = yield* makeExampleRpcClient(server.rpcUrl)
@@ -153,7 +150,12 @@ describe('example RPC server', () => {
       })
 
       const streamed = yield* Stream.runCollect(client('diagnostics.stream', undefined))
-      expect(Array.from(streamed)).toEqual(['first', 'second'])
+      expect(Array.from(streamed)).toEqual([
+        'Connection opened',
+        'Permissions loaded',
+        'Workspace synchronized',
+        'Ready',
+      ])
     }),
   )
 

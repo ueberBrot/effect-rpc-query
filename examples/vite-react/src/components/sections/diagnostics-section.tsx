@@ -18,20 +18,25 @@ export const DiagnosticsSection = ({
   const message = describeSlowQueryCancellation(slowQuery.state)
 
   return (
-    <section className="space-y-4 rounded-2xl border border-emerald-200 bg-white/90 p-6 shadow-xl shadow-emerald-950/5">
-      <h2 className="text-xl font-bold text-slate-950">Failures and cancellation</h2>
-      <p className="text-sm leading-6 text-slate-600">
+    <section className="space-y-4 border border-zinc-800 bg-[#111113] p-6 shadow-2xl shadow-black/40">
+      <h2 className="display-heading text-2xl font-bold text-zinc-50">Failures and cancellation</h2>
+      <p className="text-sm leading-6 text-zinc-400">
         Generated errors preserve their Effect causes. Cancelling the query interrupts its RPC
         Effect on the server.
       </p>
       <div className="flex flex-wrap gap-3">
-        <ActionButton onClick={() => declaredFailure.mutate(undefined)} type="button">
+        <ActionButton
+          onClick={() => declaredFailure.mutate(undefined)}
+          type="button"
+          variant="danger"
+        >
           Trigger declared failure
         </ActionButton>
         <ActionButton
           disabled={!slowQuery.canStart}
           onClick={() => void slowQuery.start()}
           type="button"
+          variant="secondary"
         >
           Start slow query
         </ActionButton>
@@ -39,6 +44,7 @@ export const DiagnosticsSection = ({
           disabled={!slowQuery.canCancel}
           onClick={() => void slowQuery.cancel()}
           type="button"
+          variant="secondary"
         >
           Cancel query
         </ActionButton>

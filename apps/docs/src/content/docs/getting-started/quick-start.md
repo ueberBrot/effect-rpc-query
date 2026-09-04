@@ -40,6 +40,8 @@ Dotted tags become nested paths: `users.get` becomes `rpcQuery.users.get`. Each 
 `key`, `queryKey`, `infiniteKey`, `mutationKey`, `queryOptions`, `infiniteOptions`, and
 `mutationOptions` builders.
 
+Streaming leaves instead expose `key`, `streamedKey`, `streamedOptions`, `liveKey`, and `liveOptions`.
+
 ## Dispose application resources
 
 When the application stops, cancel active queries before disposing the ready RPC client:

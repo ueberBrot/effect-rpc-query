@@ -1,3 +1,20 @@
 # Automate releases with Changesets
 
-Changesets v3 and a split GitHub Actions workflow version, build, pack, and publish the root package through npm trusted publishing with provenance; private examples remain outside versioning. `@changesets/changelog-github` keeps pull-request and commit links with `disableThanks: true`, while the Changeset Bot provides non-blocking pull-request guidance. Releases never run from developer machines, and any bootstrap token disappears after trusted publishing is configured. Changes to published behavior, types, exports, dependency ranges, or installation metadata require a real changeset; documentation, examples, tests, internal tooling, and CI require none, and empty changesets do not serve as process markers.
+Status: Accepted.
+
+## Context
+
+Versioning, changelog generation, and publication need one auditable path.
+
+## Decision
+
+Changesets and a split GitHub Actions workflow version, build, pack, and publish the root package
+through npm trusted publishing with provenance. The generated changelog keeps pull-request and
+commit links. Private examples remain outside versioning, and releases run only in CI.
+
+## Consequences
+
+Changes to published behavior, types, exports, dependency ranges, or installation metadata require
+a real changeset. Documentation, examples, tests, internal tooling, and CI require none. Empty
+changesets do not serve as process markers. Any bootstrap token is removed after trusted publishing
+is configured.

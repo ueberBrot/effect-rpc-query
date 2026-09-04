@@ -7,13 +7,23 @@ import {
   User,
   UserPage,
 } from '@effect-rpc-query/contracts'
-import { Effect, Layer, Ref, Stream } from 'effect'
+import { Effect, Layer, Ref, Schedule, Stream } from 'effect'
 
 import { makeDiagnosticOperations } from './diagnostic-operations.ts'
 
 const initialUsers = [
   new User({ id: 1, locale: 'en', name: 'Ada Lovelace' }),
-  new User({ id: 2, locale: 'de', name: 'Edsger Dijkstra' }),
+  new User({ id: 2, locale: 'nl', name: 'Edsger Dijkstra' }),
+  new User({ id: 3, locale: 'en', name: 'Alan Turing' }),
+  new User({ id: 4, locale: 'en', name: 'Barbara Liskov' }),
+  new User({ id: 5, locale: 'en', name: 'Donald Knuth' }),
+  new User({ id: 6, locale: 'en', name: 'Radia Perlman' }),
+  new User({ id: 7, locale: 'de', name: 'Hedy Lamarr' }),
+  new User({ id: 8, locale: 'en', name: 'John Backus' }),
+  new User({ id: 9, locale: 'en', name: 'Mary Jackson' }),
+  new User({ id: 10, locale: 'en', name: 'Dennis Ritchie' }),
+  new User({ id: 11, locale: 'en', name: 'Annie Easley' }),
+  new User({ id: 12, locale: 'en', name: 'James Gosling' }),
 ] as const satisfies ReadonlyArray<User>
 
 interface ServerState {
@@ -22,9 +32,16 @@ interface ServerState {
 }
 
 const initialState = (): ServerState => ({
-  nextUserId: 3,
+  nextUserId: initialUsers.length + 1,
   users: initialUsers,
 })
+
+const diagnosticStream = Stream.concat(
+  Stream.make('Connection opened'),
+  Stream.make('Permissions loaded', 'Workspace synchronized', 'Ready').pipe(
+    Stream.schedule(Schedule.spaced('350 millis')),
+  ),
+)
 
 const makeUser = (id: number, { locale, name }: SeedUser): User =>
   new User({ id, locale: locale ?? 'en', name })
@@ -47,7 +64,7 @@ const handlersLayer = exampleRpcGroup.toLayer(
       ),
       'diagnostics.slow': diagnostics.slow,
       'diagnostics.status': Effect.fn('ExampleRpc.diagnostics.status')(() => diagnostics.status),
-      'diagnostics.stream': () => Stream.make('first', 'second'),
+      'diagnostics.stream': () => diagnosticStream,
       'testing.reset': Effect.fn('ExampleRpc.testing.reset')(function* () {
         yield* diagnostics.reset
         yield* Ref.set(state, initialState())
@@ -124,6 +141,7 @@ const handlersLayer = exampleRpcGroup.toLayer(
               const nextCursor = cursor + pageSize
               return new UserPage({
                 nextCursor: nextCursor < current.users.length ? nextCursor : null,
+                total: current.users.length,
                 users: current.users.slice(cursor, nextCursor),
               })
             }),

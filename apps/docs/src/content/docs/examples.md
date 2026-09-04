@@ -6,10 +6,10 @@ description: Run the repository's React Query and TanStack Start applications.
 The repository contains two complete applications. Both use the same contracts and Effect RPC
 handler implementation, but each hosts HTTP differently.
 
-| Example                                                                                           | Demonstrates                                                             | RPC host                                          | Application URL         |
-| ------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------ | ------------------------------------------------- | ----------------------- |
-| [Vite React](https://github.com/ueberBrot/effect-rpc-query/tree/main/examples/vite-react)         | React Query hooks, mutations, invalidation, failures, and cancellation   | Standalone server on port `3001`, proxied by Vite | `http://127.0.0.1:5173` |
-| [TanStack Start](https://github.com/ueberBrot/effect-rpc-query/tree/main/examples/tanstack-start) | Loaders, server rendering, dehydration, hydration, and client navigation | Same-origin `POST /rpc` server route              | `http://127.0.0.1:3000` |
+| Example                                                                                           | Demonstrates                                                                                         | RPC host                                          | Application URL         |
+| ------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------- | ------------------------------------------------- | ----------------------- |
+| [Vite React](https://github.com/ueberBrot/effect-rpc-query/tree/main/examples/vite-react)         | Ordinary, infinite, accumulated-stream, live, and mutation hooks with failures and cancellation      | Standalone server on port `3001`, proxied by Vite | `http://127.0.0.1:5173` |
+| [TanStack Start](https://github.com/ueberBrot/effect-rpc-query/tree/main/examples/tanstack-start) | The same operation kinds in loaders, server rendering, dehydration, hydration, and client navigation | Same-origin `POST /rpc` server route              | `http://127.0.0.1:3000` |
 
 ## Run Vite React
 

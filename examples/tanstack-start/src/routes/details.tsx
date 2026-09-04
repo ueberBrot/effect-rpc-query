@@ -21,12 +21,11 @@ function FeaturedUserPage() {
   return (
     <PageLayout
       description="The loader primes a generated user query. Typed navigation reads the same cached result."
-      eyebrow="Generated query prefetch"
       title="Featured user"
     >
       <div className="mt-8">
         <Panel title={featured.data.name}>
-          <p className="mt-2 text-sm text-slate-500">
+          <p className="mt-2 text-sm text-zinc-400">
             User {featured.data.id}, locale {featured.data.locale}
           </p>
         </Panel>

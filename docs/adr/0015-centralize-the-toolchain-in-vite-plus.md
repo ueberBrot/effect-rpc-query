@@ -1,3 +1,21 @@
 # Centralize the toolchain in Vite+
 
-The workspace centralizes formatting, linting, type checking, tests, and ESM packaging in Vite+'s `vite.config.ts`, using its integrated Oxfmt, Oxlint, Vitest, and package builder instead of parallel configuration stacks. Library development pins TypeScript 7 and a matching `@effect/tsgo`, runs Effect diagnostics as a separate gate, and verifies packed declarations with TypeScript 5.9 and current TypeScript; the private documentation package pins TypeScript 6 because Astro's checker does not yet support the TypeScript 7 compiler API. Strict Publint, Are The Types Wrong, unused-dependency checks, and Fallow protect the package, while Taze remains deferred. Separate tools cover only capabilities Vite+ does not own, including Astro diagnostics, Effect-aware test helpers, full-process Playwright tests, and release management.
+Status: Accepted.
+
+## Context
+
+Parallel configuration stacks would let formatting, linting, type checking, tests, and packaging
+drift apart.
+
+## Decision
+
+Centralize those tasks in Vite+'s `vite.config.ts` and integrated tools. Keep separate tools only for
+capabilities Vite+ does not own, such as Astro diagnostics, Effect-aware test helpers, full-process
+browser tests, packed-package checks, and release management.
+
+## Consequences
+
+Library development uses TypeScript 7 with matching Effect diagnostics. Packed declarations are
+also checked with TypeScript 5.9. The private documentation package may use a compatible compiler
+when Astro does not support the repository compiler API. Strict package and dependency checks remain
+release gates; dependency-update automation remains deferred.

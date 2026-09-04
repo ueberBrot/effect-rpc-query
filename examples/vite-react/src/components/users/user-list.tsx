@@ -21,15 +21,15 @@ export const UserList = ({
 
   return (
     <>
-      <ul className="grid gap-3">
+      <ul className="grid gap-3 sm:grid-cols-2">
         {users?.map((user) => (
           <li
-            className="flex items-center justify-between gap-4 rounded-xl border border-emerald-100 bg-emerald-50/50 p-3"
+            className="flex items-center justify-between gap-4 border border-zinc-800 bg-black p-3"
             key={user.id}
           >
             <span className="grid gap-0.5">
-              <strong className="text-slate-950">{user.name}</strong>
-              <span className="text-sm text-slate-500">
+              <strong className="text-zinc-100">{user.name}</strong>
+              <span className="text-sm text-zinc-500">
                 User {user.id}, locale {user.locale}
               </span>
             </span>
@@ -38,6 +38,7 @@ export const UserList = ({
               disabled={deleteUser.isPending && deleteUser.variables.id === user.id}
               onClick={() => deleteUser.mutate({ id: user.id })}
               type="button"
+              variant="danger"
             >
               Delete
             </ActionButton>

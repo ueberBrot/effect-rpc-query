@@ -158,6 +158,7 @@ createRpcQueryUtils(group, { client, keyPrefix: [] as const })
 createRpcQueryUtils(group, { client, keyPrefix: ['app', new Date(0)] as const })
 
 const utils = createRpcQueryUtils(group, options)
+export type PublicContractUtils = typeof utils
 const typedUtils: RpcQueryUtils<typeof group, typeof keyPrefix> = utils
 void typedUtils
 

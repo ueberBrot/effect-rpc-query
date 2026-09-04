@@ -41,19 +41,19 @@ export const CreateUserForm = ({ application }: { readonly application: ViteReac
         className="grid gap-3 md:grid-cols-[minmax(0,1fr)_minmax(0,0.65fr)_auto] md:items-end"
         onSubmit={submitUser}
       >
-        <label className="grid gap-1.5 text-sm font-semibold text-slate-700">
+        <label className="grid gap-1.5 text-sm font-semibold text-zinc-300">
           Name
           <input
-            className="min-w-0 rounded-lg border border-emerald-300 bg-white px-3 py-2.5 text-slate-900 outline-none placeholder:text-slate-400 focus:border-emerald-600 focus:ring-3 focus:ring-emerald-200"
+            className="min-w-0 rounded-sm border border-zinc-700 bg-black px-3 py-2.5 text-zinc-100 outline-none placeholder:text-zinc-600 focus:border-violet-500 focus:ring-2 focus:ring-violet-500/20"
             onChange={(event) => setName(event.currentTarget.value)}
             required
             value={name}
           />
         </label>
-        <label className="grid gap-1.5 text-sm font-semibold text-slate-700">
+        <label className="grid gap-1.5 text-sm font-semibold text-zinc-300">
           Locale (optional)
           <input
-            className="min-w-0 rounded-lg border border-emerald-300 bg-white px-3 py-2.5 text-slate-900 outline-none placeholder:text-slate-400 focus:border-emerald-600 focus:ring-3 focus:ring-emerald-200"
+            className="min-w-0 rounded-sm border border-zinc-700 bg-black px-3 py-2.5 text-zinc-100 outline-none placeholder:text-zinc-600 focus:border-violet-500 focus:ring-2 focus:ring-violet-500/20"
             onChange={(event) => setLocale(event.currentTarget.value)}
             placeholder="en"
             value={locale}
