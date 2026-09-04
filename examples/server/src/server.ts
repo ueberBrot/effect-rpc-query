@@ -1,12 +1,9 @@
-import { exampleRpcGroup } from '@effect-rpc-query/contracts'
-import { Effect, Layer, Schema, Scope } from 'effect'
-import { HttpEffect, HttpMiddleware, HttpServerRequest } from 'effect/unstable/http'
-import { RpcSerialization, RpcServer } from 'effect/unstable/rpc'
+import { Effect, Schema } from 'effect'
 import { createServer, type IncomingMessage, type ServerResponse } from 'node:http'
 import { Readable } from 'node:stream'
 
 import { acquireNodeServer, closeNodeServer } from './node-server-resource.ts'
-import { exampleRpcHandlersLayer } from './rpc-handlers.ts'
+import { makeExampleRpcWebHandler } from './web-handler.ts'
 
 class ExampleRpcServerError extends Schema.TaggedError<ExampleRpcServerError>()(
   'ExampleRpcServerError',
@@ -15,8 +12,6 @@ class ExampleRpcServerError extends Schema.TaggedError<ExampleRpcServerError>()(
     message: Schema.String,
   },
 ) {}
-
-const rpcLayer = Layer.mergeAll(exampleRpcHandlersLayer, RpcSerialization.layerJson)
 
 const nodeHeaders = (request: IncomingMessage): Headers => {
   const headers = new Headers()
@@ -98,17 +93,7 @@ export const startExampleRpcServer = Effect.fn('ExampleRpc.startExampleRpcServer
   options: StartExampleRpcServerOptions = {},
 ) {
   const host = options.host ?? '127.0.0.1'
-  const scope = yield* Scope.Scope
-  const rpcContext = yield* Layer.buildWithScope(rpcLayer, scope)
-  const rpcHttpEffect = yield* RpcServer.toHttpEffect(exampleRpcGroup).pipe(
-    Effect.provide(rpcContext),
-    Scope.provide(scope),
-  )
-  const runtimeContext = yield* Effect.context<Scope.Scope>()
-  const webHandler = HttpEffect.toWebHandlerWith<
-    Scope.Scope,
-    Scope.Scope | HttpServerRequest.HttpServerRequest
-  >(runtimeContext)(HttpMiddleware.logger(rpcHttpEffect))
+  const webHandler = yield* makeExampleRpcWebHandler()
   const server = createServer((request, response) => {
     const address = server.address()
     const port = typeof address === 'object' && address !== null ? address.port : 0

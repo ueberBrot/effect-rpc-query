@@ -63,7 +63,12 @@ test.describe('TanStack Start application', () => {
       (response) => response.ok() && recordsRpc(response.request().postData(), 'users.page'),
     )
     await page.getByRole('button', { name: 'Load next user page' }).click()
-    await nextPageResponse
+    const rpcResponse = await nextPageResponse
+
+    const rpcUrl = new URL(rpcResponse.url())
+    expect(rpcResponse.request().method()).toBe('POST')
+    expect(rpcUrl.origin).toBe(new URL(tanStackStartApplication.url).origin)
+    expect(rpcUrl.pathname).toBe('/rpc/')
 
     await expect(page.getByText('Infinite users: Ada Lovelace, Edsger Dijkstra')).toBeVisible()
   })

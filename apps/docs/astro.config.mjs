@@ -50,12 +50,13 @@ export default defineConfig({
           label: 'Start Here',
           items: [
             { label: 'Installation', slug: 'getting-started/installation' },
+            { label: 'Quick Start', slug: 'getting-started/quick-start' },
+            { label: 'Executable Examples', slug: 'examples' },
             { label: 'Feature Support', slug: 'getting-started/feature-support' },
             {
               label: 'Compatibility and Stability',
               slug: 'getting-started/compatibility-and-stability',
             },
-            { label: 'Quick Start', slug: 'getting-started/quick-start' },
           ],
         },
         {
@@ -91,11 +92,8 @@ export default defineConfig({
           ],
         },
         {
-          label: 'Examples and Contributing',
-          items: [
-            { label: 'Executable Examples', slug: 'examples' },
-            { label: 'Dev Container', slug: 'contributing/dev-container' },
-          ],
+          label: 'Contributing',
+          items: [{ label: 'Dev Container', slug: 'contributing/dev-container' }],
         },
       ],
       social: [{ icon: 'github', label: 'GitHub', href: repositoryUrl }],

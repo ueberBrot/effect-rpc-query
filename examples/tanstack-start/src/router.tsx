@@ -1,4 +1,6 @@
 import { createRouter, type RouterHistory } from '@tanstack/react-router'
+import { createIsomorphicFn } from '@tanstack/react-start'
+import { getRequestUrl } from '@tanstack/react-start/server'
 
 import { ErrorPage, NotFoundPage, PendingPage } from './components/router-status.tsx'
 import { startTanStackStartApplication, type TanStackStartApplication } from './lib/application.ts'
@@ -58,10 +60,9 @@ export const createTanStackStartRouter = async (options: CreateTanStackStartRout
   return router
 }
 
-const rpcUrl = () =>
-  typeof window === 'undefined'
-    ? (process.env['EXAMPLE_RPC_URL'] ?? 'http://127.0.0.1:3001/rpc')
-    : (import.meta.env.VITE_RPC_URL ?? '/rpc')
+const rpcUrl = createIsomorphicFn()
+  .server(() => new URL('/rpc', getRequestUrl()).href)
+  .client(() => '/rpc')
 
 export const getRouter = () => createTanStackStartRouter({ rpcUrl: rpcUrl() })
 

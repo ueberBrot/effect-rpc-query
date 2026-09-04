@@ -6,6 +6,8 @@ description: Create an RPC utility tree and use it with TanStack Query.
 Start with an Effect RPC group and a ready flat RPC client. The application creates and disposes the
 client; `effect-rpc-query` only derives Query Core utilities from it.
 
+## Create and use the utilities
+
 The `contracts.js` and `rpc-client.js` imports below represent application-owned modules. Replace
 them with the modules that define your RPC group and acquire your ready client.
 
@@ -32,9 +34,13 @@ const createUser = new MutationObserver(queryClient, rpcQuery.users.create.mutat
 await createUser.mutate({ name: 'Ada' })
 ```
 
+## Follow the generated tree
+
 Dotted tags become nested paths: `users.get` becomes `rpcQuery.users.get`. Each unary RPC leaf has
 `key`, `queryKey`, `infiniteKey`, `mutationKey`, `queryOptions`, `infiniteOptions`, and
 `mutationOptions` builders.
+
+## Dispose application resources
 
 When the application stops, cancel active queries before disposing the ready RPC client:
 
@@ -45,4 +51,5 @@ await rpcClient.dispose()
 ```
 
 See [Client Lifecycle](/effect-rpc-query/concepts/client-lifecycle/) for the ownership boundary and
-[Generated Builders](/effect-rpc-query/reference/generated-builders/) for every leaf method.
+[Generated Builders](/effect-rpc-query/reference/generated-builders/) for every leaf method. To
+inspect complete applications, [run the examples](/effect-rpc-query/examples/).
