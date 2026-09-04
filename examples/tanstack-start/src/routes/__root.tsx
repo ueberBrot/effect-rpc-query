@@ -21,20 +21,23 @@ export const Route = createRootRouteWithContext<TanStackStartApplication>()({
 function Root() {
   return (
     <Document>
-      <div className="grid min-h-screen grid-rows-[auto_1fr_auto] bg-emerald-50/60 text-slate-800">
-        <header className="border-b border-emerald-200 bg-white/90 backdrop-blur">
-          <div className="mx-auto flex w-full max-w-6xl flex-col gap-4 px-4 py-4 sm:flex-row sm:items-center sm:justify-between sm:px-6">
+      <div className="app-backdrop grid min-h-screen grid-rows-[auto_1fr_auto] text-zinc-200">
+        <header className="border-b border-zinc-800 bg-black/95 backdrop-blur">
+          <div className="mx-auto flex w-full max-w-7xl flex-col gap-4 px-4 py-4 sm:flex-row sm:items-center sm:justify-between sm:px-6">
             <NavigationLink
-              className="px-0 font-black tracking-tight text-emerald-950 hover:bg-transparent"
+              className="display-heading flex items-center gap-2 px-0 text-lg font-black tracking-tight text-zinc-100 normal-case hover:border-transparent hover:bg-transparent hover:text-violet-300"
               to="/"
             >
+              <span aria-hidden="true" className="size-2 rounded-full bg-violet-600" />
               effect-rpc-query
             </NavigationLink>
             <nav aria-label="Primary">
-              <ul className="flex flex-wrap gap-1 p-0 text-sm font-bold text-slate-600">
+              <ul className="flex flex-wrap gap-1 p-0">
                 <li className="list-none">
                   <NavigationLink
-                    activeProps={{ className: 'bg-emerald-100 text-emerald-800' }}
+                    activeProps={{
+                      className: 'border-violet-800 bg-violet-950/60 text-violet-200',
+                    }}
                     to="/"
                   >
                     Users
@@ -42,7 +45,9 @@ function Root() {
                 </li>
                 <li className="list-none">
                   <NavigationLink
-                    activeProps={{ className: 'bg-emerald-100 text-emerald-800' }}
+                    activeProps={{
+                      className: 'border-violet-800 bg-violet-950/60 text-violet-200',
+                    }}
                     to="/details"
                   >
                     Featured user
@@ -50,7 +55,9 @@ function Root() {
                 </li>
                 <li className="list-none">
                   <NavigationLink
-                    activeProps={{ className: 'bg-emerald-100 text-emerald-800' }}
+                    activeProps={{
+                      className: 'border-violet-800 bg-violet-950/60 text-violet-200',
+                    }}
                     to="/diagnostics"
                   >
                     Diagnostics
@@ -58,7 +65,9 @@ function Root() {
                 </li>
                 <li className="list-none">
                   <NavigationLink
-                    activeProps={{ className: 'bg-emerald-100 text-emerald-800' }}
+                    activeProps={{
+                      className: 'border-violet-800 bg-violet-950/60 text-violet-200',
+                    }}
                     to="/failure"
                   >
                     SSR failure
@@ -69,7 +78,7 @@ function Root() {
           </div>
         </header>
         <Outlet />
-        <footer className="mx-auto w-full max-w-6xl px-4 py-6 text-sm text-slate-500 sm:px-6">
+        <footer className="mx-auto w-full max-w-7xl border-t border-zinc-900 px-4 py-6 text-sm text-zinc-500 sm:px-6">
           Generated Effect RPC options with the TanStack Query lifecycle.
         </footer>
       </div>

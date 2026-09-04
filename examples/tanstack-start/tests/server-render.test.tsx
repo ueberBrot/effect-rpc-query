@@ -39,26 +39,40 @@ describe('TanStack Start server rendering', () => {
 
       expect(html).toContain('Ada Lovelace')
       expect(html).toContain('Edsger Dijkstra')
-      expect(html).toMatch(/Infinite users:.*Ada Lovelace/)
-      expect(html).toContain('Accumulated diagnostics:')
-      expect(html).toMatch(/Accumulated diagnostics:.*first/)
-      expect(html).toContain('Live diagnostic:')
-      expect(html).toMatch(/Live diagnostic:.*first/)
-      expect(queryClient.getQueryData(rpcQuery.users.list.queryKey())).toHaveLength(2)
+      expect(html).toMatch(/4.*of.*12.*loaded/s)
+      expect(html).toMatch(/Page.*1/s)
+      expect(html).toContain('Accumulated stream')
+      expect(html).toContain('Connection opened')
+      expect(html).toContain('Current state:')
+      expect(queryClient.getQueryData(rpcQuery.users.list.queryKey())).toHaveLength(12)
       expect(
-        queryClient.getQueryData(rpcQuery.users.page.infiniteKey({ cursor: 0, pageSize: 1 })),
+        queryClient.getQueryData(rpcQuery.users.page.infiniteKey({ cursor: 0, pageSize: 4 })),
       ).toMatchObject({
         pageParams: [0],
-        pages: [{ users: [{ name: 'Ada Lovelace' }] }],
+        pages: [
+          {
+            total: 12,
+            users: [
+              { id: 1, locale: 'en', name: 'Ada Lovelace' },
+              { id: 2, locale: 'nl', name: 'Edsger Dijkstra' },
+              { id: 3, locale: 'en', name: 'Alan Turing' },
+              { id: 4, locale: 'en', name: 'Barbara Liskov' },
+            ],
+          },
+        ],
       })
       expect(
         queryClient.getQueryState(rpcQuery.diagnostics.stream.streamedKey())?.fetchStatus,
       ).toBe('idle')
-      expect(queryClient.getQueryData(rpcQuery.diagnostics.stream.streamedKey())).toEqual(['first'])
+      expect(queryClient.getQueryData(rpcQuery.diagnostics.stream.streamedKey())).toEqual([
+        'Connection opened',
+      ])
       expect(queryClient.getQueryState(rpcQuery.diagnostics.stream.liveKey())?.fetchStatus).toBe(
         'idle',
       )
-      expect(queryClient.getQueryData(rpcQuery.diagnostics.stream.liveKey())).toBe('first')
+      expect(queryClient.getQueryData(rpcQuery.diagnostics.stream.liveKey())).toBe(
+        'Connection opened',
+      )
     } finally {
       await router.options.context.dispose()
     }

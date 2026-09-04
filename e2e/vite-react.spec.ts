@@ -17,8 +17,8 @@ test.describe('plain Vite React application', () => {
     page.on('request', (request) => {
       if (recordsRpc(request.postData(), 'users.list')) listRequests += 1
     })
-    await page.getByRole('button', { name: 'Read cached users' }).click()
-    await expect(page.getByText('Cached users: 2')).toBeVisible()
+    await page.getByRole('button', { name: 'Read cached directory' }).click()
+    await expect(page.getByText('Cached directory: 12 users')).toBeVisible()
     expect(listRequests).toBe(0)
 
     await page.reload()
@@ -26,33 +26,36 @@ test.describe('plain Vite React application', () => {
   })
 
   test('loads and accumulates infinite-query pages', async ({ page }) => {
-    await expect(page.getByText('Infinite users: Ada Lovelace')).toBeVisible()
+    await expect(page.getByText('4 of 12 loaded')).toBeVisible()
+    await expect(page.getByText('Page 1: 4 users')).toBeVisible()
 
     const nextPageResponse = page.waitForResponse(
       (response) => response.ok() && recordsRpc(response.request().postData(), 'users.page'),
     )
-    await page.getByRole('button', { name: 'Load next user page' }).click()
+    await page.getByRole('button', { name: 'Load next 4 users' }).click()
     await nextPageResponse
 
-    await expect(page.getByText('Infinite users: Ada Lovelace, Edsger Dijkstra')).toBeVisible()
+    await expect(page.getByText('Page 2: 4 users')).toBeVisible()
+    await expect(page.getByText('8 of 12 loaded')).toBeVisible()
   })
 
   test('renders accumulated and live stream values', async ({ page }) => {
-    await expect(page.getByText('Accumulated diagnostics: first, second')).toBeVisible()
-    await expect(page.getByText('Live diagnostic: second')).toBeVisible()
+    await expect(page.getByText('4 updates retained')).toBeVisible()
+    await expect(page.getByText('Current state: Ready')).toBeVisible()
   })
 
   test('mutates users and explicitly invalidates through generated keys', async ({ page }) => {
-    await page.getByRole('button', { name: 'Seed users' }).click()
+    await page.getByRole('button', { name: 'Replace with eight pioneers' }).click()
     await expect(page.getByText('Grace Hopper', { exact: true })).toBeVisible()
     await expect(page.getByText('Margaret Hamilton', { exact: true })).toBeVisible()
+    await expect(page.getByText('8 users in one response')).toBeVisible()
 
     const listResponse = page.waitForResponse(
       (response) => response.ok() && recordsRpc(response.request().postData(), 'users.list'),
     )
     await page.getByRole('button', { name: 'Invalidate user queries' }).click()
     await listResponse
-    await expect(page.getByText('User queries invalidated')).toBeVisible()
+    await expect(page.getByText('Directory queries invalidated and refetched')).toBeVisible()
   })
 
   test('renders the complete declared failure', async ({ page }) => {

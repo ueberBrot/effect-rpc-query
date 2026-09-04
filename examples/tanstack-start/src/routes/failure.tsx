@@ -17,13 +17,12 @@ function FailurePage() {
   return (
     <PageLayout
       description="The SSR integration omits failed queries from dehydration. The browser reruns the generated query and preserves its Effect cause."
-      eyebrow="SSR failure handling"
       title="Refetch failed queries"
     >
       <div className="mt-8">
         <Panel title="Declared query failure">
           {failure.isPending ? (
-            <p className="mt-3 text-slate-600">Refetching in the browser…</p>
+            <p className="mt-3 text-zinc-400">Refetching in the browser…</p>
           ) : null}
           <EffectErrorDetails error={failure.error} />
         </Panel>

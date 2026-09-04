@@ -3,22 +3,18 @@ import type { ReactNode } from 'react'
 export const PageLayout = ({
   children,
   description,
-  eyebrow,
   title,
 }: {
   readonly children: ReactNode
   readonly description: ReactNode
-  readonly eyebrow: string
   readonly title: string
 }) => (
-  <main className="mx-auto w-full max-w-6xl px-4 py-12 sm:px-6">
-    <p className="mb-2 text-xs font-extrabold tracking-[0.14em] text-emerald-700 uppercase">
-      {eyebrow}
-    </p>
-    <h1 className="max-w-3xl text-4xl font-black tracking-tight text-slate-950 sm:text-6xl">
+  <main className="mx-auto w-full max-w-7xl px-4 py-12 sm:px-6">
+    <h1 className="display-heading max-w-4xl text-4xl font-black tracking-[-0.04em] text-zinc-50 sm:text-6xl">
       {title}
     </h1>
-    <p className="mt-4 max-w-3xl text-lg leading-8 text-slate-600">{description}</p>
+    <div className="mt-5 h-1 max-w-16 bg-violet-600" />
+    <p className="mt-5 max-w-3xl text-lg leading-8 text-zinc-400">{description}</p>
     {children}
   </main>
 )
@@ -30,8 +26,8 @@ export const Panel = ({
   readonly children: ReactNode
   readonly title: string
 }) => (
-  <section className="rounded-2xl border border-emerald-200 bg-white p-6 shadow-xl shadow-emerald-950/5">
-    <h2 className="text-xl font-black text-slate-950">{title}</h2>
+  <section className="border border-zinc-800 bg-[#111113] p-6 shadow-2xl shadow-black/40">
+    <h2 className="display-heading text-2xl font-black text-zinc-50">{title}</h2>
     {children}
   </section>
 )

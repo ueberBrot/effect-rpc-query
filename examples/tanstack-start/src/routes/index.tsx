@@ -1,4 +1,4 @@
-import { useMutation, useSuspenseInfiniteQuery, useSuspenseQuery } from '@tanstack/react-query'
+import { useInfiniteQuery, useMutation, useSuspenseQuery } from '@tanstack/react-query'
 import { createFileRoute } from '@tanstack/react-router'
 import { useState } from 'react'
 
@@ -7,11 +7,13 @@ import { PageLayout, Panel } from '../components/page-layout.tsx'
 import type { TanStackStartApplication } from '../lib/application.ts'
 import { fetchStreamSnapshot } from '../lib/query-ssr.ts'
 
+const PAGE_SIZE = 4
+
 const userPagesOptions = (rpcQuery: TanStackStartApplication['rpcQuery']) =>
   rpcQuery.users.page.infiniteOptions({
     getNextPageParam: (lastPage) => lastPage.nextCursor ?? undefined,
     initialPageParam: 0,
-    input: (cursor: number) => ({ cursor, pageSize: 1 }),
+    input: (cursor: number) => ({ cursor, pageSize: PAGE_SIZE }),
   })
 
 const streamedDiagnosticsOptions = (rpcQuery: TanStackStartApplication['rpcQuery']) =>
@@ -37,12 +39,16 @@ function UsersPage() {
   const users = useSuspenseQuery(rpcQuery.users.list.queryOptions())
   const diagnostics = useSuspenseQuery(streamedDiagnosticsOptions(rpcQuery))
   const liveDiagnostic = useSuspenseQuery(liveDiagnosticOptions(rpcQuery))
-  const userPages = useSuspenseInfiniteQuery(userPagesOptions(rpcQuery))
-  const infiniteUsers = userPages.data.pages.flatMap((page) => page.users)
+  const userPages = useInfiniteQuery(userPagesOptions(rpcQuery))
+  const loadedUsers = userPages.data?.pages.flatMap((page) => page.users) ?? []
+  const totalUsers = userPages.data?.pages[0]?.total ?? 0
+  const pageCount = userPages.data?.pages.length ?? 0
+  const remainingUsers = Math.max(0, totalUsers - loadedUsers.length)
+  const nextPageSize = Math.min(PAGE_SIZE, remainingUsers)
   const [message, setMessage] = useState<string>()
   const invalidateUsers = () => queryClient.invalidateQueries({ queryKey: rpcQuery.users.key() })
-  const seedUsers = useMutation(
-    rpcQuery.testing.seed.mutationOptions({
+  const addGrace = useMutation(
+    rpcQuery.users.create.mutationOptions({
       onSuccess: invalidateUsers,
     }),
   )
@@ -54,71 +60,151 @@ function UsersPage() {
       ...rpcQuery.users.list.queryOptions(),
       staleTime: Infinity,
     })
-    setMessage(`Cached users: ${String(cached.length)}`)
+    setMessage(`Cached directory: ${String(cached.length)} users`)
   }
 
   return (
     <PageLayout
-      description="The route loader primes a generated users query. After SSR hydration, the suspense hook reads the same cache entry without another request."
-      eyebrow="TanStack Start example"
-      title="Hydrate generated RPC queries"
+      description="See how one cache holds a complete directory, a growing list of pages, a stream history, and the latest live value."
+      title="Compare full queries, pages, and streams"
     >
-      <div className="mt-8 grid gap-4 md:grid-cols-2">
-        <Panel title="Users">
-          <ul className="mt-4 grid gap-3 p-0">
+      <div className="mt-8 grid gap-5 xl:grid-cols-2">
+        <Panel title="Ordinary query: the complete directory">
+          <div className="mt-3 flex flex-wrap items-center justify-between gap-2">
+            <p className="max-w-xl text-sm leading-6 text-zinc-400">
+              The loader fetched every record in one request and dehydrated the result for the
+              browser.
+            </p>
+            <span className="border border-zinc-700 bg-zinc-900 px-3 py-1 text-sm font-bold text-zinc-300">
+              {String(users.data.length)} users in one response
+            </span>
+          </div>
+          <ul className="mt-4 grid gap-3 sm:grid-cols-2">
             {users.data.map((user) => (
-              <li className="grid list-none gap-1 rounded-xl bg-emerald-50 p-4" key={user.id}>
+              <li
+                className="grid list-none gap-1 border border-zinc-800 bg-black p-4"
+                key={user.id}
+              >
                 <strong>{user.name}</strong>
-                <span className="text-sm text-slate-500">
+                <span className="text-sm text-zinc-500">
                   User {user.id}, locale {user.locale}
                 </span>
               </li>
             ))}
           </ul>
-        </Panel>
-        <Panel title="Cache behavior">
-          <p className="mt-3 text-sm leading-6 text-slate-600">
-            Generated key helpers target the users cache after each mutation.
-          </p>
-          <p className="mt-3 text-sm leading-6 text-slate-600">
-            Infinite users: {infiniteUsers.map((user) => user.name).join(', ')}
-          </p>
-          <p className="mt-3 text-sm leading-6 text-slate-600">
-            Accumulated diagnostics: {diagnostics.data.join(', ')}
-          </p>
-          <p className="mt-3 text-sm leading-6 text-slate-600">
-            Live diagnostic: {liveDiagnostic.data}
-          </p>
           <div className="mt-5 flex flex-wrap gap-3">
+            <ActionButton onClick={() => void reuseCachedUsers()} variant="secondary">
+              Read cached directory
+            </ActionButton>
+            <ActionButton
+              disabled={addGrace.isPending}
+              onClick={() => addGrace.mutate({ name: 'Grace Hopper' })}
+              type="button"
+            >
+              Add Grace Hopper
+            </ActionButton>
+            <ActionButton onClick={() => resetUsers.mutate(undefined)} variant="secondary">
+              Reset directory
+            </ActionButton>
+          </div>
+          {message === undefined ? null : <p className="mt-4 text-sm">{message}</p>}
+          {addGrace.isSuccess ? (
+            <p className="mt-4 text-sm">Added user {addGrace.data.name}.</p>
+          ) : null}
+          {resetUsers.isSuccess ? <p className="mt-4 text-sm">Directory reset.</p> : null}
+        </Panel>
+
+        <Panel title="Infinite query: four users at a time">
+          <div className="mt-3 flex flex-wrap items-center justify-between gap-2">
+            <p className="max-w-xl text-sm leading-6 text-zinc-400">
+              Each bordered block is one RPC response. A click appends the next page without
+              replacing the pages already in the cache.
+            </p>
+            <span className="border border-violet-800 bg-violet-950/80 px-3 py-1 text-sm font-bold text-violet-200">
+              {String(loadedUsers.length)} of {String(totalUsers)} loaded
+            </span>
+          </div>
+          <ol className="mt-4 grid gap-3 p-0">
+            {userPages.data?.pages.map((page, pageIndex) => (
+              <li
+                className="list-none border border-zinc-800 bg-black p-4"
+                key={userPages.data.pageParams[pageIndex]}
+              >
+                <p className="display-heading text-sm font-bold text-violet-300">
+                  Page {String(pageIndex + 1)}: {String(page.users.length)} users
+                </p>
+                <ul className="mt-3 grid gap-2 sm:grid-cols-2">
+                  {page.users.map((user, userIndex) => (
+                    <li
+                      className="border-l-2 border-violet-800 bg-zinc-900/80 px-3 py-2 text-sm text-zinc-200"
+                      key={user.id}
+                    >
+                      <strong>{`#${String(pageIndex * PAGE_SIZE + userIndex + 1)} ${user.name}`}</strong>
+                    </li>
+                  ))}
+                </ul>
+              </li>
+            ))}
+          </ol>
+          <div className="mt-5 flex flex-wrap items-center gap-3">
             <ActionButton
               disabled={!userPages.hasNextPage || userPages.isFetchingNextPage}
               onClick={() => void userPages.fetchNextPage()}
               type="button"
             >
-              Load next user page
+              {userPages.isFetchingNextPage
+                ? 'Loading next page…'
+                : userPages.hasNextPage
+                  ? `Load next ${String(nextPageSize)} users`
+                  : 'All users loaded'}
             </ActionButton>
-            <ActionButton
-              onClick={() =>
-                seedUsers.mutate({
-                  users: [{ name: 'Grace Hopper' }, { name: 'Margaret Hamilton' }],
-                })
-              }
-              type="button"
-            >
-              Seed users
-            </ActionButton>
-            <ActionButton onClick={() => resetUsers.mutate(undefined)} variant="secondary">
-              Reset users
-            </ActionButton>
-            <ActionButton onClick={() => void reuseCachedUsers()} variant="secondary">
-              Read cached users
-            </ActionButton>
+            <span className="text-sm font-medium text-zinc-400">
+              {String(pageCount)} {pageCount === 1 ? 'page' : 'pages'} in the cache
+            </span>
           </div>
-          {message === undefined ? null : <p className="mt-4 text-sm">{message}</p>}
-          {resetUsers.isSuccess ? (
-            <p className="mt-4 text-sm">Reset result: {String(resetUsers.data)}</p>
-          ) : null}
         </Panel>
+
+        <section className="border border-l-2 border-zinc-800 border-l-violet-600 bg-violet-950/10 p-6 shadow-2xl shadow-black/40 xl:col-span-2">
+          <h2 className="display-heading text-2xl font-black text-zinc-50">
+            One stream, two cache models
+          </h2>
+          <p className="mt-3 max-w-3xl text-sm leading-6 text-zinc-400">
+            The server emits four states over time. The accumulated query keeps every state; the
+            live query replaces its previous value.
+          </p>
+          <div className="mt-5 grid gap-4 md:grid-cols-2">
+            <div className="border border-zinc-800 bg-black p-5">
+              <div className="flex flex-wrap items-center justify-between gap-2">
+                <p className="display-heading text-sm font-bold text-violet-300">
+                  Accumulated stream: keeps history
+                </p>
+                <span className="border border-violet-900 bg-violet-950/80 px-3 py-1 text-xs font-bold text-violet-200">
+                  {String(diagnostics.data.length)}{' '}
+                  {diagnostics.data.length === 1 ? 'update' : 'updates'} retained
+                </span>
+              </div>
+              <ol className="mt-4 grid gap-2">
+                {diagnostics.data.map((status, index) => (
+                  <li className="flex items-center gap-3 text-sm" key={status}>
+                    <span className="grid size-7 place-items-center border border-violet-900 bg-violet-950 font-bold text-violet-200">
+                      {String(index + 1)}
+                    </span>
+                    <span>{status}</span>
+                  </li>
+                ))}
+              </ol>
+            </div>
+            <div className="border border-zinc-800 bg-black p-5">
+              <p className="display-heading text-sm font-bold text-violet-300">
+                Live query: latest only
+              </p>
+              <p className="display-heading mt-6 text-3xl font-black text-zinc-50">
+                Current state: {liveDiagnostic.data}
+              </p>
+              <p className="mt-2 text-sm text-zinc-500">Earlier states are replaced.</p>
+            </div>
+          </div>
+        </section>
       </div>
     </PageLayout>
   )

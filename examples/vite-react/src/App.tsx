@@ -6,18 +6,15 @@ import { QueriesSection } from './components/sections/queries-section.tsx'
 import type { ViteReactApplication } from './lib/application.ts'
 
 const ExampleContent = ({ application }: { readonly application: ViteReactApplication }) => (
-  <div className="min-h-screen bg-emerald-50 text-slate-900 antialiased">
-    <main className="mx-auto grid max-w-6xl gap-4 px-5 py-12 md:grid-cols-2">
-      <header className="rounded-2xl border border-emerald-200 bg-white/90 p-6 shadow-xl shadow-emerald-950/5 md:col-span-2">
-        <p className="mb-2 text-xs font-bold tracking-widest text-emerald-700 uppercase">
-          Vite client example
-        </p>
-        <h1 className="text-3xl font-bold tracking-tight text-slate-950 sm:text-4xl">
-          Generated Effect RPC options in React
+  <div className="app-backdrop min-h-screen text-zinc-200 antialiased">
+    <main className="mx-auto grid max-w-7xl gap-5 px-5 py-12 md:grid-cols-2">
+      <header className="border border-zinc-800 border-l-violet-600 bg-[#111113] p-6 shadow-2xl shadow-black/50 md:col-span-2 md:border-l-4 md:p-8">
+        <h1 className="display-heading max-w-4xl text-3xl font-black tracking-[-0.04em] text-zinc-50 sm:text-5xl">
+          Compare full queries, pages, and streams
         </h1>
-        <p className="mt-3 max-w-3xl leading-7 text-slate-600">
-          Use generated query options, mutation options, and key helpers with TanStack Query. The
-          controls show caching, invalidation, Effect failures, cancellation, and cleanup.
+        <p className="mt-5 max-w-3xl leading-7 text-zinc-400">
+          See how generated Effect RPC options load a complete directory, append cursor-based pages,
+          retain stream history, and display the latest live value.
         </p>
       </header>
 

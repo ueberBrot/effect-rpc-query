@@ -1,1 +1,31 @@
 @import 'tailwindcss';
+
+@layer base {
+  :root {
+    --app-black: #050505;
+    --app-purple: #7c3aed;
+    --app-text: #fafafa;
+    color-scheme: dark;
+    font-family: 'Avenir Next', Avenir, 'Segoe UI Variable', 'Segoe UI', sans-serif;
+  }
+
+  body {
+    background: var(--app-black);
+  }
+
+  ::selection {
+    background: var(--app-purple);
+    color: var(--app-text);
+  }
+}
+
+@layer components {
+  .app-backdrop {
+    background: var(--app-black);
+  }
+
+  .display-heading {
+    font-family: 'Avenir Next', Avenir, 'Segoe UI Variable', 'Segoe UI', sans-serif;
+    text-wrap: balance;
+  }
+}

@@ -30,20 +30,24 @@ describe('plain Vite React integration', () => {
   it('uses generated options with ordinary, suspense, and mutation hooks', async () => {
     expect(await screen.findByText('Ada Lovelace')).toBeTruthy()
     expect(await screen.findByText('Featured: Ada Lovelace')).toBeTruthy()
-    expect(await screen.findByText('Infinite users: Ada Lovelace')).toBeTruthy()
-    expect(await screen.findByText('Accumulated diagnostics: first, second')).toBeTruthy()
-    expect(await screen.findByText('Live diagnostic: second')).toBeTruthy()
+    expect(await screen.findByText('4 of 12 loaded')).toBeTruthy()
+    expect(await screen.findByText('Page 1: 4 users')).toBeTruthy()
+    expect(
+      await screen.findByText('4 updates retained', undefined, { timeout: 3_000 }),
+    ).toBeTruthy()
+    expect(await screen.findByText('Current state: Ready')).toBeTruthy()
 
-    fireEvent.click(screen.getByRole('button', { name: 'Load next user page' }))
-    expect(await screen.findByText('Infinite users: Ada Lovelace, Edsger Dijkstra')).toBeTruthy()
+    fireEvent.click(screen.getByRole('button', { name: 'Load next 4 users' }))
+    expect(await screen.findByText('Page 2: 4 users')).toBeTruthy()
+    expect(await screen.findByText('8 of 12 loaded')).toBeTruthy()
 
-    fireEvent.click(screen.getByRole('button', { name: 'Read cached users' }))
-    expect(await screen.findByText('Cached users: 2')).toBeTruthy()
+    fireEvent.click(screen.getByRole('button', { name: 'Read cached directory' }))
+    expect(await screen.findByText('Cached directory: 12 users')).toBeTruthy()
 
     fireEvent.click(screen.getByRole('button', { name: 'Run void query' }))
     expect(await screen.findByText('Void query result: null')).toBeTruthy()
 
-    fireEvent.click(screen.getByRole('button', { name: 'Reset users' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Reset directory' }))
     expect(await screen.findByText('Reset result: undefined')).toBeTruthy()
 
     fireEvent.click(screen.getByRole('button', { name: 'Trigger declared failure' }))
@@ -56,12 +60,13 @@ describe('plain Vite React integration', () => {
   it('seeds and invalidates user queries through generated keys', async () => {
     expect(await screen.findByText('Ada Lovelace')).toBeTruthy()
 
-    fireEvent.click(screen.getByRole('button', { name: 'Seed users' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Replace with eight pioneers' }))
     expect(await screen.findByText('Grace Hopper')).toBeTruthy()
     expect(screen.getByText('Margaret Hamilton')).toBeTruthy()
+    expect(await screen.findByText('8 users in one response')).toBeTruthy()
 
     fireEvent.click(screen.getByRole('button', { name: 'Invalidate user queries' }))
-    expect(await screen.findByText('User queries invalidated')).toBeTruthy()
+    expect(await screen.findByText('Directory queries invalidated and refetched')).toBeTruthy()
   })
 
   it('adds the user details submitted through the form', async () => {
@@ -77,7 +82,7 @@ describe('plain Vite React integration', () => {
 
     expect(await screen.findByText('Added Katherine Johnson')).toBeTruthy()
     expect(await screen.findByText('Katherine Johnson')).toBeTruthy()
-    expect(screen.getByText('User 3, locale fr')).toBeTruthy()
+    expect(screen.getByText('User 13, locale fr')).toBeTruthy()
   })
 
   it('deletes the user selected from the rendered list', async () => {

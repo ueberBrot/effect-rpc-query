@@ -19,13 +19,16 @@ function DiagnosticsPage() {
   return (
     <PageLayout
       description="Generated operations preserve Effect causes. Cancelling the query interrupts its RPC Effect on the server."
-      eyebrow="Effect diagnostics"
       title="Failures and cancellation"
     >
       <div className="mt-8">
         <Panel title="Runtime diagnostics">
           <div className="mt-5 flex flex-wrap gap-3">
-            <ActionButton onClick={() => declaredFailure.mutate(undefined)} type="button">
+            <ActionButton
+              onClick={() => declaredFailure.mutate(undefined)}
+              type="button"
+              variant="danger"
+            >
               Trigger declared failure
             </ActionButton>
             <ActionButton
@@ -50,7 +53,7 @@ function DiagnosticsPage() {
             <EffectErrorDetails error={slowQuery.state.error} />
           ) : null}
           {cancellationMessage === undefined ? null : (
-            <p className="mt-4 text-sm text-slate-700">{cancellationMessage}</p>
+            <p className="mt-4 text-sm text-zinc-300">{cancellationMessage}</p>
           )}
         </Panel>
       </div>
