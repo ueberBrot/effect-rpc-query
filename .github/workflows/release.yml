@@ -163,3 +163,13 @@ jobs:
         env:
           NPM_CONFIG_ACCESS: public
           NPM_CONFIG_PROVENANCE: true
+
+  deploy-docs:
+    name: Deploy published documentation
+    if: needs.publish.result == 'success'
+    needs: publish
+    permissions:
+      contents: read
+      id-token: write
+      pages: write
+    uses: ./.github/workflows/deploy-docs.yml
