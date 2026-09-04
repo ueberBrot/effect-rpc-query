@@ -1,6 +1,6 @@
 import { describe, expect, it } from '@effect/vitest'
 import { QueryClient, QueryObserver, skipToken } from '@tanstack/query-core'
-import { Cause, Deferred, Effect, Equal, Exit, Schema, Stream } from 'effect'
+import { Deferred, Effect, Equal, Exit, Schema, Stream } from 'effect'
 import { Rpc, RpcClient, RpcGroup } from 'effect/unstable/rpc'
 
 import {
@@ -208,9 +208,9 @@ describe('createRpcQueryUtils streaming execution', () => {
   it('interrupts and finalizes a stream when Query Core cancels it', async () => {
     const Watch = Rpc.make('events.watch', { success: Schema.String, stream: true })
     const streamGroup = RpcGroup.make(Watch)
-    const waiting = Effect.runSync(Deferred.make<void>())
-    const interrupted = Effect.runSync(Deferred.make<void>())
-    const finalized = Effect.runSync(Deferred.make<void>())
+    const waiting = Deferred.makeUnsafe<void>()
+    const interrupted = Deferred.makeUnsafe<void>()
+    const finalized = Deferred.makeUnsafe<void>()
     const source = Stream.make('ready').pipe(
       Stream.concat(
         Stream.fromEffect(
@@ -237,8 +237,8 @@ describe('createRpcQueryUtils streaming execution', () => {
     await queryClient.cancelQueries({ queryKey: options.queryKey })
     await new Promise<void>((resolve) => globalThis.setTimeout(resolve, 10))
 
-    expect(Effect.runSync(Deferred.isDone(interrupted))).toBe(true)
-    expect(Effect.runSync(Deferred.isDone(finalized))).toBe(true)
+    expect(Deferred.isDoneUnsafe(interrupted)).toBe(true)
+    expect(Deferred.isDoneUnsafe(finalized)).toBe(true)
     expect(await query).toEqual(['ready'])
   })
 

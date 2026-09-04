@@ -54,19 +54,9 @@ export type PayloadSchema<R extends Rpc.Any> =
     ? Payload
     : never
 
-/** Retains only unary RPC definitions. */
-export type UnaryRpc<R extends Rpc.Any> =
-  Rpc.SuccessSchema<R> extends RpcSchema.Stream<Schema.Top, Schema.Top> ? never : R
-
-export type UnaryRpcs<Group extends RpcGroup.Any> =
-  RpcsOf<Group> extends infer R ? (R extends Rpc.Any ? UnaryRpc<R> : never) : never
-
 /** Retains only streaming RPC definitions. */
 export type StreamingRpc<R extends Rpc.Any> =
   Rpc.SuccessSchema<R> extends RpcSchema.Stream<Schema.Top, Schema.Top> ? R : never
-
-export type StreamingRpcs<Group extends RpcGroup.Any> =
-  RpcsOf<Group> extends infer R ? (R extends Rpc.Any ? StreamingRpc<R> : never) : never
 
 /** Selects RPCs whose query keys include constructed payload identity. */
 export type PayloadBearingRpcs<Group extends RpcGroup.Any> =
@@ -444,7 +434,7 @@ export type ConcreteLiveKey<
 
 export type StreamRefetchMode = 'append' | 'replace' | 'reset'
 
-type StreamedObserverInput<
+export type StreamedInputOptions<
   R extends Rpc.Any,
   Prefix extends readonly JsonValue[],
   ClientError,
@@ -458,14 +448,7 @@ type StreamedObserverInput<
     ConcreteStreamedKey<Prefix, R, ClientError>
   >,
   OwnedQueryOption
->
-
-export type StreamedInputOptions<
-  R extends Rpc.Any,
-  Prefix extends readonly JsonValue[],
-  ClientError,
-  Selected,
-> = StreamedObserverInput<R, Prefix, ClientError, Selected> & {
+> & {
   /** Controls whether a refetch clears, appends to, or replaces accumulated data. */
   readonly refetchMode?: StreamRefetchMode
 }
@@ -559,7 +542,7 @@ export type StreamedOptionsBuilder<
         (token: SkipToken): SkippedRpcStreamedOptions<R, Prefix, ClientError>
       }
 
-type LiveObserverInput<
+export type LiveInputOptions<
   R extends Rpc.Any,
   Prefix extends readonly JsonValue[],
   ClientError,
@@ -580,7 +563,7 @@ export type DefinedLiveInputOptions<
   Prefix extends readonly JsonValue[],
   ClientError,
   Selected,
-> = Omit<LiveObserverInput<R, Prefix, ClientError, Selected>, 'initialData'> & {
+> = Omit<LiveInputOptions<R, Prefix, ClientError, Selected>, 'initialData'> & {
   readonly initialData:
     | NonUndefinedGuard<Rpc.SuccessChunk<R>>
     | (() => NonUndefinedGuard<Rpc.SuccessChunk<R>>)
@@ -591,7 +574,7 @@ export type UndefinedLiveInputOptions<
   Prefix extends readonly JsonValue[],
   ClientError,
   Selected,
-> = Omit<LiveObserverInput<R, Prefix, ClientError, Selected>, 'initialData'> & {
+> = Omit<LiveInputOptions<R, Prefix, ClientError, Selected>, 'initialData'> & {
   readonly initialData?:
     | undefined
     | InitialDataFunction<NonUndefinedGuard<Rpc.SuccessChunk<R>>>
@@ -603,7 +586,7 @@ export type RpcLiveOptions<
   Prefix extends readonly JsonValue[],
   ClientError,
   Selected = Rpc.SuccessChunk<R>,
-> = LiveObserverInput<R, Prefix, ClientError, Selected> & {
+> = LiveInputOptions<R, Prefix, ClientError, Selected> & {
   readonly queryFn: QueryFunction<Rpc.SuccessChunk<R>, ConcreteLiveKey<Prefix, R, ClientError>>
   readonly queryKey: ConcreteLiveKey<Prefix, R, ClientError>
   readonly queryKeyHashFn: QueryKeyHashFunction<ConcreteLiveKey<Prefix, R, ClientError>>

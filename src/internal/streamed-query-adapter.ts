@@ -5,14 +5,14 @@ import { EffectRpcQueryEmptyStreamError, EffectRpcQueryError } from '../errors'
 import type { RunPromiseExit } from '../types'
 import type { AdaptedStreamingRpc } from './effect-rpc-adapter'
 
-type StreamQueryPolicy =
+export type StreamQueryPolicy =
   | {
       readonly _tag: 'Accumulated'
       readonly refetchMode?: 'append' | 'replace' | 'reset'
     }
   | { readonly _tag: 'Live' }
 
-interface MakeStreamQueryOptions {
+export interface MakeStreamQueryOptions {
   readonly input: unknown
   readonly policy: StreamQueryPolicy
   readonly rpc: AdaptedStreamingRpc
