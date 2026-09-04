@@ -15,20 +15,21 @@ interface RouterContext {
 
 const rootRoute = createRootRouteWithContext<RouterContext>()()
 
+const userPagesOptions = (rpcQuery: PublicContractUtils) =>
+  rpcQuery.users.pages.infiniteOptions({
+    getNextPageParam: (lastPage: { readonly nextCursor: number | null }) =>
+      lastPage.nextCursor ?? undefined,
+    initialPageParam: 0,
+    input: (cursor: number) => ({ cursor }),
+  })
+
 const indexRoute = createRoute({
   component: () => {
     const { rpcQuery } = indexRoute.useRouteContext()
 
     useQuery(rpcQuery.users.get.queryOptions({ input: { id: 1 } }))
     useMutation(rpcQuery.users.get.mutationOptions())
-    useInfiniteQuery(
-      rpcQuery.users.pages.infiniteOptions({
-        getNextPageParam: (lastPage: { readonly nextCursor: number | null }) =>
-          lastPage.nextCursor ?? undefined,
-        initialPageParam: 0,
-        input: (cursor: number) => ({ cursor }),
-      }),
-    )
+    useInfiniteQuery(userPagesOptions(rpcQuery))
     useSuspenseQuery(rpcQuery.events.audit.watch.streamedOptions())
     useSuspenseQuery(rpcQuery.projects.watch.liveOptions())
 
@@ -40,14 +41,7 @@ const indexRoute = createRoute({
       context.queryClient.ensureQueryData(
         context.rpcQuery.users.get.queryOptions({ input: { id: 1 } }),
       ),
-      context.queryClient.ensureInfiniteQueryData(
-        context.rpcQuery.users.pages.infiniteOptions({
-          getNextPageParam: (lastPage: { readonly nextCursor: number | null }) =>
-            lastPage.nextCursor ?? undefined,
-          initialPageParam: 0,
-          input: (cursor: number) => ({ cursor }),
-        }),
-      ),
+      context.queryClient.ensureInfiniteQueryData(userPagesOptions(context.rpcQuery)),
       context.queryClient.ensureQueryData(context.rpcQuery.events.audit.watch.streamedOptions()),
       context.queryClient.ensureQueryData(context.rpcQuery.projects.watch.liveOptions()),
     ])

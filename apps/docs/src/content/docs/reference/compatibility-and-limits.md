@@ -12,8 +12,9 @@ target is `0.1.0`.
 - TanStack Query Core `>=5.102.0 <6` is the supported peer range.
 - Query Core, React Query, React Router loaders, and TanStack Start are covered by repository tests
   or executable applications.
-- Strict TypeScript 5.9 is the compiler floor. Packed consumers are verified with TypeScript 5.9
-  and 7.
+- Strict TypeScript 5.9 is the compiler floor. The packed package contract is verified with
+  TypeScript 5.9 and 7. The TanStack Start fixture uses the same strict settings but skips checking
+  its dependencies' declaration files.
 - The package is ESM-only and targets ES2022.
 
 ## Limits

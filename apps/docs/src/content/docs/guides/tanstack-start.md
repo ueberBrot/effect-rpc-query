@@ -61,27 +61,30 @@ capture a successful snapshot and cancel the query before dehydration can finish
 
 ```ts
 const fetchStreamSnapshot = async (queryClient, options) => {
+  let stopWatching = () => {}
   const snapshotReady = new Promise((resolve, reject) => {
-    const unsubscribe = queryClient.getQueryCache().subscribe(() => {
+    const inspect = () => {
       const state = queryClient.getQueryState(options.queryKey)
-      if (state?.status === 'success') {
-        unsubscribe()
-        resolve()
-      }
-      if (state?.status === 'error') {
-        unsubscribe()
-        reject(state.error)
-      }
-    })
+      if (state?.status === 'success') resolve()
+      if (state?.status === 'error') reject(state.error)
+    }
+    stopWatching = queryClient.getQueryCache().subscribe(inspect)
+    inspect()
   })
   const fetching = queryClient.fetchQuery(options)
 
-  await snapshotReady
-  await queryClient.cancelQueries({ exact: true, queryKey: options.queryKey })
-  return fetching
+  try {
+    await snapshotReady
+    await queryClient.cancelQueries({ exact: true, queryKey: options.queryKey })
+    return await fetching
+  } catch (error) {
+    await fetching.catch(() => undefined)
+    throw error
+  } finally {
+    stopWatching()
+  }
 }
 ```
 
 Cancellation closes the stream iterator and its Effect resources. The browser hydrates the server
-snapshot, then may refetch according to ordinary TanStack policies. The executable example uses a
-race-safe version that also handles an immediately successful or failed query.
+snapshot, then may refetch according to ordinary TanStack policies.
