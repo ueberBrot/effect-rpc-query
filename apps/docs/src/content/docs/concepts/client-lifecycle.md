@@ -10,8 +10,8 @@ This boundary keeps ownership explicit:
 
 1. The application opens the RPC client’s `Scope` and builds any required runtime.
 2. The application creates its `QueryClient` and RPC utility tree.
-3. Generated query, infinite-query, and mutation functions call the ready client through
-   `runPromiseExit`.
+3. Generated ordinary, infinite, accumulated-stream, live, and mutation functions call the ready
+   client through `runPromiseExit`.
 4. Shutdown cancels active queries, clears the cache, and then closes the RPC client resources.
 
 Use a separate application boundary per server request. In a browser, retain one boundary for the

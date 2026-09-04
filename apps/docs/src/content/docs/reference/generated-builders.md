@@ -68,3 +68,28 @@ const options = rpcQuery.users.page.infiniteOptions({
 The builder forwards applicable Query Core options but owns `queryFn`, `queryKey`, and
 `queryKeyHashFn`. Each page runs through the same Effect runner and cancellation signal as an
 ordinary query.
+
+## Stream values
+
+Each streaming RPC leaf exposes:
+
+| Builder                     | Result                                                                      |
+| --------------------------- | --------------------------------------------------------------------------- |
+| `streamedKey(input?)`       | Data-tagged key for the accumulated sequence.                               |
+| `streamedOptions(options?)` | Fresh Query Core options that append each emitted value to an array.        |
+| `liveKey(input?)`           | Data-tagged key for the latest value.                                       |
+| `liveOptions(options?)`     | Fresh Query Core options that replace the cached value after each emission. |
+
+Both option builders publish the query as successful after its first value and keep
+`fetchStatus: 'fetching'` until the stream ends. An empty accumulated stream resolves to `[]`; an
+empty live stream fails with `EffectRpcQueryEmptyStreamError`.
+
+Accumulated streams accept TanStack's `refetchMode` option:
+
+- `reset` clears cached values and returns the query to pending before refetching. This is the
+  default.
+- `append` adds the new stream's values to the cached sequence.
+- `replace` retains the old sequence until the new stream ends, then replaces it atomically.
+
+Live queries always replace the cached value and therefore expose no `refetchMode`. Cancelling,
+unmounting, or superseding either stream closes its iterator and interrupts its Effect resources.

@@ -21,6 +21,8 @@ test.describe('TanStack Start application', () => {
       expect(serverRenderedResponse?.ok()).toBe(true)
       await expect(serverRenderedPage.getByText('Ada Lovelace', { exact: true })).toBeVisible()
       await expect(serverRenderedPage.getByText('Edsger Dijkstra', { exact: true })).toBeVisible()
+      await expect(serverRenderedPage.getByText('Accumulated diagnostics: first')).toBeVisible()
+      await expect(serverRenderedPage.getByText('Live diagnostic: first')).toBeVisible()
     } finally {
       await serverRenderedContext.close()
     }
@@ -38,6 +40,11 @@ test.describe('TanStack Start application', () => {
     await page.getByRole('button', { name: 'Read cached users' }).click()
     await expect(page.getByText('Cached users: 2')).toBeVisible()
     expect(browserListRequests).toBe(0)
+  })
+
+  test('hydrates stream snapshots and refetches their remaining values', async ({ page }) => {
+    await expect(page.getByText('Accumulated diagnostics: first, second')).toBeVisible()
+    await expect(page.getByText('Live diagnostic: second')).toBeVisible()
   })
 
   test('navigates on the client and reuses the hydrated cache', async ({ page }) => {

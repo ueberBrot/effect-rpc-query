@@ -5,7 +5,7 @@ description: Reference for createRpcQueryUtils and its configuration.
 
 ## `createRpcQueryUtils(group, options)`
 
-Returns an eager, frozen `RpcQueryUtils` tree for the group’s unary RPCs.
+Returns an eager, frozen `RpcQueryUtils` tree for the group's unary and streaming RPCs.
 
 ### Options
 

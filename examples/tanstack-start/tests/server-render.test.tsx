@@ -1,9 +1,13 @@
 import { startExampleRpcServer } from '@effect-rpc-query/server'
+import { QueryClient } from '@tanstack/react-query'
 import { createMemoryHistory, RouterProvider } from '@tanstack/react-router'
-import { Effect, Exit, Scope } from 'effect'
+import { Deferred, Effect, Exit, Schema, Scope, Stream } from 'effect'
+import { createRpcQueryUtils } from 'effect-rpc-query'
+import { Rpc, type RpcClient, RpcGroup } from 'effect/unstable/rpc'
 import { renderToString } from 'react-dom/server'
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 
+import { fetchStreamSnapshot } from '../src/lib/query-ssr.ts'
 import { createTanStackStartRouter } from '../src/router.tsx'
 
 describe('TanStack Start server rendering', () => {
@@ -58,5 +62,29 @@ describe('TanStack Start server rendering', () => {
     } finally {
       await router.options.context.dispose()
     }
+  })
+
+  it('finalizes an open stream after its first successful server snapshot', async () => {
+    const Watch = Rpc.make('diagnostics.watch', { success: Schema.String, stream: true })
+    const group = RpcGroup.make(Watch)
+    const finalized = Deferred.makeUnsafe<void>()
+    const source = Stream.make('snapshot').pipe(
+      Stream.concat(Stream.fromEffect(Effect.never)),
+      Stream.ensuring(Deferred.succeed(finalized, undefined).pipe(Effect.asVoid)),
+    )
+    const client = ((_tag: string, _payload: unknown) => source) as RpcClient.RpcClient.Flat<
+      RpcGroup.Rpcs<typeof group>
+    >
+    const queryClient = new QueryClient()
+    const options = createRpcQueryUtils(group, {
+      client,
+      keyPrefix: ['start'] as const,
+    }).diagnostics.watch.streamedOptions()
+
+    const snapshot = await fetchStreamSnapshot(queryClient, options)
+
+    expect(snapshot).toEqual(['snapshot'])
+    expect(queryClient.getQueryState(options.queryKey)?.fetchStatus).toBe('idle')
+    expect(Deferred.isDoneUnsafe(finalized)).toBe(true)
   })
 })

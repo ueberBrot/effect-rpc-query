@@ -24,6 +24,11 @@ The default process is:
 The generated `queryKeyHashFn` serializes the already-canonical key so TanStack Query uses the same
 identity as the key builders.
 
+Every operation adds its own segment after the RPC path: `query`, `infinite`, `streamed`, `live`, or
+`mutation`. Concrete query keys append the canonical payload when the RPC has one. These segments
+keep different cache shapes from colliding while root, branch, and RPC prefixes continue to match
+all descendant operations.
+
 Unsupported values, failed construction, and failed encoding raise `EffectRpcQueryKeyError` before
 network execution. Serviceful or redacted payloads require a
 [custom key encoder](/effect-rpc-query/guides/custom-key-encoders/).

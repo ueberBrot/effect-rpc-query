@@ -1,3 +1,18 @@
 # Quarantine new dependency releases for seven days
 
-pnpm enforces a strict seven-day minimum release age, frozen lockfiles in CI, and explicit lifecycle-script permissions, favoring supply-chain observation over immediate upgrades. A fresh Effect release candidate or other intentionally evaluated tool may receive one reviewed exact-version exception after its release, provenance, scripts, and lockfile changes have been checked; package-wide exemptions remain forbidden, and each exception expires with the quarantine.
+Status: Accepted.
+
+## Context
+
+Immediate dependency upgrades provide too little time to observe supply-chain incidents.
+
+## Decision
+
+pnpm enforces a strict seven-day minimum release age, frozen lockfiles in CI, and explicit
+lifecycle-script permissions.
+
+## Consequences
+
+A fresh Effect release candidate or another intentionally evaluated tool may receive one reviewed,
+exact-version exception after its release, provenance, scripts, and lockfile changes are checked.
+Package-wide exemptions remain forbidden. Each exception expires with the quarantine.

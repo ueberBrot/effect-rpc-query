@@ -2,9 +2,9 @@
 
 Type-safe TanStack Query utilities generated from Effect RPC definitions.
 
-`effect-rpc-query` turns dotted unary RPC tags into a typed utility tree. Its builders produce Query
-Core options and semantic cache keys while your application owns the RPC client, Query Client, and
-lifecycle.
+`effect-rpc-query` turns dotted unary and streaming RPC tags into a typed utility tree. Its builders
+produce Query Core options and semantic cache keys while your application owns the RPC client,
+Query Client, and lifecycle.
 
 ## Install
 
@@ -34,14 +34,15 @@ TanStack Start, cache keys, cancellation, failures, and the curated API referenc
 
 ## Feature support
 
-| Capability                            | Status            | Boundary                                                                                    |
-| ------------------------------------- | ----------------- | ------------------------------------------------------------------------------------------- |
-| Unary queries and mutations           | Generated         | Typed options, semantic keys, conditional queries, and mutations                            |
-| Infinite queries                      | Generated         | Typed page parameters, semantic initial-page keys, conditional queries, and cancellation    |
-| Native TanStack Query APIs            | Tested            | Query Core, React Query, Router loaders, TanStack Start, and `QueryClient` cache operations |
-| Transport and application integration | Application-owned | RPC client lifetime, providers, policies, Devtools, persistence, and framework integration  |
-| Streams and subscriptions             | Not supported     | Streaming RPCs, subscriptions, live queries, and `streamedQuery`                            |
-| Automation and direct helpers         | Not supported     | Automatic invalidation, mutation cancellation, and direct RPC execution helpers             |
+| Capability                            | Status            | Boundary                                                                                         |
+| ------------------------------------- | ----------------- | ------------------------------------------------------------------------------------------------ |
+| Unary queries and mutations           | Generated         | Typed options, semantic keys, conditional queries, and mutations                                 |
+| Infinite queries                      | Generated         | Typed page parameters, semantic initial-page keys, conditional queries, and cancellation         |
+| Accumulated and live streams          | Generated         | Typed stream elements, semantic keys, refetch behavior, cancellation, and complete Effect Causes |
+| Native TanStack Query APIs            | Tested            | Query Core, React Query, Router loaders, TanStack Start, and `QueryClient` cache operations      |
+| Transport and application integration | Application-owned | RPC client lifetime, providers, policies, Devtools, persistence, and framework integration       |
+| Automatic policy                      | Application-owned | Invalidation, interceptors, defaults, and framework lifecycle                                    |
+| Mutation cancellation                 | Impossible        | TanStack mutation functions provide no abort signal                                              |
 
 See the [full capability matrix](https://ueberbrot.github.io/effect-rpc-query/getting-started/feature-support/)
 for the exact boundary of each feature.

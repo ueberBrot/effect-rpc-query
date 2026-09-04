@@ -32,8 +32,8 @@ export default defineConfig({
   },
   webServer: [
     webServer('vp run server', 'http://127.0.0.1:3001/health'),
-    webServer('vp run vite-react-preview', 'http://127.0.0.1:4173'),
-    webServer('vp run tanstack-start-preview', 'http://127.0.0.1:3000'),
+    webServer('vp run --no-cache vite-react-preview', 'http://127.0.0.1:4173'),
+    webServer('vp run --no-cache tanstack-start-preview', 'http://127.0.0.1:3000'),
   ],
   workers: 1,
 })

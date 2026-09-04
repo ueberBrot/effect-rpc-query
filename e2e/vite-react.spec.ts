@@ -37,6 +37,11 @@ test.describe('plain Vite React application', () => {
     await expect(page.getByText('Infinite users: Ada Lovelace, Edsger Dijkstra')).toBeVisible()
   })
 
+  test('renders accumulated and live stream values', async ({ page }) => {
+    await expect(page.getByText('Accumulated diagnostics: first, second')).toBeVisible()
+    await expect(page.getByText('Live diagnostic: second')).toBeVisible()
+  })
+
   test('mutates users and explicitly invalidates through generated keys', async ({ page }) => {
     await page.getByRole('button', { name: 'Seed users' }).click()
     await expect(page.getByText('Grace Hopper', { exact: true })).toBeVisible()

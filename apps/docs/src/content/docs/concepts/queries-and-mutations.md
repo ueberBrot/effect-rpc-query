@@ -1,5 +1,5 @@
 ---
-title: Queries and Mutations
+title: Query and Mutation Operations
 description: Choose the generated operation that matches your RPC use.
 ---
 
@@ -14,6 +14,10 @@ mutation runs, and their values do not become part of the mutation key.
 
 Use an infinite query when TanStack should accumulate paginated unary RPC results. Map each page
 parameter to a payload; the mapped initial page becomes part of the semantic key.
+
+Use an accumulated streamed query when the application needs every emitted value in order. Use a
+live query when it needs only the latest emitted value. Both operations close their stream iterator
+when TanStack cancels the query.
 
 ```ts
 const user = useQuery(rpcQuery.users.get.queryOptions({ input: { id: 1 } }))

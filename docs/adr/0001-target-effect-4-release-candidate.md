@@ -1,3 +1,21 @@
 # Target the Effect 4 release candidate
 
-The package launches as `0.1.0` against `effect/unstable/rpc` from one exact Effect 4 release candidate rather than supporting Effect 3 and Effect 4 at once. Every release declares and tests one exact RC peer, and an internal adapter isolates upstream extraction and invocation; before `1.0`, breaking public changes raise the minor version, compatible changes raise the patch, and RC-only upgrades may raise the patch only when the public surface remains compatible. The project keeps a changelog from its first release and waits for a sufficiently stable Effect RPC surface before publishing `1.0`.
+Status: Accepted.
+
+## Context
+
+Supporting Effect 3 and Effect 4 together would couple the first release to two incompatible RPC
+surfaces.
+
+## Decision
+
+The first public release targets `effect/unstable/rpc` from one exact Effect 4 release candidate.
+Each release declares and tests one exact RC peer. An internal adapter isolates upstream extraction
+and invocation.
+
+## Consequences
+
+Before `1.0`, breaking public changes raise the minor version and compatible changes raise the
+patch. An RC-only upgrade may raise the patch when the public surface remains compatible. The
+project keeps a changelog from its first release and waits for a sufficiently stable Effect RPC
+surface before publishing `1.0`.
