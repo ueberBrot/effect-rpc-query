@@ -28,10 +28,15 @@ const abortableAsyncIterable = <A>(
     let closePromise: Promise<IteratorResult<A>> | undefined
     const detach = () => signal.removeEventListener('abort', onAbort)
     const close = () => {
-      closePromise ??= Promise.resolve(iterator.return?.()).then((result) => {
-        detach()
-        return result ?? ({ done: true, value: undefined } as IteratorResult<A>)
-      })
+      closePromise ??= (async () => {
+        try {
+          return (
+            (await iterator.return?.()) ?? ({ done: true, value: undefined } as IteratorResult<A>)
+          )
+        } finally {
+          detach()
+        }
+      })()
       return closePromise
     }
     const onAbort = () => {

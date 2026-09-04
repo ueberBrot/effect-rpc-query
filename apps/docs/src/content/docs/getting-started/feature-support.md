@@ -6,7 +6,7 @@ description: Check which capabilities the package generates, tests, leaves to th
 `effect-rpc-query` turns unary and streaming Effect RPC definitions into semantic keys and TanStack
 Query Core options. Applications continue to configure TanStack Query and manage the RPC client.
 
-Use these status values to read the matrix:
+## Status definitions
 
 - **Generated**: the package creates the key, function, or option object.
 - **Tested**: repository fixtures or executable applications verify that generated output works

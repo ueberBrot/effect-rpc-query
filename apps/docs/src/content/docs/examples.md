@@ -43,4 +43,4 @@ The examples do not currently run in StackBlitz WebContainers. Vite+ requires a 
 that is unavailable there. [Issue #33](https://github.com/ueberBrot/effect-rpc-query/issues/33)
 records the decision, and the
 [minimal reproduction](https://github.com/ueberBrot/vite-plus-webcontainer-repro) tracks the
-upstream limitation. The repository examples remain the executable source of truth.
+upstream limitation. Run either example locally or in the Dev Container.

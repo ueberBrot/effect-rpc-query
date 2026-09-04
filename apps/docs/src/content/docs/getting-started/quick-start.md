@@ -8,8 +8,8 @@ client; `effect-rpc-query` only derives Query Core utilities from it.
 
 ## Create and use the utilities
 
-The `contracts.js` and `rpc-client.js` imports below represent application-owned modules. Replace
-them with the modules that define your RPC group and acquire your ready client.
+The `contracts.js` and `rpc-client.js` imports represent application-owned modules. Replace them
+with the modules that define your RPC group and acquire your ready client.
 
 ```ts
 import { MutationObserver, QueryClient } from '@tanstack/query-core'

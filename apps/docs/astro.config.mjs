@@ -3,6 +3,7 @@
 import starlight from '@astrojs/starlight'
 import { defineConfig } from 'astro/config'
 import starlightLinksValidator from 'starlight-links-validator'
+import starlightLlmsTxt from 'starlight-llms-txt'
 import starlightThemeBlack from 'starlight-theme-black'
 
 import packageManifest from '../../package.json' with { type: 'json' }
@@ -33,6 +34,7 @@ export default defineConfig({
         src: './src/assets/icon.svg',
       },
       plugins: [
+        starlightLlmsTxt(),
         starlightThemeBlack({
           navLinks: [
             {

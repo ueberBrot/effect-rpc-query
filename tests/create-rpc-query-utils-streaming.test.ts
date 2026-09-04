@@ -1,4 +1,4 @@
-import { describe, expect, it } from '@effect/vitest'
+import { describe, expect, it, vi } from '@effect/vitest'
 import { QueryClient, QueryObserver, skipToken } from '@tanstack/query-core'
 import { Deferred, Effect, Equal, Exit, Schema, Stream } from 'effect'
 import { Rpc, RpcClient, RpcGroup } from 'effect/unstable/rpc'
@@ -7,6 +7,7 @@ import {
   createRpcQueryUtils,
   EffectRpcQueryEmptyStreamError,
   EffectRpcQueryError,
+  type RunPromiseExit,
 } from '#effect-rpc-query'
 
 import { makeRpcTestClient } from './fixtures/effect-rpc'
@@ -240,6 +241,44 @@ describe('createRpcQueryUtils streaming execution', () => {
     expect(Deferred.isDoneUnsafe(interrupted)).toBe(true)
     expect(Deferred.isDoneUnsafe(finalized)).toBe(true)
     expect(await query).toEqual(['ready'])
+  })
+
+  it('detaches the abort listener when iterator closure fails', async () => {
+    const Watch = Rpc.make('events.watch', { success: Schema.String, stream: true })
+    const streamGroup = RpcGroup.make(Watch)
+    const closeError = new Error('iterator closure failed')
+    const source: AsyncIterable<unknown> = {
+      [Symbol.asyncIterator]: () => ({
+        next: () => Promise.resolve({ done: false, value: 'ready' }),
+        return: () => Promise.reject(closeError),
+      }),
+    }
+    const runPromiseExit: RunPromiseExit = async () => Exit.succeed(source) as never
+    const utils = createRpcQueryUtils(streamGroup, {
+      client: ((_tag: string, _payload: unknown) => Stream.empty) as RpcClient.RpcClient.Flat<
+        RpcGroup.Rpcs<typeof streamGroup>
+      >,
+      keyPrefix: ['app'] as const,
+      runPromiseExit,
+    })
+    const options = utils.events.watch.streamedOptions()
+    const queryFn = options.queryFn as (context: {
+      readonly client: QueryClient
+      readonly queryKey: typeof options.queryKey
+      readonly signal: AbortSignal
+    }) => Promise<unknown>
+    const controller = new AbortController()
+    const removeEventListener = vi.spyOn(controller.signal, 'removeEventListener')
+    controller.abort()
+
+    await expect(
+      queryFn({
+        client: new QueryClient(),
+        queryKey: options.queryKey,
+        signal: controller.signal,
+      }),
+    ).rejects.toBe(closeError)
+    expect(removeEventListener).toHaveBeenCalledWith('abort', expect.any(Function))
   })
 
   it.effect('finalizes the previous active stream before refetching', () =>

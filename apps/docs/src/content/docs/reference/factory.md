@@ -1,6 +1,6 @@
 ---
 title: Factory
-description: Reference for createRpcQueryUtils and its configuration.
+description: Create an RPC utility tree from an RPC group and a ready client.
 ---
 
 ## `createRpcQueryUtils(group, options)`

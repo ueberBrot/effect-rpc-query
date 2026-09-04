@@ -1,6 +1,6 @@
 ---
 title: Generated Builders
-description: Reference for branch and RPC leaf methods.
+description: Branch and RPC leaf methods for keys, queries, mutations, and streams.
 ---
 
 Every branch and leaf exposes `key()`, which returns its immutable cache-key prefix.

@@ -1,6 +1,6 @@
 ---
 title: Errors
-description: Reference for configuration, key-generation, and RPC execution errors.
+description: Configuration, key-generation, and RPC execution errors.
 ---
 
 ## `EffectRpcQueryConfigError`

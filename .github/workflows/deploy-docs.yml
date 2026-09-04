@@ -1,12 +1,7 @@
 name: Deploy documentation
 
 on:
-  push:
-    branches:
-      - main
-    paths:
-      - '.github/workflows/deploy-docs.yml'
-      - 'apps/docs/**'
+  workflow_call:
   workflow_dispatch:
 
 permissions:
@@ -28,6 +23,7 @@ jobs:
       - name: Check out repository
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
+          fetch-depth: 0
           persist-credentials: false
 
       - name: Set up repository
