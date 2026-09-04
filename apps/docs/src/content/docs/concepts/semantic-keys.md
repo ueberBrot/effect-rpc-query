@@ -24,6 +24,11 @@ The default process is:
 The generated `queryKeyHashFn` serializes the already-canonical key so TanStack Query uses the same
 identity as the key builders.
 
+Key objects must not contain `__proto__` or `constructor` properties at any depth. TanStack's default
+hashing can drop `__proto__` or fail when inspecting `constructor`. Rejecting these properties keeps
+generated options, key-only cache operations, and stream updates on the same cache entry. This
+restriction applies to prefixes, Schema output, and custom encoder output.
+
 Every operation adds its own segment after the RPC path: `query`, `infinite`, `streamed`, `live`, or
 `mutation`. Concrete query keys append the canonical payload when the RPC has one. These segments
 keep different cache shapes from colliding while root, branch, and RPC prefixes continue to match

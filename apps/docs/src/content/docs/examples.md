@@ -28,6 +28,15 @@ vp run tanstack-start-dev
 This task starts one full-stack process. The browser and server-rendering client both call the
 Start-owned `/rpc` route.
 
+Server rendering uses `http://127.0.0.1:3000/rpc`. If the Start server listens elsewhere, set the
+server-only `EXAMPLE_RPC_ORIGIN` environment variable to its trusted HTTP(S) origin, without a path,
+credentials, query, or fragment. Incoming `Host` and forwarded headers do not select the RPC
+destination. The browser uses the relative `/rpc` endpoint.
+
+Both examples reject RPC bodies larger than 1 MiB with HTTP 413. The shared handler counts bytes as
+they arrive, including chunked requests, before invoking RPC handlers. The standalone server returns
+HTTP 400 for malformed request targets.
+
 ## Build the examples
 
 Build either application without starting it:

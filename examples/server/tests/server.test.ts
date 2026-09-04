@@ -8,7 +8,7 @@ import { startExampleRpcServer } from '@effect-rpc-query/server'
 import { describe, expect, it } from '@effect/vitest'
 import { Cause, Deferred, Effect, Exit, Fiber, Logger, Result, Scope, Stream } from 'effect'
 import { RpcClient } from 'effect/unstable/rpc'
-import { createServer } from 'node:http'
+import { createServer, request as nodeRequest } from 'node:http'
 
 import { acquireNodeServer } from '../src/node-server-resource.ts'
 
@@ -25,6 +25,53 @@ const waitForStatus = Effect.fn('TestExampleRpc.waitForStatus')(function* (
 })
 
 describe('example RPC server', () => {
+  it.live('rejects oversized chunked bodies before the client finishes sending', () =>
+    Effect.gen(function* () {
+      const server = yield* startExampleRpcServer()
+      const status = yield* Effect.promise(
+        () =>
+          new Promise<number | undefined>((resolve, reject) => {
+            const request = nodeRequest(server.rpcUrl, { method: 'POST' }, (response) => {
+              response.resume()
+              response.once('end', () => {
+                request.destroy()
+                resolve(response.statusCode)
+              })
+            })
+            request.once('error', reject)
+            request.setTimeout(1000, () => request.destroy(new Error('Request timed out')))
+            request.write(' '.repeat(1024 * 1024 + 1))
+          }),
+      )
+      expect(status).toBe(413)
+      expect((yield* Effect.promise(() => fetch(`${server.url}/health`))).status).toBe(200)
+    }),
+  )
+
+  it.live('rejects malformed request targets and continues serving requests', () =>
+    Effect.gen(function* () {
+      const server = yield* startExampleRpcServer()
+      for (const path of ['//[', 'http://user:password@localhost/rpc']) {
+        const status = yield* Effect.promise(
+          () =>
+            new Promise<number | undefined>((resolve, reject) => {
+              const request = nodeRequest(server.url, { method: 'POST', path }, (response) => {
+                response.resume()
+                response.once('end', () => resolve(response.statusCode))
+              })
+              request.once('error', reject)
+              request.setTimeout(1000, () => request.destroy(new Error('Request timed out')))
+              request.end()
+            }),
+        )
+        expect(status).toBe(400)
+      }
+      expect((yield* Effect.promise(() => fetch(`${server.url}/health`))).status).toBe(200)
+      const client = yield* makeExampleRpcClient(server.rpcUrl)
+      expect(yield* client('users.list', undefined)).toHaveLength(12)
+    }),
+  )
+
   it.effect('exposes explicit readiness and browser-safe RPC transport metadata', () =>
     Effect.gen(function* () {
       const server = yield* startExampleRpcServer()

@@ -81,13 +81,10 @@ const canonicalizeObject = (value: object, seen: WeakSet<object>): JsonValue => 
 
   const copy: Record<string, JsonValue> = {}
   for (const key of Object.keys(value).sort()) {
-    // defineProperty preserves an own "__proto__" key instead of invoking its setter.
-    Object.defineProperty(copy, key, {
-      configurable: true,
-      enumerable: true,
-      value: canonicalize((value as Record<string, unknown>)[key], seen),
-      writable: true,
-    })
+    if (key === '__proto__' || key === 'constructor') {
+      throw new TypeError('Key objects must not contain __proto__ or constructor properties')
+    }
+    copy[key] = canonicalize((value as Record<string, unknown>)[key], seen)
   }
   seen.delete(value)
   return Object.freeze(copy)
@@ -121,7 +118,6 @@ const canonicalize = (value: unknown, seen: WeakSet<object> = new WeakSet()): Js
 
 const freezeKey = (parts: ReadonlyArray<JsonValue | string>) => Object.freeze([...parts])
 
-// JSON.stringify observes own "__proto__" properties that Query Core's object reducer drops.
 const hashCanonicalKey = (queryKey: QueryKey): string => JSON.stringify(queryKey)
 
 const normalizePrefix = (prefix: readonly [JsonValue, ...JsonValue[]]): readonly JsonValue[] => {
@@ -461,12 +457,12 @@ const deepFreezeTree = (value: Record<string, unknown>) => {
 
 const validateKeyEncoders = (
   rpcs: ReadonlyArray<AdaptedRpc>,
-  keyEncoders: Record<string, RuntimeKeyEncoder>,
+  keyEncoders: ReadonlyMap<string, RuntimeKeyEncoder>,
 ) => {
   const supportedTags = new Set(
     rpcs.filter((rpc) => rpc.keyPayload._tag !== 'Payloadless').map((rpc) => rpc.tag),
   )
-  for (const tag of Object.keys(keyEncoders)) {
+  for (const tag of keyEncoders.keys()) {
     if (!supportedTags.has(tag)) {
       throw new EffectRpcQueryConfigError(
         'UnknownKeyEncoder',
@@ -477,7 +473,10 @@ const validateKeyEncoders = (
   }
 
   for (const rpc of rpcs) {
-    if (rpc.keyPayload._tag === 'CustomEncodingRequired' && keyEncoders[rpc.tag] === undefined) {
+    if (
+      rpc.keyPayload._tag === 'CustomEncodingRequired' &&
+      typeof keyEncoders.get(rpc.tag) !== 'function'
+    ) {
       throw new EffectRpcQueryConfigError(
         'MissingKeyEncoder',
         `RPC ${rpc.tag} requires a safe custom key encoder`,
@@ -519,14 +518,14 @@ const insertLeaf = (
 const createTree = (
   prefix: readonly JsonValue[],
   paths: ReadonlyArray<ValidatedRpcPath>,
-  keyEncoders: Record<string, RuntimeKeyEncoder>,
+  keyEncoders: ReadonlyMap<string, RuntimeKeyEncoder>,
   runPromiseExit: RunPromiseExit<unknown>,
 ) => {
   const tree: Record<string, unknown> = {}
   defineKey(tree, prefix)
 
   for (const path of paths) {
-    insertLeaf(tree, prefix, path, keyEncoders[path.rpc.tag], runPromiseExit)
+    insertLeaf(tree, prefix, path, keyEncoders.get(path.rpc.tag), runPromiseExit)
   }
   return deepFreezeTree(tree)
 }
@@ -553,7 +552,10 @@ export const createRpcQueryUtils = <
   const prefix = normalizePrefix(options.keyPrefix)
   const paths = planRpcPaths(rpcs)
 
-  const keyEncoders = (options.keyEncoders ?? {}) as Record<string, RuntimeKeyEncoder>
+  const keyEncoders = new Map(Object.entries(options.keyEncoders ?? {})) as Map<
+    string,
+    RuntimeKeyEncoder
+  >
   validateKeyEncoders(rpcs, keyEncoders)
 
   const runPromiseExit = (options.runPromiseExit ??

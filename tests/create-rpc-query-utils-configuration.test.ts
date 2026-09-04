@@ -21,6 +21,45 @@ const unusedClientFor = <Group extends RpcGroup.Any>(_group: Group) =>
   unusedClient as unknown as RpcClient.RpcClient.Flat<RpcGroup.Rpcs<Group>>
 
 describe('createRpcQueryUtils configuration', () => {
+  it('ignores inherited key encoders for allowed Object prototype names', () => {
+    const rpcGroup = RpcGroup.make(
+      Rpc.make('toString', {
+        payload: { id: Schema.Number },
+        success: Schema.String,
+      }),
+    )
+    for (const keyEncoders of [undefined, {}, Object.create({ toString: () => 'shared' })]) {
+      const utils = createRpcQueryUtils(rpcGroup, {
+        client: unusedClientFor(rpcGroup),
+        keyPrefix: ['app'],
+        keyEncoders,
+      })
+      expect(utils.toString.queryKey({ id: 1 })).not.toEqual(utils.toString.queryKey({ id: 2 }))
+    }
+    const utils = createRpcQueryUtils(rpcGroup, {
+      client: unusedClientFor(rpcGroup),
+      keyPrefix: ['app'],
+      keyEncoders: { toString: ({ id }) => id },
+    })
+    expect(utils.toString.queryKey({ id: 1 })).toEqual(['app', 'toString', 'query', 1])
+  })
+
+  it('does not accept an inherited encoder for redacted payloads', () => {
+    const rpcGroup = RpcGroup.make(
+      Rpc.make('toString', {
+        payload: { secret: Schema.RedactedFromValue(Schema.String) },
+        success: Schema.String,
+      }),
+    )
+    expect(() =>
+      createRpcQueryUtils(rpcGroup, {
+        client: unusedClientFor(rpcGroup),
+        keyPrefix: ['app'],
+        keyEncoders: Object.create({ toString: () => 'safe' }),
+      }),
+    ).toThrow(expect.objectContaining({ code: 'MissingKeyEncoder' }))
+  })
+
   it.effect('reports invalid utility paths with a stable configuration error', () =>
     Effect.gen(function* () {
       const InvalidPath = Rpc.make('invalid..path', { success: Schema.String })
@@ -280,6 +319,54 @@ describe('createRpcQueryUtils configuration', () => {
     }),
   )
 
+  it('requires safe encoders for suspended redacted schemas and encoding middleware', () => {
+    const Secret = Schema.suspend(() => Schema.RedactedFromValue(Schema.String))
+    const Encoded = Schema.suspend(() =>
+      Schema.String.pipe(Schema.middlewareEncoding((encoding) => encoding)),
+    )
+    for (const payload of [Secret, Schema.Struct({ nested: Schema.Array(Secret) }), Encoded]) {
+      const rpcGroup = RpcGroup.make(Rpc.make('read', { payload, success: Schema.String }))
+      type Options = CreateRpcQueryUtilsOptions<typeof rpcGroup, readonly ['app']>
+      const options = {
+        client: unusedClientFor(rpcGroup),
+        keyPrefix: ['app'],
+      } as unknown as Options
+      expect(() => createRpcQueryUtils(rpcGroup, options)).toThrow(
+        expect.objectContaining({ code: 'MissingKeyEncoder' }),
+      )
+      expect(() =>
+        createRpcQueryUtils(rpcGroup, {
+          ...options,
+          keyEncoders: { read: () => 'safe-identity' },
+        } as unknown as Options),
+      ).not.toThrow()
+    }
+  })
+
+  it('keeps ordinary recursive schemas usable', () => {
+    interface Tree {
+      readonly name: string
+      readonly children: readonly Tree[]
+    }
+    const Tree = Schema.Struct({
+      name: Schema.String,
+      children: Schema.Array(Schema.suspend((): Schema.Codec<Tree> => Tree)),
+    })
+    const rpcGroup = RpcGroup.make(Rpc.make('read', { payload: Tree, success: Schema.String }))
+    const utils = createRpcQueryUtils(rpcGroup, {
+      client: unusedClientFor(rpcGroup),
+      keyPrefix: ['app'],
+    })
+    expect(
+      utils.read.queryKey({ name: 'root', children: [{ name: 'leaf', children: [] }] }),
+    ).toEqual([
+      'app',
+      'read',
+      'query',
+      { name: 'root', children: [{ name: 'leaf', children: [] }] },
+    ])
+  })
+
   it.effect('requires a custom key encoder for Schema encoding middleware', () =>
     Effect.gen(function* () {
       class EncodingService extends Context.Service<EncodingService, { readonly suffix: string }>()(
@@ -364,7 +451,38 @@ describe('createRpcQueryUtils configuration', () => {
     }),
   )
 
-  it.effect('preserves an own __proto__ property in canonical payload keys', () =>
+  it.each(['__proto__', 'constructor'])(
+    'rejects unsafe object property %s throughout keys',
+    (property) => {
+      const rpcGroup = RpcGroup.make(
+        Rpc.make('read', {
+          payload: Schema.Struct({ value: Schema.Unknown }),
+          success: Schema.String,
+        }),
+      )
+      const unsafe = JSON.parse(`{"${property}":null}`) as JsonValue
+      for (const value of [unsafe, { nested: [unsafe] }]) {
+        const options = { client: unusedClientFor(rpcGroup), keyPrefix: ['app'] as const }
+        expect(() =>
+          createRpcQueryUtils(rpcGroup, {
+            ...options,
+            keyPrefix: [value],
+          }),
+        ).toThrow(expect.objectContaining({ code: 'InvalidKeyPrefix' }))
+        for (const keyEncoders of [undefined, { read: () => value }]) {
+          const utils = createRpcQueryUtils(rpcGroup, {
+            ...options,
+            ...(keyEncoders === undefined ? {} : { keyEncoders }),
+          })
+          expect(() => utils.read.queryKey({ value })).toThrow(
+            expect.objectContaining({ code: 'InvalidKeyValue' }),
+          )
+        }
+      }
+    },
+  )
+
+  it.effect('rejects an own __proto__ property defined by an encoder', () =>
     Effect.gen(function* () {
       const encoded = Object.defineProperty({}, '__proto__', {
         enumerable: true,
@@ -377,20 +495,8 @@ describe('createRpcQueryUtils configuration', () => {
         keyPrefix: ['app'] as const,
       })
 
-      const canonical = utils.users.get.queryKey({ id: 1 }).at(-1)
-
-      expect(Object.hasOwn(canonical as object, '__proto__')).toBe(true)
-      expect((canonical as Record<string, JsonValue>)['__proto__']).toBe('semantic-value')
-
-      const options = utils.users.get.queryOptions({ input: { id: 1 } })
-      const emptyPayloadUtils = createRpcQueryUtils(group, {
-        client,
-        keyEncoders: { 'users.get': () => ({}) },
-        keyPrefix: ['app'] as const,
-      })
-      const emptyPayloadOptions = emptyPayloadUtils.users.get.queryOptions({ input: { id: 1 } })
-      expect(options.queryKeyHashFn(options.queryKey)).not.toBe(
-        emptyPayloadOptions.queryKeyHashFn(emptyPayloadOptions.queryKey),
+      expect(() => utils.users.get.queryKey({ id: 1 })).toThrow(
+        expect.objectContaining({ code: 'InvalidKeyValue' }),
       )
     }),
   )

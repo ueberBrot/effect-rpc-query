@@ -1,10 +1,36 @@
 import { expect, test } from '@playwright/test'
+import { createServer } from 'node:http'
 
 import {
   prepareExampleApplication,
   recordsRpc,
   tanStackStartApplication,
 } from './example-application.ts'
+
+test('SSR keeps its RPC destination independent of incoming host headers', async ({ request }) => {
+  let redirectedRequests = 0
+  const destination = createServer((_request, response) => {
+    redirectedRequests += 1
+    response.writeHead(500).end()
+  })
+  await new Promise<void>((resolve) => destination.listen(0, '127.0.0.1', resolve))
+  try {
+    const address = destination.address()
+    if (address === null || typeof address === 'string') throw new Error('Expected TCP listener')
+    const host = `127.0.0.1:${String(address.port)}`
+    const response = await request.get(`${tanStackStartApplication.url}/details`, {
+      headers: { host, 'x-forwarded-host': host, 'x-forwarded-proto': 'http' },
+    })
+    expect(redirectedRequests).toBe(0)
+    expect(response.ok()).toBe(true)
+    expect(await response.text()).toContain('Ada Lovelace')
+  } finally {
+    destination.closeAllConnections()
+    await new Promise<void>((resolve, reject) =>
+      destination.close((error) => (error ? reject(error) : resolve())),
+    )
+  }
+})
 
 test.describe('TanStack Start application', () => {
   test.beforeEach(async ({ page }) => prepareExampleApplication(page, tanStackStartApplication))
