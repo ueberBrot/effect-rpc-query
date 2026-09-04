@@ -13,7 +13,7 @@ import type {
 import type { Effect, Exit, Redacted, Schema } from 'effect'
 import type { Rpc, RpcClient, RpcGroup, RpcSchema } from 'effect/unstable/rpc'
 
-import type { EffectRpcQueryError } from './errors'
+import type { EffectRpcQueryEmptyStreamError, EffectRpcQueryError } from './errors'
 
 /** A JSON scalar accepted in key prefixes and canonical key payloads. */
 export type JsonPrimitive = boolean | null | number | string
@@ -54,16 +54,13 @@ export type PayloadSchema<R extends Rpc.Any> =
     ? Payload
     : never
 
-// Streaming RPCs disappear before path projection, so they cannot leave empty branches.
-export type UnaryRpc<R extends Rpc.Any> =
-  Rpc.SuccessSchema<R> extends RpcSchema.Stream<Schema.Top, Schema.Top> ? never : R
+/** Retains only streaming RPC definitions. */
+export type StreamingRpc<R extends Rpc.Any> =
+  Rpc.SuccessSchema<R> extends RpcSchema.Stream<Schema.Top, Schema.Top> ? R : never
 
-export type UnaryRpcs<Group extends RpcGroup.Any> =
-  RpcsOf<Group> extends infer R ? (R extends Rpc.Any ? UnaryRpc<R> : never) : never
-
-/** Selects unary RPCs whose query keys include constructed payload identity. */
-export type PayloadBearingUnaryRpcs<Group extends RpcGroup.Any> =
-  UnaryRpcs<Group> extends infer R
+/** Selects RPCs whose query keys include constructed payload identity. */
+export type PayloadBearingRpcs<Group extends RpcGroup.Any> =
+  RpcsOf<Group> extends infer R
     ? R extends Rpc.Any
       ? void extends Rpc.PayloadConstructor<R>
         ? never
@@ -82,6 +79,16 @@ export type RpcFailure<R extends Rpc.Any, ClientError> =
   | Rpc.Error<R>
   | ClientMiddlewareError<R>
   | ClientError
+
+/** Every typed failure that can reach a streaming RPC consumer. */
+export type RpcStreamFailure<R extends Rpc.Any, ClientError> =
+  | Rpc.ErrorExit<R>
+  | ClientMiddlewareError<R>
+  | ClientError
+
+export type RpcLiveError<R extends Rpc.Any, ClientError> =
+  | EffectRpcQueryEmptyStreamError
+  | EffectRpcQueryError<RpcStreamFailure<R, ClientError>>
 
 /** Splits a literal dotted RPC tag into its path tuple. */
 export type Segments<Tag extends string> = Tag extends `${infer Head}.${infer Tail}`
@@ -102,6 +109,16 @@ export type InfiniteOperationKey<
   Prefix extends readonly JsonValue[],
   R extends Rpc.Any,
 > = readonly [...RpcKey<Prefix, R>, 'infinite']
+
+export type StreamedOperationKey<
+  Prefix extends readonly JsonValue[],
+  R extends Rpc.Any,
+> = readonly [...RpcKey<Prefix, R>, 'streamed']
+
+export type LiveOperationKey<Prefix extends readonly JsonValue[], R extends Rpc.Any> = readonly [
+  ...RpcKey<Prefix, R>,
+  'live',
+]
 
 /** A payload-specific key carrying Query Core's inferred data and error tags. */
 export type ConcreteQueryKey<
@@ -386,6 +403,278 @@ export type InfiniteKeyBuilder<
     ? () => ConcreteInfiniteKey<Prefix, R, ClientError>
     : (input: Rpc.PayloadConstructor<R>) => ConcreteInfiniteKey<Prefix, R, ClientError>
 
+/** The accumulated data cached for a streaming RPC. */
+export type StreamedData<R extends Rpc.Any> = ReadonlyArray<Rpc.SuccessChunk<R>>
+
+/** A payload-specific accumulated-stream key carrying Query Core's inferred tags. */
+export type ConcreteStreamedKey<
+  Prefix extends readonly JsonValue[],
+  R extends Rpc.Any,
+  ClientError,
+> = DataTag<
+  void extends Rpc.PayloadConstructor<R>
+    ? StreamedOperationKey<Prefix, R>
+    : readonly [...StreamedOperationKey<Prefix, R>, JsonValue],
+  StreamedData<R>,
+  EffectRpcQueryError<RpcStreamFailure<R, ClientError>>
+>
+
+/** A payload-specific latest-value key carrying Query Core's inferred tags. */
+export type ConcreteLiveKey<
+  Prefix extends readonly JsonValue[],
+  R extends Rpc.Any,
+  ClientError,
+> = DataTag<
+  void extends Rpc.PayloadConstructor<R>
+    ? LiveOperationKey<Prefix, R>
+    : readonly [...LiveOperationKey<Prefix, R>, JsonValue],
+  Rpc.SuccessChunk<R>,
+  RpcLiveError<R, ClientError>
+>
+
+export type StreamRefetchMode = 'append' | 'replace' | 'reset'
+
+export type StreamedInputOptions<
+  R extends Rpc.Any,
+  Prefix extends readonly JsonValue[],
+  ClientError,
+  Selected,
+> = Omit<
+  QueryObserverOptions<
+    StreamedData<R>,
+    EffectRpcQueryError<RpcStreamFailure<R, ClientError>>,
+    Selected,
+    StreamedData<R>,
+    ConcreteStreamedKey<Prefix, R, ClientError>
+  >,
+  OwnedQueryOption
+> & {
+  /** Controls whether a refetch clears, appends to, or replaces accumulated data. */
+  readonly refetchMode?: StreamRefetchMode
+}
+
+export type DefinedStreamedInputOptions<
+  R extends Rpc.Any,
+  Prefix extends readonly JsonValue[],
+  ClientError,
+  Selected,
+> = Omit<StreamedInputOptions<R, Prefix, ClientError, Selected>, 'initialData'> & {
+  readonly initialData:
+    | NonUndefinedGuard<StreamedData<R>>
+    | (() => NonUndefinedGuard<StreamedData<R>>)
+}
+
+export type UndefinedStreamedInputOptions<
+  R extends Rpc.Any,
+  Prefix extends readonly JsonValue[],
+  ClientError,
+  Selected,
+> = Omit<StreamedInputOptions<R, Prefix, ClientError, Selected>, 'initialData'> & {
+  readonly initialData?:
+    | undefined
+    | InitialDataFunction<NonUndefinedGuard<StreamedData<R>>>
+    | NonUndefinedGuard<StreamedData<R>>
+}
+
+export type RpcStreamedOptions<
+  R extends Rpc.Any,
+  Prefix extends readonly JsonValue[],
+  ClientError,
+  Selected = StreamedData<R>,
+> = Omit<StreamedInputOptions<R, Prefix, ClientError, Selected>, 'refetchMode'> & {
+  readonly queryFn: QueryFunction<StreamedData<R>, ConcreteStreamedKey<Prefix, R, ClientError>>
+  readonly queryKey: ConcreteStreamedKey<Prefix, R, ClientError>
+  readonly queryKeyHashFn: QueryKeyHashFunction<ConcreteStreamedKey<Prefix, R, ClientError>>
+}
+
+export type DefinedRpcStreamedOptions<
+  R extends Rpc.Any,
+  Prefix extends readonly JsonValue[],
+  ClientError,
+  Selected,
+> = Omit<RpcStreamedOptions<R, Prefix, ClientError, Selected>, 'initialData'> &
+  Pick<DefinedStreamedInputOptions<R, Prefix, ClientError, Selected>, 'initialData'>
+
+export type SkippedRpcStreamedOptions<
+  R extends Rpc.Any,
+  Prefix extends readonly JsonValue[],
+  ClientError,
+> = Omit<
+  QueryObserverOptions<
+    StreamedData<R>,
+    EffectRpcQueryError<RpcStreamFailure<R, ClientError>>,
+    StreamedData<R>,
+    StreamedData<R>,
+    StreamedOperationKey<Prefix, R>
+  >,
+  OwnedQueryOption
+> & {
+  readonly queryFn: SkipToken
+  readonly queryKey: StreamedOperationKey<Prefix, R>
+  readonly queryKeyHashFn: QueryKeyHashFunction<StreamedOperationKey<Prefix, R>>
+}
+
+export type StreamedOptionsBuilder<
+  R extends Rpc.Any,
+  Prefix extends readonly JsonValue[],
+  ClientError,
+> =
+  void extends Rpc.PayloadConstructor<R>
+    ? {
+        <Selected = StreamedData<R>>(
+          options: DefinedStreamedInputOptions<R, Prefix, ClientError, Selected>,
+        ): DefinedRpcStreamedOptions<R, Prefix, ClientError, Selected>
+        <Selected = StreamedData<R>>(
+          options?: UndefinedStreamedInputOptions<R, Prefix, ClientError, Selected>,
+        ): RpcStreamedOptions<R, Prefix, ClientError, Selected>
+      }
+    : {
+        <Selected = StreamedData<R>>(
+          options: DefinedStreamedInputOptions<R, Prefix, ClientError, Selected> & {
+            readonly input: Rpc.PayloadConstructor<R>
+          },
+        ): DefinedRpcStreamedOptions<R, Prefix, ClientError, Selected>
+        <Selected = StreamedData<R>>(
+          options: UndefinedStreamedInputOptions<R, Prefix, ClientError, Selected> & {
+            readonly input: Rpc.PayloadConstructor<R>
+          },
+        ): RpcStreamedOptions<R, Prefix, ClientError, Selected>
+        (token: SkipToken): SkippedRpcStreamedOptions<R, Prefix, ClientError>
+      }
+
+export type LiveInputOptions<
+  R extends Rpc.Any,
+  Prefix extends readonly JsonValue[],
+  ClientError,
+  Selected,
+> = Omit<
+  QueryObserverOptions<
+    Rpc.SuccessChunk<R>,
+    RpcLiveError<R, ClientError>,
+    Selected,
+    Rpc.SuccessChunk<R>,
+    ConcreteLiveKey<Prefix, R, ClientError>
+  >,
+  OwnedQueryOption
+>
+
+export type DefinedLiveInputOptions<
+  R extends Rpc.Any,
+  Prefix extends readonly JsonValue[],
+  ClientError,
+  Selected,
+> = Omit<LiveInputOptions<R, Prefix, ClientError, Selected>, 'initialData'> & {
+  readonly initialData:
+    | NonUndefinedGuard<Rpc.SuccessChunk<R>>
+    | (() => NonUndefinedGuard<Rpc.SuccessChunk<R>>)
+}
+
+export type UndefinedLiveInputOptions<
+  R extends Rpc.Any,
+  Prefix extends readonly JsonValue[],
+  ClientError,
+  Selected,
+> = Omit<LiveInputOptions<R, Prefix, ClientError, Selected>, 'initialData'> & {
+  readonly initialData?:
+    | undefined
+    | InitialDataFunction<NonUndefinedGuard<Rpc.SuccessChunk<R>>>
+    | NonUndefinedGuard<Rpc.SuccessChunk<R>>
+}
+
+export type RpcLiveOptions<
+  R extends Rpc.Any,
+  Prefix extends readonly JsonValue[],
+  ClientError,
+  Selected = Rpc.SuccessChunk<R>,
+> = LiveInputOptions<R, Prefix, ClientError, Selected> & {
+  readonly queryFn: QueryFunction<Rpc.SuccessChunk<R>, ConcreteLiveKey<Prefix, R, ClientError>>
+  readonly queryKey: ConcreteLiveKey<Prefix, R, ClientError>
+  readonly queryKeyHashFn: QueryKeyHashFunction<ConcreteLiveKey<Prefix, R, ClientError>>
+}
+
+export type DefinedRpcLiveOptions<
+  R extends Rpc.Any,
+  Prefix extends readonly JsonValue[],
+  ClientError,
+  Selected,
+> = Omit<RpcLiveOptions<R, Prefix, ClientError, Selected>, 'initialData'> &
+  Pick<DefinedLiveInputOptions<R, Prefix, ClientError, Selected>, 'initialData'>
+
+export type SkippedRpcLiveOptions<
+  R extends Rpc.Any,
+  Prefix extends readonly JsonValue[],
+  ClientError,
+> = Omit<
+  QueryObserverOptions<
+    Rpc.SuccessChunk<R>,
+    RpcLiveError<R, ClientError>,
+    Rpc.SuccessChunk<R>,
+    Rpc.SuccessChunk<R>,
+    LiveOperationKey<Prefix, R>
+  >,
+  OwnedQueryOption
+> & {
+  readonly queryFn: SkipToken
+  readonly queryKey: LiveOperationKey<Prefix, R>
+  readonly queryKeyHashFn: QueryKeyHashFunction<LiveOperationKey<Prefix, R>>
+}
+
+export type LiveOptionsBuilder<
+  R extends Rpc.Any,
+  Prefix extends readonly JsonValue[],
+  ClientError,
+> =
+  void extends Rpc.PayloadConstructor<R>
+    ? {
+        <Selected = Rpc.SuccessChunk<R>>(
+          options: DefinedLiveInputOptions<R, Prefix, ClientError, Selected>,
+        ): DefinedRpcLiveOptions<R, Prefix, ClientError, Selected>
+        <Selected = Rpc.SuccessChunk<R>>(
+          options?: UndefinedLiveInputOptions<R, Prefix, ClientError, Selected>,
+        ): RpcLiveOptions<R, Prefix, ClientError, Selected>
+      }
+    : {
+        <Selected = Rpc.SuccessChunk<R>>(
+          options: DefinedLiveInputOptions<R, Prefix, ClientError, Selected> & {
+            readonly input: Rpc.PayloadConstructor<R>
+          },
+        ): DefinedRpcLiveOptions<R, Prefix, ClientError, Selected>
+        <Selected = Rpc.SuccessChunk<R>>(
+          options: UndefinedLiveInputOptions<R, Prefix, ClientError, Selected> & {
+            readonly input: Rpc.PayloadConstructor<R>
+          },
+        ): RpcLiveOptions<R, Prefix, ClientError, Selected>
+        (token: SkipToken): SkippedRpcLiveOptions<R, Prefix, ClientError>
+      }
+
+export type StreamKeyBuilder<R extends Rpc.Any, Key> =
+  void extends Rpc.PayloadConstructor<R> ? () => Key : (input: Rpc.PayloadConstructor<R>) => Key
+
+/** The key and option builders exposed at one streaming RPC path. */
+export interface RpcStreamLeaf<
+  R extends Rpc.Any,
+  Prefix extends readonly JsonValue[],
+  ClientError,
+> {
+  /** Returns the immutable key prefix for this streaming RPC. */
+  readonly key: () => RpcKey<Prefix, R>
+
+  /** Builds a semantic key for the latest-value view of the stream. */
+  readonly liveKey: StreamKeyBuilder<R, ConcreteLiveKey<Prefix, R, ClientError>>
+
+  /**
+   * Builds latest-value query options. A stream that completes before its first value fails with
+   * {@link EffectRpcQueryEmptyStreamError}.
+   */
+  readonly liveOptions: LiveOptionsBuilder<R, Prefix, ClientError>
+
+  /** Builds a semantic key for the accumulated view of the stream. */
+  readonly streamedKey: StreamKeyBuilder<R, ConcreteStreamedKey<Prefix, R, ClientError>>
+
+  /** Builds accumulated streamed-query options with Query Core refetch semantics. */
+  readonly streamedOptions: StreamedOptionsBuilder<R, Prefix, ClientError>
+}
+
 /** The key and option builders exposed at one unary RPC path. */
 export interface RpcQueryLeaf<R extends Rpc.Any, Prefix extends readonly JsonValue[], ClientError> {
   /** Builds a semantic, data-tagged infinite-query key from constructor input. */
@@ -435,7 +724,9 @@ export type PathTree<
       } & PathTree<Tail, R, Prefix, ClientError, readonly [...Path, Head]>
     }
   : {
-      readonly [Key in Tag]: RpcQueryLeaf<R, Prefix, ClientError>
+      readonly [Key in Tag]: StreamingRpc<R> extends never
+        ? RpcQueryLeaf<R, Prefix, ClientError>
+        : RpcStreamLeaf<R, Prefix, ClientError>
     }
 
 /** Merges every projected RPC path into one nested utility object. */
@@ -445,7 +736,7 @@ export type UnionToIntersection<Union> = (
   ? Intersection
   : never
 
-/** An eager utility tree projected from the group's dotted unary RPC tags. */
+/** An eager utility tree projected from the group's dotted RPC tags. */
 export type RpcQueryUtils<
   Group extends RpcGroup.Any,
   Prefix extends readonly [JsonValue, ...JsonValue[]],
@@ -454,7 +745,7 @@ export type RpcQueryUtils<
   /** Returns the immutable root key supplied to the factory. */
   readonly key: () => Prefix
 } & UnionToIntersection<
-  UnaryRpcs<Group> extends infer R
+  RpcsOf<Group> extends infer R
     ? R extends Rpc.Any
       ? PathTree<R['_tag'], R, Prefix, ClientError>
       : never
@@ -484,7 +775,7 @@ export type NeedsKeyEncoder<R extends Rpc.Any> = [PayloadSchema<R>['EncodingServ
 
 /** Selects RPCs whose default key encoding is unsafe or cannot run synchronously. */
 export type RequiredEncoderRpcs<Group extends RpcGroup.Any> =
-  PayloadBearingUnaryRpcs<Group> extends infer R
+  PayloadBearingRpcs<Group> extends infer R
     ? R extends Rpc.Any
       ? NeedsKeyEncoder<R> extends true
         ? R
@@ -497,14 +788,14 @@ export type KeyEncoders<Group extends RpcGroup.Any> = {
   readonly [R in RequiredEncoderRpcs<Group> as R['_tag']]: KeyEncoder<R>
 } & Partial<{
   readonly [
-    R in Exclude<PayloadBearingUnaryRpcs<Group>, RequiredEncoderRpcs<Group>> as R['_tag']
+    R in Exclude<PayloadBearingRpcs<Group>, RequiredEncoderRpcs<Group>> as R['_tag']
   ]: KeyEncoder<R>
 }>
 
 /** Makes the encoder map optional only when no RPC requires an override. */
-export type KeyEncoderOption<Group extends RpcGroup.Any> = [
-  PayloadBearingUnaryRpcs<Group>,
-] extends [never]
+export type KeyEncoderOption<Group extends RpcGroup.Any> = [PayloadBearingRpcs<Group>] extends [
+  never,
+]
   ? { readonly keyEncoders?: never }
   : [RequiredEncoderRpcs<Group>] extends [never]
     ? {
@@ -517,16 +808,16 @@ export type KeyEncoderOption<Group extends RpcGroup.Any> = [
       }
 
 /** Requires a custom runner when client-side Schema services remain. */
-export type RunnerOption<Group extends RpcGroup.Any> = [
-  Rpc.ServicesClient<UnaryRpcs<Group>>,
-] extends [never]
+export type RunnerOption<Group extends RpcGroup.Any> = [Rpc.ServicesClient<RpcsOf<Group>>] extends [
+  never,
+]
   ? {
       /** Overrides service-free execution; defaults to `Effect.runPromiseExit`. */
       readonly runPromiseExit?: RunPromiseExit
     }
   : {
       /** Runs RPC Effects that retain client-side Schema services. */
-      readonly runPromiseExit: RunPromiseExit<Rpc.ServicesClient<UnaryRpcs<Group>>>
+      readonly runPromiseExit: RunPromiseExit<Rpc.ServicesClient<RpcsOf<Group>>>
     }
 
 /** Configuration for deriving a utility tree from an Effect RPC group. */

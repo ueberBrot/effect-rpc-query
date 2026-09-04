@@ -68,6 +68,8 @@ describe('TanStack Start hydration and client navigation', () => {
     expect(await screen.findByText('Ada Lovelace')).toBeTruthy()
     expect(duplicateListFetches).toBe(0)
     expect(await screen.findByText('Infinite users: Ada Lovelace')).toBeTruthy()
+    expect(await screen.findByText('Accumulated diagnostics: first, second')).toBeTruthy()
+    expect(await screen.findByText('Live diagnostic: second')).toBeTruthy()
 
     fireEvent.click(screen.getByRole('button', { name: 'Load next user page' }))
     expect(await screen.findByText('Infinite users: Ada Lovelace, Edsger Dijkstra')).toBeTruthy()

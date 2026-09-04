@@ -33,7 +33,9 @@ describe('createRpcQueryUtils', () => {
         { id: 1, locale: 'en' },
       ])
       expect(utils.toString.child.key()).toEqual(['app', 'toString', 'child'])
-      expect('events' in utils).toBe(false)
+      expect(utils.events.watch.key()).toEqual(['app', 'events', 'watch'])
+      expect(utils.events.watch.streamedKey()).toEqual(['app', 'events', 'watch', 'streamed'])
+      expect(utils.events.watch.liveKey()).toEqual(['app', 'events', 'watch', 'live'])
       expect(Object.isFrozen(utils)).toBe(true)
       expect(Object.isFrozen(utils.users)).toBe(true)
       expect(Object.isFrozen(utils.users.get.queryKey({ id: 1 }))).toBe(true)
@@ -195,21 +197,21 @@ describe('createRpcQueryUtils', () => {
     }),
   )
 
-  it.effect('omits streams before projecting paths and collisions', () =>
+  it.effect('projects unary and streaming leaves through their distinct interfaces', () =>
     Effect.gen(function* () {
       const ListReports = Rpc.make('reports.list', { success: Schema.String })
-      const ReportsStream = Rpc.make('reports', { success: Schema.String, stream: true })
+      const ReportsStream = Rpc.make('reports.watch', { success: Schema.String, stream: true })
       const NestedStream = Rpc.make('events.audit.watch', {
         success: Schema.String,
         stream: true,
       })
-      const ReservedStream = Rpc.make('ignored.key', { success: Schema.String, stream: true })
-      const mixedGroup = RpcGroup.make(ListReports, ReportsStream, NestedStream, ReservedStream)
+      const RootStream = Rpc.make('updates.watch', { success: Schema.String, stream: true })
+      const mixedGroup = RpcGroup.make(ListReports, ReportsStream, NestedStream, RootStream)
       const client = yield* makeRpcTestClient(mixedGroup, {
         'events.audit.watch': () => Stream.empty,
-        'ignored.key': () => Stream.empty,
-        reports: () => Stream.empty,
         'reports.list': () => Effect.succeed('report'),
+        'reports.watch': () => Stream.empty,
+        'updates.watch': () => Stream.empty,
       })
 
       const utils = createRpcQueryUtils(mixedGroup, {
@@ -217,11 +219,32 @@ describe('createRpcQueryUtils', () => {
         keyPrefix: ['app'] as const,
       })
 
-      expect(Object.keys(utils).sort()).toEqual(['key', 'reports'])
-      expect(Object.keys(utils.reports).sort()).toEqual(['key', 'list'])
+      expect(Object.keys(utils).sort()).toEqual(['events', 'key', 'reports', 'updates'])
+      expect(Object.keys(utils.reports).sort()).toEqual(['key', 'list', 'watch'])
       expect(utils.reports.list.key()).toEqual(['app', 'reports', 'list'])
-      expect('events' in utils).toBe(false)
-      expect('ignored' in utils).toBe(false)
+      expect(Object.keys(utils.events.audit.watch).sort()).toEqual([
+        'key',
+        'liveKey',
+        'liveOptions',
+        'streamedKey',
+        'streamedOptions',
+      ])
+      expect(utils.events.audit.watch.streamedKey()).toEqual([
+        'app',
+        'events',
+        'audit',
+        'watch',
+        'streamed',
+      ])
+      expect(utils.events.audit.watch.liveKey()).toEqual([
+        'app',
+        'events',
+        'audit',
+        'watch',
+        'live',
+      ])
+      expect(utils.events.audit.watch.streamedKey()).not.toEqual(utils.events.audit.watch.liveKey())
+      expect(utils.updates.watch.streamedKey()).toEqual(['app', 'updates', 'watch', 'streamed'])
     }),
   )
 })

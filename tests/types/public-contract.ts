@@ -18,6 +18,7 @@ import {
 import { Context, Effect, Schema } from 'effect'
 import {
   createRpcQueryUtils,
+  EffectRpcQueryEmptyStreamError,
   EffectRpcQueryError,
   skipToken,
   type CreateRpcQueryUtilsOptions,
@@ -67,9 +68,19 @@ const Secure = Rpc.make('admin.secure', {
   success: Schema.String,
 }).middleware(AuthMiddleware)
 const Watch = Rpc.make('events.watch', {
+  payload: {
+    channel: Schema.String,
+    locale: Schema.String.pipe(
+      Schema.optionalKey,
+      Schema.withConstructorDefault(Effect.succeed('en')),
+    ),
+  },
   success: Schema.String,
+  error: Schema.Literal('watch-failure'),
   stream: true,
 })
+  .setError(Schema.Literal('watch-rpc-failure'))
+  .middleware(AuthMiddleware)
 const AuditWatch = Rpc.make('events.audit.watch', {
   success: Schema.String,
   stream: true,
@@ -168,12 +179,22 @@ type ExactLeafInterface = Assert<
 >
 
 const exactLeafInterface: ExactLeafInterface = true
+type ExpectedStreamLeafInterface =
+  | 'key'
+  | 'liveKey'
+  | 'liveOptions'
+  | 'streamedKey'
+  | 'streamedOptions'
+type ExactStreamLeafInterface = Assert<
+  Equal<keyof (typeof utils)['events']['watch'], ExpectedStreamLeafInterface>
+>
+const exactStreamLeafInterface: ExactStreamLeafInterface = true
 const projectKey = utils.projects['by-id'].find.queryKey({ id: 'project-1' })
 const projectPing = utils.projects.health.ping.queryOptions()
 const bracketOnly = utils['billing-history']['list all'].queryOptions({
   input: { accountId: 'account-1' },
 })
-void [exactLeafInterface, projectKey, projectPing, bracketOnly]
+void [exactLeafInterface, exactStreamLeafInterface, projectKey, projectPing, bracketOnly]
 
 const jsonValue: JsonValue = { nested: [true, null, 1, 'value'] }
 const keyEncoder: KeyEncoder<typeof GetUser> = (payload) => ({ id: payload.id })
@@ -199,8 +220,10 @@ createRpcQueryUtils(group, {
 createRpcQueryUtils(group, {
   client,
   keyEncoders: {
-    // @ts-expect-error streaming operations are omitted and cannot have encoders
-    'events.watch': () => null,
+    'events.watch': (payload) => {
+      payload satisfies { readonly channel: string; readonly locale?: string }
+      return { channel: payload.channel, locale: payload.locale ?? 'en' }
+    },
   },
   keyPrefix,
 })
@@ -208,7 +231,7 @@ createRpcQueryUtils(group, {
 createRpcQueryUtils(group, {
   client,
   keyEncoders: {
-    // @ts-expect-error encoder configuration is keyed by literal unary RPC tags
+    // @ts-expect-error encoder configuration is keyed by literal payload-bearing RPC tags
     'users.missing': () => null,
   },
   keyPrefix,
@@ -233,6 +256,111 @@ createRpcQueryUtils(group, {
 })
 
 const queryClient = new QueryClient()
+
+const streamedOptions = utils.events.watch.streamedOptions({
+  input: { channel: 'news' },
+  meta: { source: 'fixture' },
+  networkMode: 'offlineFirst',
+  refetchMode: 'append',
+  retry: (_count, error) => {
+    error satisfies EffectRpcQueryError<'unauthorized' | 'watch-failure' | 'watch-rpc-failure'>
+    return false
+  },
+  select: (values) => values.join(', '),
+})
+const streamedHook = useQuery(streamedOptions)
+const streamedHookData: string | undefined = streamedHook.data
+streamedHook.error satisfies EffectRpcQueryError<
+  'unauthorized' | 'watch-failure' | 'watch-rpc-failure'
+> | null
+const streamedResult: Promise<ReadonlyArray<string>> = queryClient.fetchQuery(streamedOptions)
+const streamedKey = utils.events.watch.streamedKey({ channel: 'news' })
+streamedKey satisfies readonly ['app', 'events', 'watch', 'streamed', JsonValue]
+const cachedStream = queryClient.getQueryData(utils.events.watch.streamedKey({ channel: 'news' }))
+cachedStream satisfies ReadonlyArray<string> | undefined
+queryClient.invalidateQueries({ queryKey: streamedKey })
+queryClient.refetchQueries({ queryKey: streamedKey })
+void [streamedHookData, streamedResult]
+
+const liveOptions = utils.events.watch.liveOptions({
+  input: { channel: 'news' },
+  select: (value) => value.length,
+})
+const liveHook = useQuery(liveOptions)
+const liveHookData: number | undefined = liveHook.data
+liveHook.error satisfies
+  | EffectRpcQueryEmptyStreamError
+  | EffectRpcQueryError<'unauthorized' | 'watch-failure' | 'watch-rpc-failure'>
+  | null
+const liveResult: Promise<string> = queryClient.fetchQuery(liveOptions)
+const liveKey = utils.events.watch.liveKey({ channel: 'news' })
+liveKey satisfies readonly ['app', 'events', 'watch', 'live', JsonValue]
+const cachedLive = queryClient.getQueryData(liveKey)
+cachedLive satisfies string | undefined
+void [liveHookData, liveResult]
+
+const initializedStream = useQuery(
+  utils.events.watch.streamedOptions({
+    initialData: ['initial'],
+    input: { channel: 'news' },
+    select: (values) => values.join(', '),
+  }),
+)
+initializedStream.data satisfies string
+const initializedLive = useQuery(
+  utils.events.watch.liveOptions({
+    initialData: 'initial',
+    input: { channel: 'news' },
+    select: (value) => value.length,
+  }),
+)
+initializedLive.data satisfies number
+
+declare const clientFailureClient: RpcClient.RpcClient.Flat<Rpcs, 'client-failure'>
+const clientFailureUtils = createRpcQueryUtils<typeof group, typeof keyPrefix, 'client-failure'>(
+  group,
+  { client: clientFailureClient, keyPrefix },
+)
+clientFailureUtils.events.watch.streamedOptions({
+  input: { channel: 'news' },
+  retry: (_count, error) => {
+    error satisfies EffectRpcQueryError<
+      'client-failure' | 'unauthorized' | 'watch-failure' | 'watch-rpc-failure'
+    >
+    return false
+  },
+})
+
+const skippedStreamed = utils.events.watch.streamedOptions(skipToken)
+skippedStreamed.queryFn satisfies typeof queryCoreSkipToken
+const skippedLive = utils.events.watch.liveOptions(skipToken)
+skippedLive.queryFn satisfies typeof queryCoreSkipToken
+useQuery(skippedStreamed)
+useQuery(skippedLive)
+// @ts-expect-error suspense queries cannot use a skipped stream
+useSuspenseQuery(skippedStreamed)
+// @ts-expect-error suspense queries cannot use a skipped live stream
+useSuspenseQuery(skippedLive)
+
+const payloadlessStreamed = utils.events.audit.watch.streamedOptions()
+const payloadlessLive = utils.events.audit.watch.liveOptions()
+queryClient.fetchQuery(payloadlessStreamed)
+queryClient.fetchQuery(payloadlessLive)
+
+// @ts-expect-error payload-bearing streaming queries require input or skipToken
+utils.events.watch.streamedOptions({})
+// @ts-expect-error payload-bearing live queries require input or skipToken
+utils.events.watch.liveOptions({})
+// @ts-expect-error payloadless streaming queries omit input
+utils.events.audit.watch.streamedOptions({ input: undefined })
+// @ts-expect-error payloadless live queries omit input
+utils.events.audit.watch.liveOptions({ input: undefined })
+// @ts-expect-error the package owns the streamed query function
+utils.events.watch.streamedOptions({ input: { channel: 'news' }, queryFn: async () => [] })
+// @ts-expect-error the package owns the live query key
+utils.events.watch.liveOptions({ input: { channel: 'news' }, queryKey: ['custom'] })
+// @ts-expect-error live queries do not accept accumulated-stream refetch modes
+utils.events.watch.liveOptions({ input: { channel: 'news' }, refetchMode: 'append' })
 
 const infiniteOptions = utils.users.pages.infiniteOptions({
   getNextPageParam: (lastPage, allPages, lastPageParam, allPageParams) => {
@@ -568,10 +696,11 @@ utils.users.get.queryOptions({
   input: { id: 1 },
   queryKeyHashFn: JSON.stringify,
 })
-// @ts-expect-error streaming RPCs are omitted from the utility tree
-void utils.projects.watch
-// @ts-expect-error branches emptied by stream omission are absent
-void utils.events
+void utils.projects.watch.streamedOptions({})
+// @ts-expect-error streaming leaves do not expose unary query builders
+void utils.projects.watch.queryOptions
+// @ts-expect-error unary leaves do not expose streaming query builders
+void utils.projects['by-id'].find.streamedOptions
 // @ts-expect-error leaves expose no direct execution helper
 void utils.projects['by-id'].find.call
 // @ts-expect-error leaves expose no mutation cancellation helper
