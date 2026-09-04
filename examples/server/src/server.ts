@@ -97,7 +97,6 @@ export const startExampleRpcServer = Effect.fn('ExampleRpc.startExampleRpcServer
     let url: URL
     try {
       url = new URL(request.url ?? '/', origin)
-      if (url.username !== '' || url.password !== '') throw new TypeError('Invalid request target')
     } catch {
       response.statusCode = 400
       response.end()

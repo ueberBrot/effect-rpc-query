@@ -752,11 +752,17 @@ export type RpcQueryUtils<
     : never
 >
 
+type HasSeenType<A, Seen> = Seen extends unknown
+  ? (<T>() => T extends A ? 1 : 2) extends <T>() => T extends Seen ? 1 : 2
+    ? true
+    : false
+  : never
+
 /** Recursively detects explicit redacted values in a payload's decoded type. */
 export type ContainsRedacted<A, Seen = never> =
   A extends Redacted.Redacted<unknown>
     ? true
-    : A extends Seen
+    : true extends HasSeenType<A, Seen>
       ? false
       : A extends readonly (infer Value)[]
         ? ContainsRedacted<Value, Seen | A>

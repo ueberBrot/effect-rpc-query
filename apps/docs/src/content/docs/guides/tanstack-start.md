@@ -21,10 +21,9 @@ Effect's request/response RPC transport sends every query and mutation to this P
 does not map queries to GET requests or encode procedure names in the URL. Build the handler once
 for the Start server's lifetime so RPC state and acquired resources survive individual requests.
 
-Select the server's outbound RPC destination from trusted configuration. Deriving it from the
-incoming request URL lets request headers redirect SSR calls. The executable example uses the
-server-only `EXAMPLE_RPC_ORIGIN` setting, which defaults to `http://127.0.0.1:3000`; browser calls use
-`/rpc`. Its shared HTTP handler rejects bodies over 1 MiB before parsing RPC messages.
+Configure a trusted RPC origin for server rendering. In the executable example, set the server-only
+`EXAMPLE_RPC_ORIGIN` environment variable; it defaults to `http://127.0.0.1:3000`. Use the relative
+`/rpc` endpoint for browser calls.
 
 ## Share utilities through the router context
 

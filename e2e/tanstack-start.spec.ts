@@ -1,11 +1,31 @@
 import { expect, test } from '@playwright/test'
-import { createServer } from 'node:http'
+import { createServer, request as nodeRequest } from 'node:http'
 
 import {
   prepareExampleApplication,
   recordsRpc,
   tanStackStartApplication,
 } from './example-application.ts'
+
+test('Start rejects an oversized upload before the sender ends the request', async () => {
+  const status = await new Promise<number | undefined>((resolve, reject) => {
+    const request = nodeRequest(
+      `${tanStackStartApplication.url}/rpc`,
+      { method: 'POST' },
+      (response) => {
+        response.resume()
+        response.once('end', () => {
+          request.destroy()
+          resolve(response.statusCode)
+        })
+      },
+    )
+    request.once('error', reject)
+    request.setTimeout(1000, () => request.destroy(new Error('Request timed out')))
+    request.write(' '.repeat(1024 * 1024 + 1))
+  })
+  expect(status).toBe(413)
+})
 
 test('SSR keeps its RPC destination independent of incoming host headers', async ({ request }) => {
   let redirectedRequests = 0

@@ -150,6 +150,21 @@ createRpcQueryUtils(recursiveSecretGroup, {
   keyEncoders: { 'recursive.read': () => 'subject' },
 })
 
+const nestedSecretGroup = RpcGroup.make(
+  Rpc.make('nested.read', {
+    payload: Schema.Struct({
+      value: Schema.Union([
+        Schema.String,
+        Schema.Struct({ value: Schema.String, secret: Schema.RedactedFromValue(Schema.String) }),
+      ]),
+    }),
+    success: Schema.String,
+  }),
+)
+declare const nestedSecretClient: RpcClient.RpcClient.Flat<RpcGroup.Rpcs<typeof nestedSecretGroup>>
+// @ts-expect-error nested redacted payloads require a safe encoder even when assignable to an ancestor
+createRpcQueryUtils(nestedSecretGroup, { client: nestedSecretClient, keyPrefix: ['app'] })
+
 class ClassPayload extends Schema.Class<ClassPayload>('ClassPayload')({
   id: Schema.Finite,
 }) {}
