@@ -752,7 +752,7 @@ export type RpcQueryUtils<
     : never
 >
 
-type HasSeenType<A, Seen> = Seen extends unknown
+export type HasSeenType<A, Seen> = Seen extends unknown
   ? (<T>() => T extends A ? 1 : 2) extends <T>() => T extends Seen ? 1 : 2
     ? true
     : false
