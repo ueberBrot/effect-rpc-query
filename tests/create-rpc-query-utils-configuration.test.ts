@@ -55,9 +55,13 @@ describe('createRpcQueryUtils configuration', () => {
     'namespace.infiniteKey',
     'namespace.infiniteOptions',
     'namespace.key',
+    'namespace.liveKey',
+    'namespace.liveOptions',
     'namespace.queryKey',
     'namespace.mutationKey',
     'namespace.queryOptions',
+    'namespace.streamedKey',
+    'namespace.streamedOptions',
     'namespace.mutationOptions',
   ])('rejects the invalid RPC path %j before returning a tree', (rpcTag) => {
     const invalidGroup = RpcGroup.make(Rpc.make(rpcTag, { success: Schema.Void }))

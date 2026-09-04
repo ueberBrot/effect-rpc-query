@@ -19,7 +19,7 @@ describe('TanStack Start server rendering', () => {
     }
   })
 
-  it('loads generated options through QueryClient before rendering query data', async () => {
+  it('renders a cancelled server snapshot from generated query and stream options', async () => {
     const server = await Effect.runPromise(
       startExampleRpcServer().pipe(Scope.provide(serverScope!)),
     )
@@ -36,6 +36,10 @@ describe('TanStack Start server rendering', () => {
       expect(html).toContain('Ada Lovelace')
       expect(html).toContain('Edsger Dijkstra')
       expect(html).toMatch(/Infinite users:.*Ada Lovelace/)
+      expect(html).toContain('Accumulated diagnostics:')
+      expect(html).toMatch(/Accumulated diagnostics:.*first/)
+      expect(html).toContain('Live diagnostic:')
+      expect(html).toMatch(/Live diagnostic:.*first/)
       expect(queryClient.getQueryData(rpcQuery.users.list.queryKey())).toHaveLength(2)
       expect(
         queryClient.getQueryData(rpcQuery.users.page.infiniteKey({ cursor: 0, pageSize: 1 })),
@@ -43,6 +47,14 @@ describe('TanStack Start server rendering', () => {
         pageParams: [0],
         pages: [{ users: [{ name: 'Ada Lovelace' }] }],
       })
+      expect(
+        queryClient.getQueryState(rpcQuery.diagnostics.stream.streamedKey())?.fetchStatus,
+      ).toBe('idle')
+      expect(queryClient.getQueryData(rpcQuery.diagnostics.stream.streamedKey())).toEqual(['first'])
+      expect(queryClient.getQueryState(rpcQuery.diagnostics.stream.liveKey())?.fetchStatus).toBe(
+        'idle',
+      )
+      expect(queryClient.getQueryData(rpcQuery.diagnostics.stream.liveKey())).toBe('first')
     } finally {
       await router.options.context.dispose()
     }

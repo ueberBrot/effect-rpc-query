@@ -16,7 +16,7 @@ export type EffectRpcQueryKeyErrorCode =
   | 'InvalidKeyValue'
 
 /** The TanStack operation that executed an RPC. */
-export type RpcOperation = 'infinite' | 'mutation' | 'query'
+export type RpcOperation = 'infinite' | 'live' | 'mutation' | 'query' | 'streamed'
 
 /** Safe metadata identifying the configuration entry that failed. */
 export interface EffectRpcQueryConfigErrorOptions {
@@ -54,6 +54,21 @@ export class EffectRpcQueryError<E> extends Error {
     this.rpcTag = rpcTag
     this.operation = operation
     this.cause = cause
+  }
+}
+
+/** Reports a live RPC stream that completed before emitting its first value. */
+export class EffectRpcQueryEmptyStreamError extends Error {
+  /** Identifies this error without relying on `instanceof`. */
+  readonly _tag = 'EffectRpcQueryEmptyStreamError'
+
+  /** The streaming RPC that completed empty. */
+  readonly rpcTag: string
+
+  constructor(rpcTag: string) {
+    super(`RPC ${rpcTag} live stream completed without a value`)
+    this.name = 'EffectRpcQueryEmptyStreamError'
+    this.rpcTag = rpcTag
   }
 }
 

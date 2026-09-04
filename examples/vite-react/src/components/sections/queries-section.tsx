@@ -16,6 +16,8 @@ const FeaturedUser = ({ application }: { readonly application: ViteReactApplicat
 export const QueriesSection = ({ application }: { readonly application: ViteReactApplication }) => {
   const { queryClient, rpcQuery } = application
   const users = useQuery(rpcQuery.users.list.queryOptions())
+  const diagnostics = useQuery(rpcQuery.diagnostics.stream.streamedOptions())
+  const liveDiagnostic = useQuery(rpcQuery.diagnostics.stream.liveOptions())
   const userPages = useInfiniteQuery(
     rpcQuery.users.page.infiniteOptions({
       getNextPageParam: (lastPage) => lastPage.nextCursor ?? undefined,
@@ -52,6 +54,12 @@ export const QueriesSection = ({ application }: { readonly application: ViteReac
       </Suspense>
       <p className="text-sm text-slate-600">
         Infinite users: {infiniteUsers.map((user) => user.name).join(', ')}
+      </p>
+      <p className="text-sm text-slate-600">
+        Accumulated diagnostics: {diagnostics.data?.join(', ') ?? 'Waiting for values…'}
+      </p>
+      <p className="text-sm text-slate-600">
+        Live diagnostic: {liveDiagnostic.data ?? 'Waiting for a value…'}
       </p>
       <div className="flex flex-wrap gap-3">
         <ActionButton

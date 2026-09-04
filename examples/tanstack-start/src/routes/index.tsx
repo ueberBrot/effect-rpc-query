@@ -5,6 +5,7 @@ import { useState } from 'react'
 import { ActionButton } from '../components/action-button.tsx'
 import { PageLayout, Panel } from '../components/page-layout.tsx'
 import type { TanStackStartApplication } from '../lib/application.ts'
+import { fetchStreamSnapshot } from '../lib/query-ssr.ts'
 
 const userPagesOptions = (rpcQuery: TanStackStartApplication['rpcQuery']) =>
   rpcQuery.users.page.infiniteOptions({
@@ -13,12 +14,20 @@ const userPagesOptions = (rpcQuery: TanStackStartApplication['rpcQuery']) =>
     input: (cursor: number) => ({ cursor, pageSize: 1 }),
   })
 
+const streamedDiagnosticsOptions = (rpcQuery: TanStackStartApplication['rpcQuery']) =>
+  rpcQuery.diagnostics.stream.streamedOptions({ refetchOnMount: 'always', staleTime: 0 })
+
+const liveDiagnosticOptions = (rpcQuery: TanStackStartApplication['rpcQuery']) =>
+  rpcQuery.diagnostics.stream.liveOptions({ refetchOnMount: 'always', staleTime: 0 })
+
 export const Route = createFileRoute('/')({
   component: UsersPage,
   loader: async ({ context }) => {
     await Promise.all([
       context.queryClient.ensureQueryData(context.rpcQuery.users.list.queryOptions()),
       context.queryClient.ensureInfiniteQueryData(userPagesOptions(context.rpcQuery)),
+      fetchStreamSnapshot(context.queryClient, streamedDiagnosticsOptions(context.rpcQuery)),
+      fetchStreamSnapshot(context.queryClient, liveDiagnosticOptions(context.rpcQuery)),
     ])
   },
 })
@@ -26,6 +35,8 @@ export const Route = createFileRoute('/')({
 function UsersPage() {
   const { queryClient, rpcQuery } = Route.useRouteContext()
   const users = useSuspenseQuery(rpcQuery.users.list.queryOptions())
+  const diagnostics = useSuspenseQuery(streamedDiagnosticsOptions(rpcQuery))
+  const liveDiagnostic = useSuspenseQuery(liveDiagnosticOptions(rpcQuery))
   const userPages = useSuspenseInfiniteQuery(userPagesOptions(rpcQuery))
   const infiniteUsers = userPages.data.pages.flatMap((page) => page.users)
   const [message, setMessage] = useState<string>()
@@ -71,6 +82,12 @@ function UsersPage() {
           </p>
           <p className="mt-3 text-sm leading-6 text-slate-600">
             Infinite users: {infiniteUsers.map((user) => user.name).join(', ')}
+          </p>
+          <p className="mt-3 text-sm leading-6 text-slate-600">
+            Accumulated diagnostics: {diagnostics.data.join(', ')}
+          </p>
+          <p className="mt-3 text-sm leading-6 text-slate-600">
+            Live diagnostic: {liveDiagnostic.data}
           </p>
           <div className="mt-5 flex flex-wrap gap-3">
             <ActionButton

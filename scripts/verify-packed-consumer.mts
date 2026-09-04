@@ -104,6 +104,7 @@ deepStrictEqual(declarationNames, [
   'CreateRpcQueryUtilsOptions',
   'EffectRpcQueryConfigError',
   'EffectRpcQueryConfigErrorCode',
+  'EffectRpcQueryEmptyStreamError',
   'EffectRpcQueryError',
   'EffectRpcQueryKeyError',
   'EffectRpcQueryKeyErrorCode',

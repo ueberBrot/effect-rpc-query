@@ -1,5 +1,5 @@
 import { Function, Predicate, Schema, SchemaAST } from 'effect'
-import type { Effect } from 'effect'
+import type { Effect, Stream } from 'effect'
 import { Rpc, RpcClient, RpcGroup, RpcSchema } from 'effect/unstable/rpc'
 
 export type AdaptedKeyPayload =
@@ -29,7 +29,27 @@ export interface AdaptedUnaryRpc {
 
   /** Calls the ready flat client without exposing its unstable signature. */
   readonly invoke: (input: unknown) => Effect.Effect<unknown, unknown, unknown>
+
+  /** Selects the unary utility interface. */
+  readonly kind: 'Unary'
 }
+
+/** The runtime operations the factory needs from one streaming Effect RPC. */
+export interface AdaptedStreamingRpc {
+  /** The complete payload-key capability classified from runtime Schema metadata. */
+  readonly keyPayload: AdaptedKeyPayload
+
+  /** Selects the streaming utility interface. */
+  readonly kind: 'Streaming'
+
+  /** The literal RPC tag used for paths and diagnostics. */
+  readonly tag: string
+
+  /** Calls the ready flat client without exposing its unstable signature. */
+  readonly invoke: (input: unknown) => Stream.Stream<unknown, unknown, unknown>
+}
+
+export type AdaptedRpc = AdaptedStreamingRpc | AdaptedUnaryRpc
 
 // Runtime Schema metadata erases encoding service types. Conservatively require a
 // custom encoder for encoding-side middleware; decoding-only middleware uses identity.
@@ -81,27 +101,34 @@ const adaptKeyPayload = (payloadSchema: Rpc.AnyWithProps['payloadSchema']): Adap
 }
 
 /**
- * Extracts unary RPCs and isolates the Effect RC's request map, stream check,
+ * Extracts RPCs and isolates the Effect RC's request map, stream check,
  * payload Schema, and flat-client call shape from the public implementation.
  */
-export const extractUnaryRpcs = <Rpcs extends Rpc.Any, ClientError>(
+export const extractRpcs = <Rpcs extends Rpc.Any, ClientError>(
   group: RpcGroup.RpcGroup<Rpcs>,
   client: RpcClient.RpcClient.Flat<Rpcs, ClientError>,
-): ReadonlyArray<AdaptedUnaryRpc> => {
-  const unaryRpcs: Array<AdaptedUnaryRpc> = []
+): ReadonlyArray<AdaptedRpc> => {
+  const rpcs: Array<AdaptedRpc> = []
 
   for (const value of group.requests.values()) {
     const definition = value as unknown as Rpc.AnyWithProps
+    const keyPayload = adaptKeyPayload(definition.payloadSchema)
     if (RpcSchema.isStreamSchema(definition.successSchema)) {
-      continue
+      rpcs.push({
+        keyPayload,
+        kind: 'Streaming',
+        tag: definition._tag,
+        invoke: (input) => client(definition._tag as never, input as never) as never,
+      })
+    } else {
+      rpcs.push({
+        keyPayload,
+        kind: 'Unary',
+        tag: definition._tag,
+        invoke: (input) => client(definition._tag as never, input as never) as never,
+      })
     }
-
-    unaryRpcs.push({
-      keyPayload: adaptKeyPayload(definition.payloadSchema),
-      tag: definition._tag,
-      invoke: (input) => client(definition._tag as never, input as never),
-    })
   }
 
-  return unaryRpcs
+  return rpcs
 }

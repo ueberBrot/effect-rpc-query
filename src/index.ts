@@ -6,6 +6,7 @@ export { createRpcQueryUtils } from './create-rpc-query-utils'
 /** Errors and guards raised by the public runtime API. @api public */
 export {
   EffectRpcQueryConfigError,
+  EffectRpcQueryEmptyStreamError,
   EffectRpcQueryError,
   EffectRpcQueryKeyError,
   isEffectRpcQueryError,
