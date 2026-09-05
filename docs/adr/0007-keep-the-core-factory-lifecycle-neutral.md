@@ -1,6 +1,6 @@
 # Keep the core factory lifecycle-neutral
 
-Status: Accepted.
+Status: Accepted. Implementation ownership clarified by [ADR 0021](0021-share-utility-construction-through-private-modules.md).
 
 ## Context
 

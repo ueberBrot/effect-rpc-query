@@ -1,9 +1,9 @@
 import { experimental_streamedQuery, type QueryFunctionContext } from '@tanstack/query-core'
 import { Cause, Exit, Stream } from 'effect'
 
-import { EffectRpcQueryEmptyStreamError, EffectRpcQueryError } from '../errors'
-import type { RunPromiseExit, StreamRefetchMode, StreamingRpcOptions } from '../types'
-import type { AdaptedStreamingRpc } from './effect-rpc-adapter'
+import { EffectRpcQueryEmptyStreamError, EffectRpcQueryError } from '../../errors'
+import type { RunPromiseExit } from '../core/types'
+import type { StreamRefetchMode, StreamingRpcOptions } from './types'
 
 export type StreamQueryPolicy =
   | {
@@ -17,7 +17,13 @@ export interface MakeStreamQueryOptions {
   readonly rpcOptions: StreamingRpcOptions | undefined
   readonly input: unknown
   readonly policy: StreamQueryPolicy
-  readonly rpc: AdaptedStreamingRpc
+  readonly rpc: {
+    readonly tag: string
+    readonly invoke: (
+      input: unknown,
+      options?: StreamingRpcOptions,
+    ) => Stream.Stream<unknown, unknown, unknown>
+  }
   readonly runPromiseExit: RunPromiseExit<unknown>
 }
 

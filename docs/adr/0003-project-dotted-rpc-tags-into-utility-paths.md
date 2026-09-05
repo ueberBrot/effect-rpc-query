@@ -1,6 +1,6 @@
 # Project dotted RPC tags into utility paths
 
-Status: Amended by ADR 0018 and ADR 0020.
+Status: Amended by ADR 0018 and ADR 0020. Implementation ownership clarified by [ADR 0021](0021-share-utility-construction-through-private-modules.md).
 
 ## Context
 
