@@ -68,8 +68,8 @@ const Page = Rpc.make('compatibility.page', {
 const Watch = Rpc.make('compatibility.watch', { success: Schema.String, stream: true })
 const group = RpcGroup.make(Read, Page, Watch)
 const handlers = group.of({
-  'compatibility.page': ({ cursor }) => Effect.succeed(cursor),
-  'compatibility.read': () => Effect.succeed('ordinary'),
+  'compatibility.page': Effect.fn('CompatibilityRpc.page')(({ cursor }) => Effect.succeed(cursor)),
+  'compatibility.read': Effect.fn('CompatibilityRpc.read')(() => Effect.succeed('ordinary')),
   'compatibility.watch': () => Stream.make('first', 'second'),
 })
 
@@ -80,21 +80,21 @@ await Effect.runPromise(
         Effect.provide(group.toLayer(handlers)),
       )
       const queryClient = new QueryClient()
-      const utils = rpcQuery.createRpcQueryUtils(group, {
+      const rpcUtilityTree = rpcQuery.createRpcQueryUtils(group, {
         client,
         keyPrefix: ['compatibility'] as const,
       })
 
       equal(
         yield* Effect.promise(() =>
-          queryClient.fetchQuery(utils.compatibility.read.queryOptions()),
+          queryClient.fetchQuery(rpcUtilityTree.compatibility.read.queryOptions()),
         ),
         'ordinary',
       )
       deepStrictEqual(
         yield* Effect.promise(() =>
           queryClient.fetchInfiniteQuery(
-            utils.compatibility.page.infiniteOptions({
+            rpcUtilityTree.compatibility.page.infiniteOptions({
               getNextPageParam: () => undefined,
               initialPageParam: 0,
               input: (cursor) => ({ cursor }),
@@ -105,13 +105,13 @@ await Effect.runPromise(
       )
       deepStrictEqual(
         yield* Effect.promise(() =>
-          queryClient.fetchQuery(utils.compatibility.watch.streamedOptions()),
+          queryClient.fetchQuery(rpcUtilityTree.compatibility.watch.streamedOptions()),
         ),
         ['first', 'second'],
       )
       equal(
         yield* Effect.promise(() =>
-          queryClient.fetchQuery(utils.compatibility.watch.liveOptions()),
+          queryClient.fetchQuery(rpcUtilityTree.compatibility.watch.liveOptions()),
         ),
         'second',
       )
