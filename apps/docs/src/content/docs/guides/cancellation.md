@@ -1,6 +1,6 @@
 ---
 title: Cancellation
-description: Forward TanStack query cancellation to an Effect RPC runner.
+description: Cancel queries and request server-side cancellation for long-running commands.
 ---
 
 Generated query functions forward TanStack's `AbortSignal` to `runPromiseExit`:
@@ -59,13 +59,29 @@ const status = useQuery(
   }),
 )
 
-// Wire these to separate controls so cancellation remains available while start is pending.
-start.mutate(input)
-cancel.mutate(input)
+return (
+  <>
+    <button onClick={() => start.mutate(input)} disabled={start.status !== 'idle'}>
+      Start command
+    </button>
+    <button
+      onClick={() => cancel.mutate(input)}
+      disabled={
+        start.status === 'idle' ||
+        cancel.isPending ||
+        status.data?.state === 'completed' ||
+        status.data?.state === 'cancelled'
+      }
+    >
+      Cancel command
+    </button>
+    <p>Server state: {status.data?.state ?? 'not started'}</p>
+  </>
+)
 ```
 
 The cancel handler signals the worker and waits until it has stopped. Its `onSettled` callback
-invalidates the generated status key, so the active query refetches server truth even if the cancel
+invalidates the generated status key, so the active query refetches the server's status even if the cancel
 request failed. Polling stops at a terminal state. The application chooses this invalidation policy.
 
 A cancelled command returns `{ state: 'cancelled', ... }` successfully. TanStack therefore reports
