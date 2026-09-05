@@ -2,11 +2,15 @@ import { useInfiniteQuery, useQuery, useSuspenseQuery } from '@tanstack/react-qu
 import { Suspense, useState } from 'react'
 
 import type { ViteReactApplication } from '../../lib/application.ts'
+import { ConditionalUserQuery } from '../conditional-user-query.tsx'
 import { ActionButton } from '../ui/action-button.tsx'
 import { EffectErrorDetails } from '../ui/effect-error-details.tsx'
 import { UserList } from '../users/user-list.tsx'
 
 const PAGE_SIZE = 4
+
+const streamedDiagnosticsOptions = (rpcQuery: ViteReactApplication['rpcQuery'], bounded: boolean) =>
+  rpcQuery.diagnostics.stream.streamedOptions(bounded ? { maxChunks: 2 } : {})
 
 const FeaturedUser = ({ application }: { readonly application: ViteReactApplication }) => {
   const featured = useSuspenseQuery(
@@ -18,7 +22,12 @@ const FeaturedUser = ({ application }: { readonly application: ViteReactApplicat
 export const QueriesSection = ({ application }: { readonly application: ViteReactApplication }) => {
   const { queryClient, rpcQuery } = application
   const users = useQuery(rpcQuery.users.list.queryOptions())
-  const diagnostics = useQuery(rpcQuery.diagnostics.stream.streamedOptions())
+  const [boundedHistory, setBoundedHistory] = useState(false)
+  const diagnostics = useQuery(streamedDiagnosticsOptions(rpcQuery, boundedHistory))
+  const replayStream = (bounded: boolean) => {
+    setBoundedHistory(bounded)
+    void queryClient.query(streamedDiagnosticsOptions(rpcQuery, bounded)).catch(() => undefined)
+  }
   const liveDiagnostic = useQuery(rpcQuery.diagnostics.stream.liveOptions())
   const userPages = useInfiniteQuery(
     rpcQuery.users.page.infiniteOptions({
@@ -98,6 +107,8 @@ export const QueriesSection = ({ application }: { readonly application: ViteReac
           )}
         </div>
 
+        <ConditionalUserQuery rpcQuery={rpcQuery} users={users.data ?? []} />
+
         <div className="border border-l-2 border-zinc-800 border-l-violet-600 bg-violet-950/10 p-5">
           <div className="flex flex-wrap items-baseline justify-between gap-2">
             <h3 className="display-heading text-xl font-bold text-zinc-100">Infinite query</h3>
@@ -155,20 +166,47 @@ export const QueriesSection = ({ application }: { readonly application: ViteReac
           Watch the same RPC stream two ways
         </h3>
         <p className="mt-2 text-sm leading-6 text-zinc-400">
-          The accumulated query keeps the whole timeline. The live query replaces its cached value
-          and shows only the newest state.
+          Keep the full timeline or replay with room for only the newest two updates. The live query
+          shows only the newest state.
         </p>
         <div className="mt-4 grid gap-4 md:grid-cols-2">
-          <div className="border border-zinc-800 bg-black p-4">
+          <div
+            aria-label="Accumulated stream history"
+            role="region"
+            className="border border-zinc-800 bg-black p-4"
+          >
             <div className="flex flex-wrap items-center justify-between gap-2">
               <p className="display-heading text-sm font-bold text-violet-300">
-                Accumulated stream: keeps history
+                Accumulated stream: {boundedHistory ? 'newest 2 updates' : 'keeps history'}
               </p>
               <span className="border border-violet-900 bg-violet-950/80 px-3 py-1 text-xs font-bold text-violet-200">
                 {String(diagnostics.data?.length ?? 0)}{' '}
                 {(diagnostics.data?.length ?? 0) === 1 ? 'update' : 'updates'} retained
               </span>
             </div>
+            <div className="mt-4 flex flex-wrap gap-2">
+              <ActionButton
+                disabled={diagnostics.isFetching}
+                onClick={() => replayStream(false)}
+                type="button"
+                variant="secondary"
+              >
+                Replay full history
+              </ActionButton>
+              <ActionButton
+                disabled={diagnostics.isFetching}
+                onClick={() => replayStream(true)}
+                type="button"
+                variant="secondary"
+              >
+                Replay newest 2
+              </ActionButton>
+            </div>
+            <p className="mt-3 text-sm text-zinc-400">
+              {boundedHistory
+                ? 'Older updates are discarded as new ones arrive.'
+                : 'Every update is retained.'}
+            </p>
             <ol className="mt-3 grid gap-2">
               {diagnostics.data?.map((status, index) => (
                 <li className="flex items-center gap-3 text-sm" key={status}>

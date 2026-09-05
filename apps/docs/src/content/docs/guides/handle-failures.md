@@ -20,7 +20,7 @@ const logRpcError = (error: unknown) => {
 
 Three error classes mark different boundaries:
 
-- `EffectRpcQueryConfigError` reports invalid factory input before a utility tree is returned.
+- `EffectRpcQueryConfigError` reports invalid factory or builder configuration synchronously.
 - `EffectRpcQueryKeyError` reports synchronous payload construction, encoding, or JSON
   canonicalization failures.
 - `EffectRpcQueryError` reports a failed RPC execution and preserves its Effect `Cause`.

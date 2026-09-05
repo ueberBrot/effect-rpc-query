@@ -3,6 +3,7 @@ import { createFileRoute } from '@tanstack/react-router'
 import { useState } from 'react'
 
 import { ActionButton } from '../components/action-button.tsx'
+import { ConditionalUserQuery } from '../components/conditional-user-query.tsx'
 import { PageLayout, Panel } from '../components/page-layout.tsx'
 import type { TanStackStartApplication } from '../lib/application.ts'
 import { fetchStreamSnapshot } from '../lib/query-ssr.ts'
@@ -16,8 +17,15 @@ const userPagesOptions = (rpcQuery: TanStackStartApplication['rpcQuery']) =>
     input: (cursor: number) => ({ cursor, pageSize: PAGE_SIZE }),
   })
 
-const streamedDiagnosticsOptions = (rpcQuery: TanStackStartApplication['rpcQuery']) =>
-  rpcQuery.diagnostics.stream.streamedOptions({ refetchOnMount: 'always', staleTime: 0 })
+const streamedDiagnosticsOptions = (
+  rpcQuery: TanStackStartApplication['rpcQuery'],
+  bounded = false,
+) =>
+  rpcQuery.diagnostics.stream.streamedOptions({
+    ...(bounded ? { maxChunks: 2 } : {}),
+    refetchOnMount: 'always',
+    staleTime: 0,
+  })
 
 const liveDiagnosticOptions = (rpcQuery: TanStackStartApplication['rpcQuery']) =>
   rpcQuery.diagnostics.stream.liveOptions({ refetchOnMount: 'always', staleTime: 0 })
@@ -43,7 +51,12 @@ export const Route = createFileRoute('/')({
 function UsersPage() {
   const { queryClient, rpcQuery } = Route.useRouteContext()
   const users = useSuspenseQuery(rpcQuery.users.list.queryOptions())
-  const diagnostics = useSuspenseQuery(streamedDiagnosticsOptions(rpcQuery))
+  const [boundedHistory, setBoundedHistory] = useState(false)
+  const diagnostics = useSuspenseQuery(streamedDiagnosticsOptions(rpcQuery, boundedHistory))
+  const replayStream = (bounded: boolean) => {
+    setBoundedHistory(bounded)
+    void queryClient.query(streamedDiagnosticsOptions(rpcQuery, bounded)).catch(() => undefined)
+  }
   const liveDiagnostic = useSuspenseQuery(liveDiagnosticOptions(rpcQuery))
   const userPages = useInfiniteQuery(userPagesOptions(rpcQuery))
   const loadedUsers = userPages.data?.pages.flatMap((page) => page.users) ?? []
@@ -170,25 +183,56 @@ function UsersPage() {
           </div>
         </Panel>
 
+        <div className="xl:col-span-2">
+          <ConditionalUserQuery rpcQuery={rpcQuery} users={users.data} />
+        </div>
+
         <section className="border border-l-2 border-zinc-800 border-l-violet-600 bg-violet-950/10 p-6 shadow-2xl shadow-black/40 xl:col-span-2">
           <h2 className="display-heading text-2xl font-black text-zinc-50">
             One stream, two cache models
           </h2>
           <p className="mt-3 max-w-3xl text-sm leading-6 text-zinc-400">
-            The server emits four states over time. The accumulated query keeps every state; the
-            live query replaces its previous value.
+            The server emits four states over time. Keep the full timeline or replay with room for
+            only the newest two updates. The live query shows only the newest state.
           </p>
           <div className="mt-5 grid gap-4 md:grid-cols-2">
-            <div className="border border-zinc-800 bg-black p-5">
+            <div
+              aria-label="Accumulated stream history"
+              role="region"
+              className="border border-zinc-800 bg-black p-5"
+            >
               <div className="flex flex-wrap items-center justify-between gap-2">
                 <p className="display-heading text-sm font-bold text-violet-300">
-                  Accumulated stream: keeps history
+                  Accumulated stream: {boundedHistory ? 'newest 2 updates' : 'keeps history'}
                 </p>
                 <span className="border border-violet-900 bg-violet-950/80 px-3 py-1 text-xs font-bold text-violet-200">
                   {String(diagnostics.data.length)}{' '}
                   {diagnostics.data.length === 1 ? 'update' : 'updates'} retained
                 </span>
               </div>
+              <div className="mt-4 flex flex-wrap gap-2">
+                <ActionButton
+                  disabled={diagnostics.isFetching}
+                  onClick={() => replayStream(false)}
+                  type="button"
+                  variant="secondary"
+                >
+                  Replay full history
+                </ActionButton>
+                <ActionButton
+                  disabled={diagnostics.isFetching}
+                  onClick={() => replayStream(true)}
+                  type="button"
+                  variant="secondary"
+                >
+                  Replay newest 2
+                </ActionButton>
+              </div>
+              <p className="mt-3 text-sm text-zinc-400">
+                {boundedHistory
+                  ? 'Older updates are discarded as new ones arrive.'
+                  : 'Every update is retained.'}
+              </p>
               <ol className="mt-4 grid gap-2">
                 {diagnostics.data.map((status, index) => (
                   <li className="flex items-center gap-3 text-sm" key={status}>

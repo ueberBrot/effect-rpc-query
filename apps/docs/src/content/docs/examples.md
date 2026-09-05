@@ -33,6 +33,26 @@ Server rendering uses `http://127.0.0.1:3000/rpc`. If the Start server listens e
 server-only `EXAMPLE_RPC_ORIGIN` environment variable to its HTTP(S) origin, without a path,
 credentials, query, or fragment. The browser uses the relative `/rpc` endpoint.
 
+## Pause a query until a user is selected
+
+In either application, find **Choose before fetching**. With **No user selected**, the generated
+query uses `{ input: skipToken }` and sends no lookup request. Select **User 2: Edsger Dijkstra** to
+load the user summary, then clear and reselect it within 30 seconds to reuse the cached result.
+
+Both branches preserve the same `select` and `staleTime` options. The example uses ordinary
+`useQuery`; the TanStack Start loader leaves this interactive query paused during server rendering.
+
+## Compare full and bounded stream history
+
+In either application, let the diagnostic stream finish, then choose **Replay newest 2**.
+The accumulated history retains only “Workspace synchronized” and “Ready”; earlier updates disappear
+as new ones arrive. Choose **Replay full history** to retain all four states again. The live query
+continues to show only “Ready”.
+
+The bounded replay supplies `maxChunks: 2` to `streamedOptions`. Both controls reuse the generated
+streamed key: the bound changes retention policy, not RPC identity. The application keeps the selected
+policy for subsequent refetches. TanStack Start also demonstrates this after hydrating its server snapshot.
+
 ## Build the examples
 
 Build either application without starting it:

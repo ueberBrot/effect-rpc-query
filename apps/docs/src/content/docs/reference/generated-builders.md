@@ -36,7 +36,7 @@ const options =
 
 `queryOptions`, `streamedOptions`, and `liveOptions` also accept the direct `skipToken` shorthand.
 The object form preserves applicable caller options and consumes package fields (`input` and, for
-accumulated streams, `refetchMode`). Skipped options retain the exact sentinel, operation-level key,
+accumulated streams, `refetchMode` and `maxChunks`). Skipped options retain the exact sentinel, operation-level key,
 and package-owned hash function.
 
 `skipToken` is valid only for payload-bearing query options. It is not accepted by key or mutation
@@ -95,6 +95,29 @@ Accumulated streams accept TanStack's `refetchMode` option:
   default.
 - `append` adds the new stream's values to the cached sequence.
 - `replace` retains the old sequence until the new stream ends, then replaces it atomically.
+
+Set `maxChunks` to a positive safe integer to retain only the newest emitted elements in order:
+
+```ts
+const options = utils.events.watch.streamedOptions({
+  input: { channel: 'news' },
+  maxChunks: 100,
+  refetchMode: 'append',
+})
+```
+
+After each emission, the accumulated array contains at most `maxChunks` elements. On refetch,
+`reset` starts an empty accumulation, even when `initialData` was supplied; `append` trims the
+combined cached and new history; `replace` builds a bounded replacement and publishes it when
+the stream completes. Initial fetches and append refetches trim existing data only when an element
+arrives. An empty append refetch preserves existing data; empty reset and replace refetches finish
+with an empty array.
+The bound controls element count, not byte size, and discards older history. Without it, accumulation
+remains unbounded. Use `liveOptions` when only the latest value matters.
+
+`maxChunks` configures accumulation, not key identity. Builders consume it before returning options,
+including skipped options. Invalid bounds throw `EffectRpcQueryConfigError` with code
+`InvalidMaxChunks` synchronously, even when `input` is `skipToken`.
 
 Live queries always replace the cached value and therefore expose no `refetchMode`. Cancelling,
 unmounting, or superseding either stream closes its iterator and interrupts its Effect resources.

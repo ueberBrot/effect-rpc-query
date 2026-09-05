@@ -5,6 +5,7 @@ import { Rpc, RpcClient, RpcGroup } from 'effect/unstable/rpc'
 
 import {
   createRpcQueryUtils,
+  EffectRpcQueryConfigError,
   EffectRpcQueryEmptyStreamError,
   EffectRpcQueryError,
   type RunPromiseExit,
@@ -58,6 +59,172 @@ describe('createRpcQueryUtils streaming execution', () => {
         utils.events.watch.liveKey({ channel: 'news' }),
       )
       expect(Object.isFrozen(utils.events.watch.streamedKey({ channel: 'news' }))).toBe(true)
+    }),
+  )
+
+  it.effect('retains only the newest accumulated values after each emission', () =>
+    Effect.gen(function* () {
+      const Watch = Rpc.make('events.watch', { success: Schema.Finite, stream: true })
+      const group = RpcGroup.make(Watch)
+      const client = yield* makeRpcTestClient(group, {
+        'events.watch': () => Stream.make(1, 2, 3, 4),
+      })
+      const utils = createRpcQueryUtils(group, { client, keyPrefix: ['bounded'] })
+      const queryClient = new QueryClient()
+      const options = utils.events.watch.streamedOptions({ maxChunks: 2 })
+      const snapshots: unknown[] = []
+      const unsubscribe = queryClient.getQueryCache().subscribe((event) => {
+        if (event.type === 'updated' && event.action.type === 'success') {
+          snapshots.push(queryClient.getQueryData(options.queryKey))
+        }
+      })
+      try {
+        expect(yield* Effect.promise(() => queryClient.query(options))).toEqual([3, 4])
+        expect(snapshots.slice(0, 4)).toEqual([[1], [1, 2], [2, 3], [3, 4]])
+        expect(options).not.toHaveProperty('maxChunks')
+      } finally {
+        unsubscribe()
+        queryClient.clear()
+      }
+    }),
+  )
+
+  it.effect.each([
+    { refetchMode: 'reset', during: [[1], [1, 2], [2, 3], [2, 3]], start: undefined },
+    {
+      refetchMode: 'append',
+      during: [
+        [9, 1],
+        [1, 2],
+        [2, 3],
+        [2, 3],
+      ],
+      start: [-2, -1, 0, 9],
+    },
+    {
+      refetchMode: 'replace',
+      during: [
+        [2, 3],
+        [2, 3],
+      ],
+      start: [-2, -1, 0, 9],
+    },
+  ] as const)(
+    'bounds $refetchMode refetches through QueryClient',
+    ({ refetchMode, during, start }) =>
+      Effect.gen(function* () {
+        const Watch = Rpc.make('events.watch', { success: Schema.Finite, stream: true })
+        const group = RpcGroup.make(Watch)
+        const queryClient = new QueryClient()
+        const snapshots: unknown[] = []
+        const key = ['bounded', 'events', 'watch', 'streamed'] as const
+        const client = yield* makeRpcTestClient(group, {
+          'events.watch': () =>
+            Stream.fromAsyncIterable(
+              (async function* () {
+                expect(queryClient.getQueryData(key)).toEqual(start)
+                for (const value of [1, 2, 3]) {
+                  yield value
+                }
+              })(),
+              (cause) => cause,
+            ).pipe(Stream.orDie),
+        })
+        const utils = createRpcQueryUtils(group, { client, keyPrefix: ['bounded'] })
+        const options = utils.events.watch.streamedOptions({ maxChunks: 2, refetchMode })
+        queryClient.setQueryData(options.queryKey, [-2, -1, 0, 9])
+        const unsubscribe = queryClient.getQueryCache().subscribe((event) => {
+          if (event.type === 'updated' && event.action.type === 'success') {
+            snapshots.push(queryClient.getQueryData(options.queryKey))
+          }
+        })
+        try {
+          expect(yield* Effect.promise(() => queryClient.query(options))).toEqual([2, 3])
+          expect(snapshots).toEqual(during)
+          expect(queryClient.getQueryData(options.queryKey)).toEqual([2, 3])
+        } finally {
+          unsubscribe()
+          queryClient.clear()
+        }
+      }),
+  )
+
+  it.effect.each([
+    { maxChunks: 1, expected: [4] },
+    { maxChunks: Number.MAX_SAFE_INTEGER, expected: [1, 2, 3, 4] },
+  ])('accepts the boundary value $maxChunks', ({ maxChunks, expected }) =>
+    Effect.gen(function* () {
+      const Watch = Rpc.make('events.watch', { success: Schema.Finite, stream: true })
+      const group = RpcGroup.make(Watch)
+      const client = yield* makeRpcTestClient(group, {
+        'events.watch': () => Stream.make(1, 2, 3, 4),
+      })
+      const utils = createRpcQueryUtils(group, { client, keyPrefix: ['bounded'] })
+      const queryClient = new QueryClient()
+      try {
+        const options = utils.events.watch.streamedOptions({ maxChunks })
+        expect(yield* Effect.promise(() => queryClient.query(options))).toEqual(expected)
+      } finally {
+        queryClient.clear()
+      }
+    }),
+  )
+
+  it.effect('resets bounded accumulation independently of initial data', () =>
+    Effect.gen(function* () {
+      let values = [1]
+      const Watch = Rpc.make('events.watch', { success: Schema.Finite, stream: true })
+      const group = RpcGroup.make(Watch)
+      const client = yield* makeRpcTestClient(group, {
+        'events.watch': () => Stream.fromIterable(values),
+      })
+      const utils = createRpcQueryUtils(group, { client, keyPrefix: ['bounded'] })
+      const options = utils.events.watch.streamedOptions({ initialData: [9], maxChunks: 2 })
+      const queryClient = new QueryClient()
+      try {
+        expect(yield* Effect.promise(() => queryClient.query(options))).toEqual([9, 1])
+        values = [2]
+        expect(yield* Effect.promise(() => queryClient.query(options))).toEqual([2])
+        values = []
+        expect(yield* Effect.promise(() => queryClient.query(options))).toEqual([])
+        expect(queryClient.getQueryData(options.queryKey)).toEqual([])
+      } finally {
+        queryClient.clear()
+      }
+    }),
+  )
+
+  it.effect('rejects invalid bounds synchronously, including skipped queries', () =>
+    Effect.gen(function* () {
+      const Watch = Rpc.make('events.watch', {
+        payload: { channel: Schema.String },
+        success: Schema.Finite,
+        stream: true,
+      })
+      const group = RpcGroup.make(Watch)
+      const client = yield* makeRpcTestClient(group, { 'events.watch': () => Stream.make(1) })
+      const utils = createRpcQueryUtils(group, { client, keyPrefix: ['bounded'] })
+      for (const maxChunks of [0, -1, 1.5, NaN, Infinity, -Infinity, Number.MAX_SAFE_INTEGER + 1]) {
+        for (const input of [{ channel: 'news' }, skipToken] as const) {
+          const buildOptions = () =>
+            input === skipToken
+              ? utils.events.watch.streamedOptions({ input, maxChunks })
+              : utils.events.watch.streamedOptions({ input, maxChunks })
+          expect(buildOptions).toThrow(EffectRpcQueryConfigError)
+          expect(buildOptions).toThrow(
+            expect.objectContaining({ code: 'InvalidMaxChunks', rpcTag: 'events.watch' }),
+          )
+        }
+      }
+      const skipped = utils.events.watch.streamedOptions({ input: skipToken, maxChunks: 1 })
+      expect(skipped.queryFn).toBe(skipToken)
+      expect(skipped).not.toHaveProperty('maxChunks')
+      expect(() =>
+        utils.events.watch.streamedOptions({
+          input: { channel: 'news' },
+          maxChunks: Number.MAX_SAFE_INTEGER,
+        }),
+      ).not.toThrow()
     }),
   )
 

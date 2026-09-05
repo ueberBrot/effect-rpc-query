@@ -17,7 +17,13 @@ import {
   type AdaptedUnaryRpc,
 } from './internal/effect-rpc-adapter'
 import { makeStreamQuery } from './internal/streamed-query-adapter'
-import type { CreateRpcQueryUtilsOptions, JsonValue, RpcQueryUtils, RunPromiseExit } from './types'
+import type {
+  CreateRpcQueryUtilsOptions,
+  JsonValue,
+  RpcQueryUtils,
+  RunPromiseExit,
+  StreamRefetchMode,
+} from './types'
 
 const reservedPathSegments = new Set([
   '__proto__',
@@ -411,8 +417,17 @@ const createStreamingLeaf = (
     const operationKey = operation === 'live' ? liveOperationKey : streamedOperationKey
     const supplied = prepareQueryOptions(rpc, argument, operationKey)
     const { options } = supplied
-    const refetchMode = options['refetchMode'] as 'append' | 'replace' | 'reset' | undefined
+    const refetchMode = options['refetchMode'] as StreamRefetchMode | undefined
     delete options['refetchMode']
+    const maxChunks = options['maxChunks'] as number | undefined
+    delete options['maxChunks']
+    if (maxChunks !== undefined && (!Number.isSafeInteger(maxChunks) || maxChunks <= 0)) {
+      throw new EffectRpcQueryConfigError(
+        'InvalidMaxChunks',
+        'maxChunks must be a positive safe integer',
+        { rpcTag: rpc.tag },
+      )
+    }
     if (supplied._tag === 'Skipped') return options
 
     const prepared = prepareQuery(rpc, supplied.input, operationKey, keyEncoder)
@@ -422,7 +437,11 @@ const createStreamingLeaf = (
       policy:
         operation === 'live'
           ? { _tag: 'Live' }
-          : { _tag: 'Accumulated', ...(refetchMode === undefined ? {} : { refetchMode }) },
+          : {
+              _tag: 'Accumulated',
+              ...(refetchMode === undefined ? {} : { refetchMode }),
+              ...(maxChunks === undefined ? {} : { maxChunks }),
+            },
       rpc,
       runPromiseExit,
     })
