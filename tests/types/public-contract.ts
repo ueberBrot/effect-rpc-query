@@ -4,6 +4,8 @@ import {
   type InfiniteData,
   MutationObserver,
   QueryClient,
+  QueryObserver,
+  InfiniteQueryObserver,
   skipToken as queryCoreSkipToken,
 } from '@tanstack/query-core'
 import {
@@ -495,26 +497,18 @@ utils.health.ping.infiniteOptions({
   // @ts-expect-error payloadless infinite queries do not accept an input mapper
   input: () => undefined,
 })
-utils.users.pages.infiniteOptions<number, never>({
-  getNextPageParam: () => undefined,
-  initialPageParam: 0,
-  // @ts-expect-error infinite input mappers must return the RPC payload constructor input
-  input: () => ({ cursor: 'invalid' }),
-})
-utils.users.pages.infiniteOptions<number, never>({
+const buildPages = utils.users.pages.infiniteOptions<number, never>
+const validPageOptions = {
   getNextPageParam: () => undefined,
   initialPageParam: 0,
   input: (cursor: number) => ({ cursor }),
-  // @ts-expect-error the package owns the infinite-query function
-  queryFn: async () => ({ nextCursor: null, users: [] }),
-})
-utils.users.pages.infiniteOptions<number, never>({
-  getNextPageParam: () => undefined,
-  initialPageParam: 0,
-  input: (cursor: number) => ({ cursor }),
-  // @ts-expect-error the package owns the infinite-query key
-  queryKey: ['custom'],
-})
+}
+// @ts-expect-error infinite input mappers must return the RPC payload constructor input
+buildPages({ ...validPageOptions, input: () => ({ cursor: 'invalid' }) })
+// @ts-expect-error the package owns the infinite-query function
+buildPages({ ...validPageOptions, queryFn: async () => ({ nextCursor: null, users: [] }) })
+// @ts-expect-error the package owns the infinite-query key
+buildPages({ ...validPageOptions, queryKey: ['custom'] })
 
 const selected = utils.users.get.queryOptions({
   input: { id: 1 },
@@ -753,3 +747,203 @@ void utils.users.get.cancelMutation
 if (skipToken !== queryCoreSkipToken || skipToken !== reactQuerySkipToken) {
   throw new Error('skipToken must preserve Query Core and React Query identity')
 }
+
+// Object-form skipping preserves inference through Query Core and React Query.
+const skippedQueryObject = utils.users.get.queryOptions({
+  input: skipToken,
+  select: (user) => user.name,
+  staleTime: (query) => {
+    query.queryKey satisfies readonly ['app', 'users', 'get', 'query']
+    return 30_000
+  },
+  retry: (_count, error) => {
+    error satisfies EffectRpcQueryError<'not-found'>
+    return false
+  },
+})
+const skippedQueryResult = useQuery(skippedQueryObject)
+skippedQueryResult.data satisfies string | undefined
+// @ts-expect-error no initial data guarantees a value
+skippedQueryResult.data satisfies string
+new QueryObserver(queryClient, skippedQueryObject).getCurrentResult().data satisfies
+  | string
+  | undefined
+skippedQueryObject.queryFn satisfies SkipToken
+skippedQueryObject.queryKey satisfies readonly ['app', 'users', 'get', 'query']
+// @ts-expect-error package input is consumed
+skippedQueryObject.input
+// @ts-expect-error suspense requires an executable query function
+useSuspenseQuery(skippedQueryObject)
+// @ts-expect-error prefetch-only hooks require an executable query function
+usePrefetchQuery(skippedQueryObject)
+
+const skippedStreamObject = utils.events.watch.streamedOptions({
+  input: skipToken,
+  refetchMode: 'append',
+  select: (values) => values.join(', '),
+})
+useQuery(skippedStreamObject).data satisfies string | undefined
+new QueryObserver(queryClient, skippedStreamObject).getCurrentResult().data satisfies
+  | string
+  | undefined
+skippedStreamObject.queryFn satisfies SkipToken
+skippedStreamObject.queryKey satisfies readonly ['app', 'events', 'watch', 'streamed']
+// @ts-expect-error stream policy is consumed
+skippedStreamObject.refetchMode
+// @ts-expect-error package input is consumed
+skippedStreamObject.input
+// @ts-expect-error suspense requires an executable query function
+useSuspenseQuery(skippedStreamObject)
+// @ts-expect-error prefetch-only hooks require an executable query function
+usePrefetchQuery(skippedStreamObject)
+
+const skippedLiveObject = utils.events.watch.liveOptions({
+  input: skipToken,
+  select: (value) => value.length,
+})
+const skippedLiveResult = useQuery(skippedLiveObject)
+skippedLiveResult.data satisfies number | undefined
+skippedLiveResult.error satisfies
+  | EffectRpcQueryEmptyStreamError
+  | EffectRpcQueryError<'unauthorized' | 'watch-failure' | 'watch-rpc-failure'>
+  | null
+new QueryObserver(queryClient, skippedLiveObject).getCurrentResult().data satisfies
+  | number
+  | undefined
+skippedLiveObject.queryFn satisfies SkipToken
+skippedLiveObject.queryKey satisfies readonly ['app', 'events', 'watch', 'live']
+// @ts-expect-error package input is consumed
+skippedLiveObject.input
+// @ts-expect-error suspense requires an executable query function
+useSuspenseQuery(skippedLiveObject)
+// @ts-expect-error prefetch-only hooks require an executable query function
+usePrefetchQuery(skippedLiveObject)
+
+const skippedInfiniteObject = utils.users.pages.infiniteOptions({
+  input: skipToken,
+  initialPageParam: 0,
+  getNextPageParam: (lastPage) => lastPage.nextCursor ?? undefined,
+  select: (data) => data.pages.flatMap((page) => page.users).length,
+})
+useInfiniteQuery(skippedInfiniteObject).data satisfies number | undefined
+new InfiniteQueryObserver(queryClient, skippedInfiniteObject).getCurrentResult().data satisfies
+  | number
+  | undefined
+skippedInfiniteObject.queryFn satisfies SkipToken
+// @ts-expect-error package input is consumed
+skippedInfiniteObject.input
+
+useQuery(
+  utils.users.get.queryOptions({
+    input: skipToken,
+    initialData: { id: 1, name: 'Ada' },
+    select: (value) => value.name,
+  }),
+).data satisfies string | undefined
+useQuery(
+  utils.users.get.queryOptions({
+    input: skipToken,
+    initialData: () => ({ id: 1, name: 'Ada' }),
+    select: (value) => value.name,
+  }),
+).data satisfies string | undefined
+declare const optionalQueryInitial: () => { id: number; name: string } | undefined
+const optionalQueryResult = useQuery(
+  utils.users.get.queryOptions({ input: skipToken, initialData: optionalQueryInitial }),
+)
+// @ts-expect-error an initial-data function may return undefined
+optionalQueryResult.data satisfies { id: number; name: string }
+useQuery(
+  utils.events.watch.streamedOptions({
+    input: skipToken,
+    initialData: ['first'],
+    select: (values) => values.join(', '),
+  }),
+).data satisfies string | undefined
+useQuery(
+  utils.events.watch.streamedOptions({
+    input: skipToken,
+    initialData: () => ['first'],
+    select: (values) => values.join(', '),
+  }),
+).data satisfies string | undefined
+declare const optionalStreamedInitial: () => ReadonlyArray<string> | undefined
+const optionalStreamedResult = useQuery(
+  utils.events.watch.streamedOptions({ input: skipToken, initialData: optionalStreamedInitial }),
+)
+// @ts-expect-error an initial-data function may return undefined
+optionalStreamedResult.data satisfies ReadonlyArray<string>
+useQuery(
+  utils.events.watch.liveOptions({
+    input: skipToken,
+    initialData: 'first',
+    select: (value) => value.length,
+  }),
+).data satisfies number | undefined
+useQuery(
+  utils.events.watch.liveOptions({
+    input: skipToken,
+    initialData: () => 'first',
+    select: (value) => value.length,
+  }),
+).data satisfies number | undefined
+declare const optionalLiveInitial: () => string | undefined
+const optionalLiveResult = useQuery(
+  utils.events.watch.liveOptions({ input: skipToken, initialData: optionalLiveInitial }),
+)
+// @ts-expect-error an initial-data function may return undefined
+optionalLiveResult.data satisfies string
+// @ts-expect-error skipping does not widen the supported builder inputs
+utils.health.ping.queryOptions({ input: skipToken })
+utils.health.ping.infiniteOptions({
+  // @ts-expect-error payloadless infinite queries have no input
+  input: skipToken,
+  initialPageParam: 0,
+  getNextPageParam: () => undefined,
+})
+// @ts-expect-error skipping does not widen the supported builder inputs
+utils.events.audit.watch.streamedOptions({ input: skipToken })
+// @ts-expect-error skipping does not widen the supported builder inputs
+utils.events.audit.watch.liveOptions({ input: skipToken })
+// @ts-expect-error skipping does not widen the supported builder inputs
+utils.events.audit.watch.streamedOptions(skipToken)
+// @ts-expect-error skipping does not widen the supported builder inputs
+utils.events.audit.watch.liveOptions(skipToken)
+// @ts-expect-error skipping does not widen the supported builder inputs
+utils.users.get.infiniteKey(skipToken)
+// @ts-expect-error skipping does not widen the supported builder inputs
+utils.events.watch.streamedKey(skipToken)
+// @ts-expect-error skipping does not widen the supported builder inputs
+utils.events.watch.liveKey(skipToken)
+// @ts-expect-error skipping does not widen the supported builder inputs
+utils.events.watch.liveOptions({ input: skipToken, refetchMode: 'append' })
+// @ts-expect-error skipping does not widen the supported builder inputs
+utils.users.get.queryOptions({ input: skipToken, queryKey: [] })
+// @ts-expect-error skipping does not widen the supported builder inputs
+utils.events.watch.streamedOptions({ input: skipToken, queryFn: skipToken })
+// @ts-expect-error skipping does not widen the supported builder inputs
+utils.events.watch.liveOptions({ input: skipToken, queryKeyHashFn: () => '' })
+
+const initializedSkippedQuery = utils.users.get.queryOptions({
+  input: skipToken,
+  initialData: { id: 1, name: 'Ada' },
+})
+initializedSkippedQuery.initialData satisfies
+  | { readonly id: number; readonly name: string }
+  | (() => { readonly id: number; readonly name: string })
+const initializedSkippedStream = utils.events.watch.streamedOptions({
+  input: skipToken,
+  initialData: () => ['first'],
+})
+initializedSkippedStream.initialData satisfies ReadonlyArray<string> | (() => ReadonlyArray<string>)
+const initializedSkippedLive = utils.events.watch.liveOptions({
+  input: skipToken,
+  initialData: 'first',
+})
+initializedSkippedLive.initialData satisfies string | (() => string)
+// @ts-expect-error React Query's defined-data overload excludes skipToken
+useQuery(initializedSkippedQuery).data satisfies { readonly id: number; readonly name: string }
+// @ts-expect-error React Query's defined-data overload excludes skipToken
+useQuery(initializedSkippedStream).data satisfies ReadonlyArray<string>
+// @ts-expect-error React Query's defined-data overload excludes skipToken
+useQuery(initializedSkippedLive).data satisfies string

@@ -23,16 +23,21 @@ rpcQuery.health.ping.queryOptions()
 rpcQuery.users.get.queryOptions({ input: { id: 1 }, staleTime: 30_000 })
 ```
 
-Disable a payload-bearing query with the exported Query Core sentinel:
+Disable a payload-bearing query with `input: skipToken`, retaining its other TanStack options:
 
 ```ts
 import { skipToken } from 'effect-rpc-query'
 
 const options =
   userId === undefined
-    ? rpcQuery.users.get.queryOptions(skipToken)
-    : rpcQuery.users.get.queryOptions({ input: { id: userId } })
+    ? rpcQuery.users.get.queryOptions({ input: skipToken, staleTime: 30_000 })
+    : rpcQuery.users.get.queryOptions({ input: { id: userId }, staleTime: 30_000 })
 ```
+
+`queryOptions`, `streamedOptions`, and `liveOptions` also accept the direct `skipToken` shorthand.
+The object form preserves applicable caller options and consumes package fields (`input` and, for
+accumulated streams, `refetchMode`). Skipped options retain the exact sentinel, operation-level key,
+and package-owned hash function.
 
 `skipToken` is valid only for payload-bearing query options. It is not accepted by key or mutation
 builders, and skipped options are unsuitable for suspense and prefetch-only hooks.

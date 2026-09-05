@@ -358,6 +358,78 @@ describe('createRpcQueryUtils streaming execution', () => {
     }),
   )
 
+  it.effect.each(['live', 'streamed'] as const)(
+    'preserves options and skips execution for the %s object form',
+    (operation) =>
+      Effect.gen(function* () {
+        const Watch = Rpc.make('events.watch', {
+          payload: { channel: Schema.String },
+          success: Schema.String,
+          stream: true,
+        })
+        const streamGroup = RpcGroup.make(Watch)
+        const client = yield* makeRpcTestClient(streamGroup, {
+          'events.watch': () => Stream.empty,
+        })
+        let executions = 0
+        const utils = createRpcQueryUtils(streamGroup, {
+          client,
+          keyPrefix: ['app'] as const,
+          runPromiseExit: (effect, options) => {
+            executions += 1
+            return Effect.runPromiseExit(effect, options)
+          },
+        })
+        const callerOptions = Object.freeze({
+          staleTime: 30_000,
+          gcTime: 0,
+          meta: { source: 'conditional' },
+        })
+        const queryClient = new QueryClient()
+        const observer =
+          operation === 'live'
+            ? new QueryObserver(
+                queryClient,
+                utils.events.watch.liveOptions({
+                  ...callerOptions,
+                  input: skipToken,
+                  initialData: 'first',
+                  select: (value) => value.length,
+                }),
+              )
+            : new QueryObserver(
+                queryClient,
+                utils.events.watch.streamedOptions({
+                  ...callerOptions,
+                  input: skipToken,
+                  refetchMode: 'append',
+                  initialData: ['first'],
+                  select: (values) => values.length,
+                }),
+              )
+        const options = observer.options
+        expect(options).toMatchObject({
+          ...callerOptions,
+          queryFn: skipToken,
+          queryKey: ['app', 'events', 'watch', operation],
+        })
+        expect(options).not.toHaveProperty('input')
+        expect(options).not.toHaveProperty('refetchMode')
+        expect(options.queryKeyHashFn).toBe(
+          utils.events.watch.liveOptions(skipToken).queryKeyHashFn,
+        )
+        const unsubscribe = observer.subscribe(() => undefined)
+        yield* Effect.promise(() => queryClient.invalidateQueries({ queryKey: utils.events.key() }))
+        expect(observer.getCurrentResult()).toMatchObject({
+          data: operation === 'live' ? 5 : 1,
+          fetchStatus: 'idle',
+        })
+        expect(executions).toBe(0)
+        unsubscribe()
+        queryClient.clear()
+      }),
+  )
+
   it.effect('reuses Query Core skipToken for payload-bearing streams', () =>
     Effect.gen(function* () {
       const Watch = Rpc.make('events.watch', {

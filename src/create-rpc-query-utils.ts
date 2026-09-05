@@ -342,22 +342,24 @@ const createUnaryLeaf = (
   const queryKey = (input?: unknown) => prepareQuery(rpc, input, queryOperationKey, keyEncoder).key
 
   const queryOptions = (argument?: unknown) => {
-    if (rpc.keyPayload._tag !== 'Payloadless' && argument === skipToken) {
+    const options = {
+      ...(argument === skipToken
+        ? { input: skipToken }
+        : (argument as Record<string, unknown> | undefined)),
+    }
+    const input = options['input']
+    delete options['input']
+
+    if (rpc.keyPayload._tag !== 'Payloadless' && input === skipToken) {
       return {
+        ...options,
         queryFn: skipToken,
         queryKey: queryOperationKey,
         queryKeyHashFn: hashCanonicalKey,
       }
     }
 
-    const suppliedOptions =
-      argument !== undefined && typeof argument === 'object'
-        ? (argument as Record<string, unknown>)
-        : {}
-
-    const options = { ...suppliedOptions }
-    const prepared = prepareQuery(rpc, options['input'], queryOperationKey, keyEncoder)
-    delete options['input']
+    const prepared = prepareQuery(rpc, input, queryOperationKey, keyEncoder)
 
     return {
       // Owned fields follow user options so callers cannot replace keys or runners.
@@ -401,23 +403,26 @@ const createStreamingLeaf = (
 
   const buildOptions = (argument: unknown, operation: 'live' | 'streamed') => {
     const operationKey = operation === 'live' ? liveOperationKey : streamedOperationKey
-    if (rpc.keyPayload._tag !== 'Payloadless' && argument === skipToken) {
+    const options = {
+      ...(argument === skipToken
+        ? { input: skipToken }
+        : (argument as Record<string, unknown> | undefined)),
+    }
+    const input = options['input']
+    const refetchMode = options['refetchMode'] as 'append' | 'replace' | 'reset' | undefined
+    delete options['input']
+    delete options['refetchMode']
+
+    if (rpc.keyPayload._tag !== 'Payloadless' && input === skipToken) {
       return {
+        ...options,
         queryFn: skipToken,
         queryKey: operationKey,
         queryKeyHashFn: hashCanonicalKey,
       }
     }
 
-    const suppliedOptions =
-      argument !== undefined && typeof argument === 'object'
-        ? (argument as Record<string, unknown>)
-        : {}
-    const options = { ...suppliedOptions }
-    const prepared = prepareQuery(rpc, options['input'], operationKey, keyEncoder)
-    const refetchMode = options['refetchMode'] as 'append' | 'replace' | 'reset' | undefined
-    delete options['input']
-    delete options['refetchMode']
+    const prepared = prepareQuery(rpc, input, operationKey, keyEncoder)
 
     const queryFn = makeStreamQuery({
       input: prepared.input,
