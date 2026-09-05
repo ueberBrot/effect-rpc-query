@@ -44,6 +44,10 @@ _Avoid_: Automatic namespace, client identity
 
 ## Execution and failures
 
+**Cancellable command**:
+An application operation identified before work starts, with observable progress and an explicit cancellation request. Its terminal domain state is independent of the TanStack mutation state; cancellation stops future work without undoing completed work.
+_Avoid_: Mutation cancellation, rollback
+
 **Ready RPC client**:
 A flat, tag-first Effect RPC client acquired within a Scope that remains alive while an RPC utility tree uses it. The caller owns the Scope and disposal.
 _Avoid_: Client factory, owned client

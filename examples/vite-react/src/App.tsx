@@ -1,5 +1,6 @@
 import { QueryClientProvider } from '@tanstack/react-query'
 
+import { CommandsSection } from './components/sections/commands-section.tsx'
 import { DiagnosticsSection } from './components/sections/diagnostics-section.tsx'
 import { MutationsSection } from './components/sections/mutations-section.tsx'
 import { QueriesSection } from './components/sections/queries-section.tsx'
@@ -21,6 +22,7 @@ const ExampleContent = ({ application }: { readonly application: ViteReactApplic
       <QueriesSection application={application} />
       <MutationsSection application={application} />
       <DiagnosticsSection application={application} />
+      <CommandsSection application={application} />
     </main>
   </div>
 )

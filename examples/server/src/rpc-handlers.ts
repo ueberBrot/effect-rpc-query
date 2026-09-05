@@ -9,6 +9,7 @@ import {
 } from '@effect-rpc-query/contracts'
 import { Effect, Layer, Ref, Schedule, Stream } from 'effect'
 
+import { makeCommands } from './commands.ts'
 import { makeDiagnosticOperations } from './diagnostic-operations.ts'
 
 const initialUsers = [
@@ -50,8 +51,12 @@ const handlersLayer = exampleRpcGroup.toLayer(
   Effect.gen(function* () {
     const state = yield* Ref.make(initialState())
     const diagnostics = yield* makeDiagnosticOperations()
+    const commands = yield* makeCommands()
 
     return exampleRpcGroup.of({
+      'commands.start': commands.start,
+      'commands.status': commands.status,
+      'commands.cancel': commands.cancel,
       'diagnostics.cancel': Effect.fn('ExampleRpc.diagnostics.cancel')(
         ({ operationId }: { readonly operationId: string }) => diagnostics.cancel(operationId),
       ),
@@ -66,6 +71,7 @@ const handlersLayer = exampleRpcGroup.toLayer(
       'diagnostics.status': Effect.fn('ExampleRpc.diagnostics.status')(() => diagnostics.status),
       'diagnostics.stream': () => diagnosticStream,
       'testing.reset': Effect.fn('ExampleRpc.testing.reset')(function* () {
+        yield* commands.reset
         yield* diagnostics.reset
         yield* Ref.set(state, initialState())
       }),

@@ -1,4 +1,5 @@
 export {
+  CommandStatus,
   DiagnosticFailure,
   exampleRpcGroup,
   ExampleAuthorization,
@@ -7,4 +8,4 @@ export {
   User,
   UserPage,
 } from './contracts.ts'
-export type { DiagnosticStatus, SlowDiagnosticInput } from './contracts.ts'
+export type { CommandPayload, DiagnosticStatus, SlowDiagnosticInput } from './contracts.ts'

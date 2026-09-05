@@ -84,4 +84,24 @@ test.describe('plain Vite React application', () => {
     await page.getByRole('button', { name: 'Cancel query' }).click()
     await expect(page.getByText('Server interruptions: 1')).toBeVisible()
   })
+
+  test('cancels a pending command and reconciles progress without stopping another command', async ({
+    page,
+  }) => {
+    const first = page.getByRole('region', { name: 'Command 1', exact: true })
+    const second = page.getByRole('region', { name: 'Command 2', exact: true })
+    await first.getByRole('button', { name: 'Start command' }).click()
+    await second.getByRole('button', { name: 'Start command' }).click()
+    await expect(first.getByText('Server state: running')).toBeVisible()
+    await expect(first.getByText(/^Progress: [1-9]\d* \/ 40$/)).toBeVisible()
+    await expect(first.getByText('Start mutation: pending')).toBeVisible()
+    await first.getByRole('button', { name: 'Cancel command' }).click()
+    await expect(first.getByText('Cancel mutation: success')).toBeVisible()
+    await expect(first.getByText('Start mutation: success')).toBeVisible()
+    await expect(first.getByText('Server state: cancelled')).toBeVisible()
+    const stoppedProgress = await first.getByText(/^Progress:/).textContent()
+    await expect(second.getByText('Server state: completed')).toBeVisible()
+    await expect(second.getByText('Progress: 40 / 40')).toBeVisible()
+    await expect(first.getByText(/^Progress:/)).toHaveText(stoppedProgress!)
+  })
 })
