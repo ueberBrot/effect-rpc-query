@@ -2,6 +2,7 @@ import { describe, expect, it } from '@effect/vitest'
 import {
   MutationObserver,
   QueryClient,
+  QueryObserver,
   skipToken as queryCoreSkipToken,
 } from '@tanstack/query-core'
 import { skipToken as reactQuerySkipToken } from '@tanstack/react-query'
@@ -13,6 +14,50 @@ import { createRpcQueryUtils, skipToken } from '#effect-rpc-query'
 import { group, makeClient, makeRpcTestClient } from './fixtures/effect-rpc'
 
 describe('createRpcQueryUtils', () => {
+  it.effect('preserves caller options while skipping a payload-bearing query', () =>
+    Effect.gen(function* () {
+      const client = yield* makeClient()
+      let executions = 0
+      const utils = createRpcQueryUtils(group, {
+        client,
+        keyPrefix: ['app'] as const,
+        runPromiseExit: (effect, options) => {
+          executions += 1
+          return Effect.runPromiseExit(effect, options)
+        },
+      })
+      const supplied = Object.freeze({
+        input: skipToken,
+        initialData: { id: 1, locale: 'en', name: 'Ada' },
+        select: (user: { name: string }) => user.name,
+        staleTime: 30_000,
+        gcTime: 0,
+        meta: { source: 'conditional' },
+        retry: false as const,
+      })
+      const options = utils.users.get.queryOptions(supplied)
+      expect(options).toEqual({
+        initialData: supplied.initialData,
+        select: supplied.select,
+        staleTime: 30_000,
+        gcTime: 0,
+        meta: supplied.meta,
+        retry: false,
+        queryFn: queryCoreSkipToken,
+        queryKey: ['app', 'users', 'get', 'query'],
+        queryKeyHashFn: utils.users.get.queryOptions(skipToken).queryKeyHashFn,
+      })
+      const queryClient = new QueryClient()
+      const observer = new QueryObserver(queryClient, options)
+      const unsubscribe = observer.subscribe(() => undefined)
+      yield* Effect.promise(() => queryClient.invalidateQueries({ queryKey: utils.users.key() }))
+      expect(observer.getCurrentResult()).toMatchObject({ data: 'Ada', fetchStatus: 'idle' })
+      expect(executions).toBe(0)
+      unsubscribe()
+      queryClient.clear()
+    }),
+  )
+
   it.effect('creates frozen nested utilities and semantic keys', () =>
     Effect.gen(function* () {
       const client = yield* makeClient()
@@ -102,14 +147,23 @@ describe('createRpcQueryUtils', () => {
       })
       expect(skipped.queryKeyHashFn(skipped.queryKey)).toBe(JSON.stringify(skipped.queryKey))
 
-      const skippedInfinite = utils.users.get.infiniteOptions({
+      const infiniteCallerOptions = {
         getNextPageParam: () => undefined,
         initialPageParam: 0,
+        initialData: { pages: [{ id: 1, locale: 'en', name: 'Ada' }], pageParams: [0] },
+        select: (data: { pages: ReadonlyArray<{ name: string }> }) => data.pages[0]?.name,
+        staleTime: 30_000,
+        meta: { source: 'conditional' },
+      }
+      const skippedInfinite = utils.users.get.infiniteOptions({
+        ...infiniteCallerOptions,
         input: skipToken,
       })
-      expect(skippedInfinite).toMatchObject({
+      expect(skippedInfinite).toEqual({
+        ...infiniteCallerOptions,
         queryFn: queryCoreSkipToken,
         queryKey: ['app', 'users', 'get', 'infinite'],
+        queryKeyHashFn: skipped.queryKeyHashFn,
       })
       expect(skippedInfinite.queryKeyHashFn(skippedInfinite.queryKey)).toBe(
         JSON.stringify(skippedInfinite.queryKey),
