@@ -34,6 +34,11 @@ const packedManifest = JSON.parse(
 ) as typeof repositoryManifest
 
 equal(packedManifest.name, 'effect-api-query')
+equal(
+  packedManifest.version,
+  repositoryManifest.version,
+  'The packed version must match the root manifest',
+)
 equal('dependencies' in packedManifest, false)
 
 const testedVersion = (dependency: keyof typeof repositoryManifest.devDependencies): string => {
