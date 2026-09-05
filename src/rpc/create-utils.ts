@@ -27,6 +27,7 @@ export const createRpcQueryUtils = <
   const rpcs = extractRpcs(runtimeGroup, client)
   return createUtilityTree(rpcs, {
     keyPrefix: options.keyPrefix,
+    keyNamespace: ['rpc'],
     keyEncoders: new Map(Object.entries(options.keyEncoders ?? {})) as Map<
       string,
       RuntimeKeyEncoder

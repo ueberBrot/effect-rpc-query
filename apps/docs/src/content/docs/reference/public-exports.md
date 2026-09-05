@@ -3,7 +3,7 @@ title: Public Exports
 description: Package-root values and types.
 ---
 
-All supported imports come from `effect-rpc-query`.
+All supported imports come from `effect-api-query`.
 
 | Export                           | Purpose                                                            |
 | -------------------------------- | ------------------------------------------------------------------ |
@@ -23,6 +23,12 @@ All supported imports come from `effect-rpc-query`.
 | `SkipToken`                      | Type of the exported skip sentinel.                                |
 | `EffectRpcQueryConfigErrorCode`  | Stable configuration error-code union.                             |
 | `EffectRpcQueryKeyErrorCode`     | Stable key error-code union.                                       |
+
+The [HTTP factory](/effect-rpc-query/reference/http-factory/) adds `createHttpApiQueryUtils`,
+`HttpApiQueryUtils`, `CreateHttpApiQueryUtilsOptions`, and `HttpApiKeyEncoder`. Its errors are
+`EffectHttpApiQueryError`, `EffectHttpApiQueryConfigError`, and `EffectHttpApiQueryKeyError`, with
+`isEffectHttpApiQueryError`, `EffectHttpApiQueryConfigErrorCode`, and
+`EffectHttpApiQueryKeyErrorCode` for narrowing and stable codes.
 
 `UnaryRpcOptions` describes request-local headers and Context for unary builders.
 `StreamingRpcOptions` additionally accepts the Effect client's stream buffer size.

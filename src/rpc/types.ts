@@ -5,12 +5,12 @@ import type {
   QueryFunction,
   SkipToken,
 } from '@tanstack/query-core'
-import type { Context, Redacted, Schema } from 'effect'
+import type { Context, Schema } from 'effect'
 import type { Headers } from 'effect/unstable/http'
 import type { Rpc, RpcClient, RpcGroup, RpcSchema } from 'effect/unstable/rpc'
 
-import type { EffectRpcQueryEmptyStreamError, EffectRpcQueryError } from '../../errors'
 import type {
+  ContainsRedacted,
   JsonValue,
   QueryData,
   RunPromiseExit,
@@ -24,6 +24,7 @@ import type {
   InfiniteOptions,
   MutationOptions,
 } from '../core/types'
+import type { EffectRpcQueryEmptyStreamError, EffectRpcQueryError } from './errors'
 
 /** Request-local options for unary queries, infinite queries, and mutations. */
 export interface UnaryRpcOptions {
@@ -106,6 +107,7 @@ export type Segments<Tag extends string> = Tag extends `${infer Head}.${infer Ta
 
 export type RpcKey<Prefix extends readonly JsonValue[], R extends Rpc.Any> = readonly [
   ...Prefix,
+  'rpc',
   ...Segments<R['_tag']>,
 ]
 
@@ -752,7 +754,7 @@ export type PathTree<
   ? {
       readonly [Key in Head]: {
         /** Returns the immutable key prefix for this RPC namespace. */
-        readonly key: () => readonly [...Prefix, ...Path, Head]
+        readonly key: () => readonly [...Prefix, 'rpc', ...Path, Head]
       } & PathTree<Tail, R, Prefix, ClientError, readonly [...Path, Head]>
     }
   : {
@@ -774,8 +776,8 @@ export type RpcQueryUtils<
   Prefix extends readonly [JsonValue, ...JsonValue[]],
   ClientError = never,
 > = {
-  /** Returns the immutable root key supplied to the factory. */
-  readonly key: () => Prefix
+  /** Returns the immutable root key, including the RPC discriminator. */
+  readonly key: () => readonly [...Prefix, 'rpc']
 } & UnionToIntersection<
   RpcsOf<Group> extends infer R
     ? R extends Rpc.Any
@@ -783,26 +785,6 @@ export type RpcQueryUtils<
       : never
     : never
 >
-
-export type HasSeenType<A, Seen> = Seen extends unknown
-  ? (<T>() => T extends A ? 1 : 2) extends <T>() => T extends Seen ? 1 : 2
-    ? true
-    : false
-  : never
-
-/** Recursively detects explicit redacted values in a payload's decoded type. */
-export type ContainsRedacted<A, Seen = never> =
-  A extends Redacted.Redacted<unknown>
-    ? true
-    : true extends HasSeenType<A, Seen>
-      ? false
-      : A extends readonly (infer Value)[]
-        ? ContainsRedacted<Value, Seen | A>
-        : A extends object
-          ? true extends { readonly [Key in keyof A]: ContainsRedacted<A[Key], Seen | A> }[keyof A]
-            ? true
-            : false
-          : false
 
 /** Whether default synchronous encoding is unsafe or requires Effect services. */
 export type NeedsKeyEncoder<R extends Rpc.Any> = [PayloadSchema<R>['EncodingServices']] extends [

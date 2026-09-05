@@ -1,6 +1,6 @@
 # Preserve the Cause in one error wrapper
 
-Status: Amended by ADR 0018 and ADR 0020. Implementation ownership clarified by [ADR 0021](0021-share-utility-construction-through-private-modules.md).
+Status: Amended by ADR 0018 and ADR 0020. Implementation ownership clarified by [ADR 0021](0021-share-utility-construction-through-private-modules.md). Extended by [ADR 0022](0022-add-buffered-http-utilities-with-separate-key-roots.md).
 
 ## Context
 

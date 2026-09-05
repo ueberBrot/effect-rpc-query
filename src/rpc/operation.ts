@@ -1,13 +1,10 @@
-import { Function, Predicate, Schema, SchemaAST } from 'effect'
+import { Schema, SchemaAST } from 'effect'
 import type { Effect } from 'effect'
 import { Rpc, RpcClient, RpcGroup, RpcSchema } from 'effect/unstable/rpc'
 
-import {
-  EffectRpcQueryConfigError,
-  EffectRpcQueryError,
-  EffectRpcQueryKeyError,
-} from '../../errors'
 import type { OperationDescription, RuntimeKeyEncoder, TreeErrors } from '../core/operation'
+import { containsUnsafeKeyEncoding } from '../core/schema-key'
+import { EffectRpcQueryConfigError, EffectRpcQueryError, EffectRpcQueryKeyError } from './errors'
 import { makeStreamQuery } from './streamed-query'
 import type { StreamRefetchMode, StreamingRpcOptions } from './types'
 
@@ -27,42 +24,6 @@ type AdaptedKeyPayload =
       /** Applies constructor defaults and validation synchronously. */
       readonly make: (input: unknown) => unknown
     }
-
-// Runtime Schema metadata erases encoding service types. Conservatively require a
-// custom encoder for encoding-side middleware; decoding-only middleware uses identity.
-const containsUnsafeKeyEncoding = (value: unknown, seen = new WeakSet<object>()): boolean => {
-  if (!Predicate.isObjectOrArray(value) || seen.has(value)) {
-    return false
-  }
-  seen.add(value)
-
-  const transformation = value as { readonly _tag?: unknown; readonly encode?: unknown }
-  if (transformation._tag === 'Middleware') {
-    return transformation.encode !== Function.identity
-  }
-
-  if (SchemaAST.isAST(value)) {
-    const representation = value.annotations?.['representation'] as
-      | { readonly id?: unknown }
-      | undefined
-    if (representation?.id === 'effect/schema/Redacted') {
-      return true
-    }
-    if (SchemaAST.isSuspend(value)) {
-      try {
-        if (containsUnsafeKeyEncoding(value.thunk(), seen)) return true
-      } catch {
-        return true
-      }
-    }
-  }
-
-  return Object.values(value).some((child) =>
-    Array.isArray(child)
-      ? child.some((element) => containsUnsafeKeyEncoding(element, seen))
-      : containsUnsafeKeyEncoding(child, seen),
-  )
-}
 
 const adaptKeyPayload = (payloadSchema: Rpc.AnyWithProps['payloadSchema']): AdaptedKeyPayload => {
   if (SchemaAST.isVoid(payloadSchema.ast)) {
@@ -151,7 +112,6 @@ const describeRpc = <Rpcs extends Rpc.Any, ClientError>(
             requiresEncoder: keyPayload._tag === 'CustomEncodingRequired',
             prepare: (input: unknown, encoder: RuntimeKeyEncoder | undefined) =>
               preparePayload(rpcTag, keyPayload, input, encoder),
-            pageInput: keyPayload.make,
             invalidKey: (cause: unknown) =>
               new EffectRpcQueryKeyError(
                 'InvalidKeyValue',
@@ -166,6 +126,10 @@ const describeRpc = <Rpcs extends Rpc.Any, ClientError>(
     return {
       ...identity,
       kind: 'Unary',
+      infinite: {
+        pageInput: keyPayload._tag === 'Payloadless' ? () => undefined : keyPayload.make,
+        executionError: (operation, cause) => new EffectRpcQueryError(rpcTag, operation, cause),
+      },
       invoke: (input, options) =>
         client(rpcTag as never, input as never, options as never) as Effect.Effect<
           unknown,

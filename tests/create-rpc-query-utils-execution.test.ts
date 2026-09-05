@@ -127,7 +127,7 @@ describe('createRpcQueryUtils execution boundaries', () => {
       expect(Object.isFrozen(firstOptions)).toBe(false)
       expect(Object.keys(firstOptions).sort()).toEqual(['gcTime', 'mutationFn', 'mutationKey'])
       expect(firstOptions.mutationKey).toBe(utils.counter.set.mutationKey())
-      expect(firstOptions.mutationKey).toEqual(['app', 'counter', 'set', 'mutation'])
+      expect(firstOptions.mutationKey).toEqual(['app', 'rpc', 'counter', 'set', 'mutation'])
 
       const mutation = new MutationObserver(queryClient, firstOptions)
       expect(yield* Effect.promise(() => mutation.mutate({ value: 2 }))).toBe(2)

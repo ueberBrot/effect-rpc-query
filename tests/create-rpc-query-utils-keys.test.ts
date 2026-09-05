@@ -56,6 +56,7 @@ describe('createRpcQueryUtils semantic keys', () => {
           nested: { value: 1 },
           numbers: [0],
         },
+        'rpc',
       ])
       expect(Object.is(utils.key()[1]?.numbers?.[0], -0)).toBe(false)
       expect(Object.isFrozen(utils.key())).toBe(true)
@@ -75,13 +76,20 @@ describe('createRpcQueryUtils semantic keys', () => {
 
       const queryKey = utils.users.get.queryKey({ id: 1 })
 
-      expect(utils.key()).toEqual(queryKey.slice(0, 2))
-      expect(utils.users.key()).toEqual(queryKey.slice(0, 3))
-      expect(utils.users.get.key()).toEqual(queryKey.slice(0, 4))
-      expect(queryKey.slice(0, 5)).toEqual(['tenant', 42, 'users', 'get', 'query'])
-      expect(utils.users.get.mutationKey()).toEqual(['tenant', 42, 'users', 'get', 'mutation'])
+      expect(utils.key()).toEqual(queryKey.slice(0, 3))
+      expect(utils.users.key()).toEqual(queryKey.slice(0, 4))
+      expect(utils.users.get.key()).toEqual(queryKey.slice(0, 5))
+      expect(queryKey.slice(0, 6)).toEqual(['tenant', 42, 'rpc', 'users', 'get', 'query'])
+      expect(utils.users.get.mutationKey()).toEqual([
+        'tenant',
+        42,
+        'rpc',
+        'users',
+        'get',
+        'mutation',
+      ])
       expect(utils.users.get.mutationOptions().mutationKey).toBe(utils.users.get.mutationKey())
-      expect(utils.health.ping.queryKey()).toEqual(['tenant', 42, 'health', 'ping', 'query'])
+      expect(utils.health.ping.queryKey()).toEqual(['tenant', 42, 'rpc', 'health', 'ping', 'query'])
     }),
   )
 
@@ -98,6 +106,7 @@ describe('createRpcQueryUtils semantic keys', () => {
       expect(infiniteKey).toEqual([
         'tenant',
         42,
+        'rpc',
         'users',
         'get',
         'infinite',
@@ -108,7 +117,14 @@ describe('createRpcQueryUtils semantic keys', () => {
       expect(infiniteKey).not.toEqual(utils.users.get.mutationKey())
       expect(Object.isFrozen(infiniteKey)).toBe(true)
       expect(Object.isFrozen(infiniteKey.at(-1))).toBe(true)
-      expect(utils.health.ping.infiniteKey()).toEqual(['tenant', 42, 'health', 'ping', 'infinite'])
+      expect(utils.health.ping.infiniteKey()).toEqual([
+        'tenant',
+        42,
+        'rpc',
+        'health',
+        'ping',
+        'infinite',
+      ])
     }),
   )
 
@@ -157,7 +173,7 @@ describe('createRpcQueryUtils semantic keys', () => {
       )
       expect(utils.shapes.transformed.queryKey({ id: 42 }).at(-1)).toEqual({ id: '42' })
       expect(utils.shapes.class.queryKey({ id: 1 }).at(-1)).toEqual({ id: 1 })
-      expect(utils.shapes.void.queryKey()).toEqual(['app', 'shapes', 'void', 'query'])
+      expect(utils.shapes.void.queryKey()).toEqual(['app', 'rpc', 'shapes', 'void', 'query'])
     }),
   )
 

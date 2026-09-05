@@ -1,6 +1,7 @@
 import { skipToken } from '@tanstack/query-core'
 import type { QueryKey } from '@tanstack/query-core'
 import { Effect, Exit } from 'effect'
+import type { Cause } from 'effect'
 
 import type {
   OperationDescription,
@@ -161,9 +162,12 @@ const planPaths = (operations: readonly OperationDescription[], errors: TreeErro
   return plan
 }
 
-const execute = async (
-  description: UnaryOperation,
-  operation: UnaryQueryOperation,
+const execute = async <Operation extends UnaryQueryOperation>(
+  description: {
+    readonly invoke: UnaryOperation['invoke']
+    readonly executionError: (operation: Operation, cause: Cause.Cause<unknown>) => Error
+  },
+  operation: Operation,
   input: unknown,
   runPromiseExit: RunPromiseExit<unknown>,
   requestOptions?: unknown,
@@ -234,16 +238,14 @@ const prepareQueryOptions = (
   return { _tag: 'Executable' as const, input, options, requestOptions }
 }
 
-const createUnaryLeaf = (
+const createInfiniteBuilders = (
   description: UnaryOperation,
-  keyParts: ReadonlyArray<JsonValue | string>,
+  infinite: NonNullable<UnaryOperation['infinite']>,
+  operationKey: readonly JsonValue[],
   keyEncoder: RuntimeKeyEncoder | undefined,
   runPromiseExit: RunPromiseExit<unknown>,
 ) => {
-  const operationKey = freezeKey(keyParts)
   const infiniteOperationKey = freezeKey([...operationKey, 'infinite'])
-  const queryOperationKey = freezeKey([...operationKey, 'query'])
-  const mutationKey = freezeKey([...operationKey, 'mutation'])
 
   const infiniteKey = (input?: unknown) =>
     prepareQuery(description, input, infiniteOperationKey, keyEncoder).key
@@ -271,12 +273,9 @@ const createUnaryLeaf = (
         readonly signal: AbortSignal
       }) => {
         const pageInput = inputForPage(pageParam)
-        const executionInput =
-          description.input._tag === 'Inputless'
-            ? undefined
-            : description.input.pageInput(pageInput)
+        const executionInput = infinite.pageInput(pageInput)
         return execute(
-          description,
+          { invoke: description.invoke, executionError: infinite.executionError },
           'infinite',
           executionInput,
           runPromiseExit,
@@ -288,6 +287,19 @@ const createUnaryLeaf = (
       queryKeyHashFn: hashCanonicalKey,
     }
   }
+
+  return { infiniteKey, infiniteOptions }
+}
+
+const createUnaryLeaf = (
+  description: UnaryOperation,
+  keyParts: ReadonlyArray<JsonValue | string>,
+  keyEncoder: RuntimeKeyEncoder | undefined,
+  runPromiseExit: RunPromiseExit<unknown>,
+) => {
+  const operationKey = freezeKey(keyParts)
+  const queryOperationKey = freezeKey([...operationKey, 'query'])
+  const mutationKey = freezeKey([...operationKey, 'mutation'])
 
   const queryKey = (input?: unknown) =>
     prepareQuery(description, input, queryOperationKey, keyEncoder).key
@@ -321,8 +333,15 @@ const createUnaryLeaf = (
   }
 
   return Object.freeze({
-    infiniteKey,
-    infiniteOptions,
+    ...(description.infinite === undefined
+      ? {}
+      : createInfiniteBuilders(
+          description,
+          description.infinite,
+          operationKey,
+          keyEncoder,
+          runPromiseExit,
+        )),
     key: () => operationKey,
     mutationKey: () => mutationKey,
     mutationOptions,
@@ -457,12 +476,16 @@ export const createUtilityTree = (
   operations: readonly OperationDescription[],
   options: {
     readonly keyPrefix: readonly [JsonValue, ...JsonValue[]]
+    readonly keyNamespace: readonly string[]
     readonly keyEncoders: ReadonlyMap<string, RuntimeKeyEncoder>
     readonly runPromiseExit: RunPromiseExit<unknown> | undefined
     readonly errors: TreeErrors
   },
 ): Record<string, unknown> => {
-  const prefix = normalizePrefix(options.keyPrefix, options.errors)
+  const prefix = freezeKey([
+    ...normalizePrefix(options.keyPrefix, options.errors),
+    ...options.keyNamespace,
+  ])
   const paths = planPaths(operations, options.errors)
   validateKeyEncoders(operations, options.keyEncoders, options.errors)
   const runner = options.runPromiseExit ?? (Effect.runPromiseExit as RunPromiseExit<unknown>)
