@@ -25,8 +25,6 @@ import type {
   MutationOptions,
 } from '../core/types'
 
-export type { JsonValue, QueryData, RunPromiseExit } from '../core/types'
-
 /** Request-local options for unary queries, infinite queries, and mutations. */
 export interface UnaryRpcOptions {
   readonly headers?: Headers.Input | undefined

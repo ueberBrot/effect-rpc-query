@@ -48,7 +48,7 @@ export interface StreamingOperation extends OperationIdentity {
 export type OperationDescription = UnaryOperation | StreamingOperation
 
 export interface TreeErrors {
-  readonly invalidPrefix: (cause?: unknown) => Error
+  readonly invalidPrefix: (reason: 'Shape' | 'Value', cause?: unknown) => Error
   readonly invalidPath: (id: string) => Error
   readonly pathCollision: (
     id: string,

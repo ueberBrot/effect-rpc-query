@@ -1,5 +1,5 @@
 import { Function, Predicate, Schema, SchemaAST } from 'effect'
-import type { Effect, Stream } from 'effect'
+import type { Effect } from 'effect'
 import { Rpc, RpcClient, RpcGroup, RpcSchema } from 'effect/unstable/rpc'
 
 import {
@@ -9,9 +9,9 @@ import {
 } from '../../errors'
 import type { OperationDescription, RuntimeKeyEncoder, TreeErrors } from '../core/operation'
 import { makeStreamQuery } from './streamed-query'
-import type { StreamRefetchMode, StreamingRpcOptions, UnaryRpcOptions } from './types'
+import type { StreamRefetchMode, StreamingRpcOptions } from './types'
 
-export type AdaptedKeyPayload =
+type AdaptedKeyPayload =
   | {
       readonly _tag: 'Payloadless'
     }
@@ -27,44 +27,6 @@ export type AdaptedKeyPayload =
       /** Applies constructor defaults and validation synchronously. */
       readonly make: (input: unknown) => unknown
     }
-
-/** The runtime operations the factory needs from one unary Effect RPC. */
-interface AdaptedUnaryRpc {
-  /** The complete payload-key capability classified from runtime Schema metadata. */
-  readonly keyPayload: AdaptedKeyPayload
-
-  /** The literal RPC tag used for paths and diagnostics. */
-  readonly tag: string
-
-  /** Calls the ready flat client without exposing its unstable signature. */
-  readonly invoke: (
-    input: unknown,
-    options?: UnaryRpcOptions,
-  ) => Effect.Effect<unknown, unknown, unknown>
-
-  /** Selects the unary utility interface. */
-  readonly kind: 'Unary'
-}
-
-/** The runtime operations the factory needs from one streaming Effect RPC. */
-export interface AdaptedStreamingRpc {
-  /** The complete payload-key capability classified from runtime Schema metadata. */
-  readonly keyPayload: AdaptedKeyPayload
-
-  /** Selects the streaming utility interface. */
-  readonly kind: 'Streaming'
-
-  /** The literal RPC tag used for paths and diagnostics. */
-  readonly tag: string
-
-  /** Calls the ready flat client without exposing its unstable signature. */
-  readonly invoke: (
-    input: unknown,
-    options?: StreamingRpcOptions,
-  ) => Stream.Stream<unknown, unknown, unknown>
-}
-
-type AdaptedRpc = AdaptedStreamingRpc | AdaptedUnaryRpc
 
 // Runtime Schema metadata erases encoding service types. Conservatively require a
 // custom encoder for encoding-side middleware; decoding-only middleware uses identity.
@@ -122,40 +84,13 @@ const adaptKeyPayload = (payloadSchema: Rpc.AnyWithProps['payloadSchema']): Adap
   }
 }
 
-/**
- * Extracts RPCs and isolates the Effect RPC's request map, stream check,
- * payload Schema, and flat-client call shape from the public implementation.
- */
 export const extractRpcs = <Rpcs extends Rpc.Any, ClientError>(
   group: RpcGroup.RpcGroup<Rpcs>,
   client: RpcClient.RpcClient.Flat<Rpcs, ClientError>,
-): ReadonlyArray<OperationDescription> => {
-  const rpcs: Array<AdaptedRpc> = []
-
-  for (const value of group.requests.values()) {
-    const definition = value as unknown as Rpc.AnyWithProps
-    const keyPayload = adaptKeyPayload(definition.payloadSchema)
-    if (RpcSchema.isStreamSchema(definition.successSchema)) {
-      rpcs.push({
-        keyPayload,
-        kind: 'Streaming',
-        tag: definition._tag,
-        invoke: (input, options) =>
-          client(definition._tag as never, input as never, options as never) as never,
-      })
-    } else {
-      rpcs.push({
-        keyPayload,
-        kind: 'Unary',
-        tag: definition._tag,
-        invoke: (input, options) =>
-          client(definition._tag as never, input as never, options as never) as never,
-      })
-    }
-  }
-
-  return rpcs.map(describeRpc)
-}
+): ReadonlyArray<OperationDescription> =>
+  Array.from(group.requests.values(), (value) =>
+    describeRpc(value as unknown as Rpc.AnyWithProps, client),
+  )
 
 const preparePayload = (
   rpcTag: string,
@@ -199,11 +134,15 @@ const takeRpcOptions = (options: Record<string, unknown>) => {
   return rpcOptions
 }
 
-const describeRpc = (rpc: AdaptedRpc): OperationDescription => {
-  const { keyPayload } = rpc
+const describeRpc = <Rpcs extends Rpc.Any, ClientError>(
+  definition: Rpc.AnyWithProps,
+  client: RpcClient.RpcClient.Flat<Rpcs, ClientError>,
+): OperationDescription => {
+  const keyPayload = adaptKeyPayload(definition.payloadSchema)
+  const rpcTag = definition._tag
   const identity = {
-    id: rpc.tag,
-    path: rpc.tag.split('.'),
+    id: rpcTag,
+    path: rpcTag.split('.'),
     input:
       keyPayload._tag === 'Payloadless'
         ? { _tag: 'Inputless' as const }
@@ -211,24 +150,29 @@ const describeRpc = (rpc: AdaptedRpc): OperationDescription => {
             _tag: 'Input' as const,
             requiresEncoder: keyPayload._tag === 'CustomEncodingRequired',
             prepare: (input: unknown, encoder: RuntimeKeyEncoder | undefined) =>
-              preparePayload(rpc.tag, keyPayload, input, encoder),
+              preparePayload(rpcTag, keyPayload, input, encoder),
             pageInput: keyPayload.make,
             invalidKey: (cause: unknown) =>
               new EffectRpcQueryKeyError(
                 'InvalidKeyValue',
-                rpc.tag,
-                `The key payload for RPC ${rpc.tag} is not JSON-safe`,
+                rpcTag,
+                `The key payload for RPC ${rpcTag} is not JSON-safe`,
                 cause,
               ),
           },
     takeOptions: takeRpcOptions,
   }
-  if (rpc.kind === 'Unary') {
+  if (!RpcSchema.isStreamSchema(definition.successSchema)) {
     return {
       ...identity,
       kind: 'Unary',
-      invoke: (input, options) => rpc.invoke(input, options as UnaryRpcOptions | undefined),
-      executionError: (operation, cause) => new EffectRpcQueryError(rpc.tag, operation, cause),
+      invoke: (input, options) =>
+        client(rpcTag as never, input as never, options as never) as Effect.Effect<
+          unknown,
+          unknown,
+          unknown
+        >,
+      executionError: (operation, cause) => new EffectRpcQueryError(rpcTag, operation, cause),
     }
   }
   return {
@@ -243,7 +187,7 @@ const describeRpc = (rpc: AdaptedRpc): OperationDescription => {
         throw new EffectRpcQueryConfigError(
           'InvalidMaxChunks',
           'maxChunks must be a positive safe integer',
-          { rpcTag: rpc.tag },
+          { rpcTag: rpcTag },
         )
       }
       return (input) =>
@@ -258,7 +202,11 @@ const describeRpc = (rpc: AdaptedRpc): OperationDescription => {
                   ...(refetchMode === undefined ? {} : { refetchMode }),
                   ...(maxChunks === undefined ? {} : { maxChunks }),
                 },
-          rpc,
+          rpc: {
+            tag: rpcTag,
+            invoke: (input, options) =>
+              client(rpcTag as never, input as never, options as never) as never,
+          },
           runPromiseExit,
         })
     },
@@ -266,10 +214,10 @@ const describeRpc = (rpc: AdaptedRpc): OperationDescription => {
 }
 
 export const rpcTreeErrors: TreeErrors = {
-  invalidPrefix: (cause) =>
+  invalidPrefix: (reason, cause) =>
     new EffectRpcQueryConfigError(
       'InvalidKeyPrefix',
-      cause === undefined
+      reason === 'Shape'
         ? 'keyPrefix must be a non-empty readonly tuple of JSON-safe values'
         : 'keyPrefix must contain only JSON-safe values',
       { cause },

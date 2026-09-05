@@ -111,13 +111,13 @@ const normalizePrefix = (
   errors: TreeErrors,
 ): readonly JsonValue[] => {
   if (!Array.isArray(prefix) || prefix.length === 0) {
-    throw errors.invalidPrefix()
+    throw errors.invalidPrefix('Shape')
   }
 
   try {
     return Object.freeze(prefix.map((part) => canonicalize(part)))
   } catch (cause) {
-    throw errors.invalidPrefix(cause)
+    throw errors.invalidPrefix('Value', cause)
   }
 }
 
@@ -271,14 +271,14 @@ const createUnaryLeaf = (
         readonly signal: AbortSignal
       }) => {
         const pageInput = inputForPage(pageParam)
-        const normalizedInput =
+        const executionInput =
           description.input._tag === 'Inputless'
             ? undefined
             : description.input.pageInput(pageInput)
         return execute(
           description,
           'infinite',
-          normalizedInput,
+          executionInput,
           runPromiseExit,
           requestOptions,
           signal,
@@ -453,7 +453,6 @@ const createTree = (
   return deepFreezeTree(tree)
 }
 
-/** Validates and constructs a complete tree through the private adapter seam. */
 export const createUtilityTree = (
   operations: readonly OperationDescription[],
   options: {

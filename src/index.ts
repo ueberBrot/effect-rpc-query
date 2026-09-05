@@ -18,18 +18,20 @@ export type {
   // fallow-ignore-next-line unused-type
   EffectRpcQueryKeyErrorCode,
 } from './errors'
+export type {
+  JsonValue,
+  // fallow-ignore-next-line unused-type
+  QueryData,
+  RunPromiseExit,
+} from './internal/core/types'
 /** Types for annotating generated utilities and custom adapters. @api public */
 export type {
   // fallow-ignore-next-line unused-type
   CreateRpcQueryUtilsOptions,
-  JsonValue,
   // fallow-ignore-next-line unused-type
   KeyEncoder,
   // fallow-ignore-next-line unused-type
-  QueryData,
-  // fallow-ignore-next-line unused-type
   RpcQueryUtils,
-  RunPromiseExit,
   StreamingRpcOptions,
   UnaryRpcOptions,
 } from './internal/rpc/types'
