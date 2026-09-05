@@ -42,6 +42,39 @@ and package-owned hash function.
 `skipToken` is valid only for payload-bearing query options. It is not accepted by key or mutation
 builders, and skipped options are unsuitable for suspense and prefetch-only hooks.
 
+## Request-local RPC options
+
+All option builders accept `rpcOptions`. The package forwards it to the ready RPC client on each
+execution and removes it from the returned Query Core options, including skipped queries.
+
+| Builders                                             | Request options                                                     |
+| ---------------------------------------------------- | ------------------------------------------------------------------- |
+| `queryOptions`, `infiniteOptions`, `mutationOptions` | `UnaryRpcOptions`: `headers` and `context`                          |
+| `streamedOptions`, `liveOptions`                     | `StreamingRpcOptions`: `headers`, `context`, and `streamBufferSize` |
+
+`headers` accepts Effect's `Headers.Input`; `context` accepts `Context.Context<never>`.
+`streamBufferSize` is a number configuring the Effect client's stream buffer. It is independent of
+`maxChunks`, which limits the accumulated query cache.
+
+```ts
+const options = rpcQuery.users.get.queryOptions({
+  input: { id: 1 },
+  rpcOptions: { headers: { 'x-request-source': 'user-details' } },
+  staleTime: 30_000,
+})
+```
+
+The options are static for that builder result. Infinite pages, retries, refetches, and repeated
+mutations use the same request options; callbacks based on variables or page parameters are
+unsupported. Omitting `rpcOptions` leaves the ready client's defaults in effect.
+
+`discard` is unavailable because unary operations need their result. `asQueue` is unavailable
+because the package adapts streams itself. Request options do not affect generated keys. If a
+header changes the identity of the returned data, represent that identity in the RPC payload or
+an application-owned key prefix to keep cache entries separate.
+
+See [Client Lifecycle](../../concepts/client-lifecycle/) for application-wide configuration.
+
 ## Build an infinite query
 
 Map each page parameter to the unary RPC payload. The initial mapped payload also determines the

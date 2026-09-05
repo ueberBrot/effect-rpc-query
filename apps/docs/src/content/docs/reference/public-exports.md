@@ -23,3 +23,7 @@ All supported imports come from `effect-rpc-query`.
 | `SkipToken`                      | Type of the exported skip sentinel.                                |
 | `EffectRpcQueryConfigErrorCode`  | Stable configuration error-code union.                             |
 | `EffectRpcQueryKeyErrorCode`     | Stable key error-code union.                                       |
+
+`UnaryRpcOptions` describes request-local headers and Context for unary builders.
+`StreamingRpcOptions` additionally accepts the Effect client's stream buffer size.
+See [Generated Builders](../generated-builders/#request-local-rpc-options) for their behavior.

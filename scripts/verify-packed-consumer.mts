@@ -110,6 +110,8 @@ deepStrictEqual(declarationNames, [
   'RpcQueryUtils',
   'RunPromiseExit',
   'SkipToken',
+  'StreamingRpcOptions',
+  'UnaryRpcOptions',
   'createRpcQueryUtils',
   'isEffectRpcQueryError',
   'skipToken',

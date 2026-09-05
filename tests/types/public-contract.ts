@@ -996,3 +996,127 @@ initializedConditionalUser.initialData satisfies
   | { readonly id: number; readonly name: string }
   | (() => { readonly id: number; readonly name: string })
 useQuery(initializedConditionalUser).data satisfies string | undefined
+
+// Request-local inputs retain inference and stay out of the returned Query Core contract.
+const unaryRpcOptions = {
+  headers: { 'x-request-id': 'fixture' },
+  context: Context.empty(),
+} satisfies import('effect-rpc-query').UnaryRpcOptions
+const streamingRpcOptions = {
+  ...unaryRpcOptions,
+  streamBufferSize: 8,
+} satisfies import('effect-rpc-query').StreamingRpcOptions
+const requestQuery = utils.users.get.queryOptions({
+  input: { id: 1 },
+  rpcOptions: unaryRpcOptions,
+  select: (user) => user.name,
+})
+useQuery(requestQuery).data satisfies string | undefined
+const requestDefined = utils.users.get.queryOptions({
+  input: { id: 1 },
+  rpcOptions: unaryRpcOptions,
+  initialData: { id: 1, name: 'Ada' },
+  select: (user) => user.name,
+})
+useQuery(requestDefined).data satisfies string
+const requestInfinite = utils.users.pages.infiniteOptions({
+  input: (cursor: number) => ({ cursor }),
+  initialPageParam: 0,
+  getNextPageParam: (page) => page.nextCursor,
+  rpcOptions: unaryRpcOptions,
+})
+useInfiniteQuery(requestInfinite).data satisfies
+  | InfiniteData<
+      {
+        readonly nextCursor: number | null
+        readonly users: readonly { readonly id: number; readonly name: string }[]
+      },
+      number
+    >
+  | undefined
+const requestMutation = utils.users.get.mutationOptions({
+  rpcOptions: unaryRpcOptions,
+  onMutate: (user) => user.id,
+})
+requestMutation.mutationFn({ id: 1 }) satisfies Promise<{
+  readonly id: number
+  readonly name: string
+}>
+const requestStreamed = utils.events.watch.streamedOptions({
+  input: { channel: 'news' },
+  rpcOptions: streamingRpcOptions,
+  select: (values) => values.length,
+})
+useQuery(requestStreamed).data satisfies number | undefined
+const requestLive = utils.events.watch.liveOptions({
+  input: { channel: 'news' },
+  rpcOptions: streamingRpcOptions,
+  initialData: 'ready',
+  select: (value) => value.length,
+})
+useQuery(requestLive).data satisfies number
+utils.health.ping.queryOptions({ rpcOptions: unaryRpcOptions })
+utils.health.ping.infiniteOptions({
+  rpcOptions: unaryRpcOptions,
+  initialPageParam: 0,
+  getNextPageParam: () => undefined,
+})
+utils.health.ping.mutationOptions({ rpcOptions: unaryRpcOptions })
+utils.events.audit.watch.streamedOptions({ rpcOptions: streamingRpcOptions })
+utils.events.audit.watch.liveOptions({ rpcOptions: streamingRpcOptions })
+const requestSkipped = utils.users.get.queryOptions({
+  input: skipToken,
+  rpcOptions: unaryRpcOptions,
+})
+const requestSkippedInfinite = utils.users.pages.infiniteOptions({
+  input: skipToken,
+  rpcOptions: unaryRpcOptions,
+  initialPageParam: 0,
+  getNextPageParam: () => undefined,
+})
+const requestSkippedStreamed = utils.events.watch.streamedOptions({
+  input: skipToken,
+  rpcOptions: streamingRpcOptions,
+})
+const requestSkippedLive = utils.events.watch.liveOptions({
+  input: skipToken,
+  rpcOptions: streamingRpcOptions,
+})
+type RequestOutputs =
+  | typeof requestQuery
+  | typeof requestInfinite
+  | typeof requestMutation
+  | typeof requestStreamed
+  | typeof requestLive
+  | typeof requestSkipped
+  | typeof requestSkippedInfinite
+  | typeof requestSkippedStreamed
+  | typeof requestSkippedLive
+type OutputKeys<T> = T extends unknown ? keyof T : never
+true satisfies Assert<Equal<Extract<OutputKeys<RequestOutputs>, 'rpcOptions'>, never>>
+// @ts-expect-error unary requests do not have a stream buffer
+utils.users.get.queryOptions({ input: { id: 1 }, rpcOptions: { streamBufferSize: 8 } })
+utils.users.pages.infiniteOptions({
+  input: (cursor: number) => ({ cursor }),
+  initialPageParam: 0,
+  getNextPageParam: () => undefined,
+  // @ts-expect-error infinite requests require the unary result
+  rpcOptions: { discard: true },
+})
+// @ts-expect-error mutation results cannot be discarded
+utils.users.get.mutationOptions({ rpcOptions: { discard: true } })
+// @ts-expect-error stream adaptation owns queue conversion
+utils.events.watch.streamedOptions({ input: { channel: 'news' }, rpcOptions: { asQueue: true } })
+// @ts-expect-error live adaptation owns queue conversion even when skipped
+utils.events.watch.liveOptions({ input: skipToken, rpcOptions: { asQueue: true } })
+// @ts-expect-error request options are static, not variable callbacks
+utils.users.get.mutationOptions({ rpcOptions: (_variables: { id: number }) => unaryRpcOptions })
+// @ts-expect-error headers must use Effect's header input type
+utils.health.ping.queryOptions({ rpcOptions: { headers: 42 } })
+// @ts-expect-error context must be an Effect Context
+utils.health.ping.mutationOptions({ rpcOptions: { context: {} } })
+// @ts-expect-error stream buffer sizes are numeric
+utils.events.audit.watch.liveOptions({ rpcOptions: { streamBufferSize: '8' } })
+const discardOptions = { ...unaryRpcOptions, discard: true }
+// @ts-expect-error variables cannot bypass the result control restriction
+utils.users.get.mutationOptions({ rpcOptions: discardOptions })

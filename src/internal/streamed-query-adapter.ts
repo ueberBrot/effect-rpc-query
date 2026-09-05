@@ -2,7 +2,7 @@ import { experimental_streamedQuery, type QueryFunctionContext } from '@tanstack
 import { Cause, Exit, Stream } from 'effect'
 
 import { EffectRpcQueryEmptyStreamError, EffectRpcQueryError } from '../errors'
-import type { RunPromiseExit, StreamRefetchMode } from '../types'
+import type { RunPromiseExit, StreamRefetchMode, StreamingRpcOptions } from '../types'
 import type { AdaptedStreamingRpc } from './effect-rpc-adapter'
 
 export type StreamQueryPolicy =
@@ -14,6 +14,7 @@ export type StreamQueryPolicy =
   | { readonly _tag: 'Live' }
 
 export interface MakeStreamQueryOptions {
+  readonly rpcOptions: StreamingRpcOptions | undefined
   readonly input: unknown
   readonly policy: StreamQueryPolicy
   readonly rpc: AdaptedStreamingRpc
@@ -96,8 +97,9 @@ const makeAsyncIterable = async (
   input: unknown,
   runPromiseExit: RunPromiseExit<unknown>,
   signal: AbortSignal,
+  rpcOptions: StreamingRpcOptions | undefined,
 ): Promise<AsyncIterable<unknown>> => {
-  const stream = rpc.invoke(input).pipe(
+  const stream = rpc.invoke(input, rpcOptions).pipe(
     Stream.catchCauseIf(
       (cause) => !Cause.hasInterruptsOnly(cause),
       (cause) => Stream.fail(new EffectRpcQueryError(rpc.tag, operation, cause)),
@@ -110,10 +112,23 @@ const makeAsyncIterable = async (
 }
 
 /** Adapts one Effect stream invocation to an accumulated or latest-value Query Core function. */
-export const makeStreamQuery = ({ input, policy, rpc, runPromiseExit }: MakeStreamQueryOptions) => {
+export const makeStreamQuery = ({
+  input,
+  policy,
+  rpc,
+  rpcOptions,
+  runPromiseExit,
+}: MakeStreamQueryOptions) => {
   const operation = policy._tag === 'Live' ? 'live' : 'streamed'
   const streamFn = async ({ signal }: { readonly signal: AbortSignal }) => {
-    const iterable = await makeAsyncIterable(rpc, operation, input, runPromiseExit, signal)
+    const iterable = await makeAsyncIterable(
+      rpc,
+      operation,
+      input,
+      runPromiseExit,
+      signal,
+      rpcOptions,
+    )
     return policy._tag === 'Live' ? requireFirstValue(iterable, rpc.tag) : iterable
   }
 
