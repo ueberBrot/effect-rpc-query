@@ -284,6 +284,34 @@ const prepareQuery = (
   }
 }
 
+const prepareQueryOptions = (
+  rpc: AdaptedRpc,
+  argument: unknown,
+  operationKey: readonly JsonValue[],
+) => {
+  const options = {
+    ...(argument === skipToken
+      ? { input: skipToken }
+      : (argument as Record<string, unknown> | undefined)),
+  }
+  const input = options['input']
+  delete options['input']
+
+  if (rpc.keyPayload._tag !== 'Payloadless' && input === skipToken) {
+    return {
+      _tag: 'Skipped' as const,
+      options: {
+        ...options,
+        queryFn: skipToken,
+        queryKey: operationKey,
+        queryKeyHashFn: hashCanonicalKey,
+      } as Record<string, unknown>,
+    }
+  }
+
+  return { _tag: 'Executable' as const, input, options }
+}
+
 const createUnaryLeaf = (
   rpc: AdaptedUnaryRpc,
   rpcKeyParts: ReadonlyArray<JsonValue | string>,
@@ -299,18 +327,9 @@ const createUnaryLeaf = (
     prepareQuery(rpc, input, infiniteOperationKey, keyEncoder).key
 
   const infiniteOptions = (argument: Record<string, unknown>) => {
-    const options = { ...argument }
-    const input = options['input']
-    delete options['input']
-
-    if (rpc.keyPayload._tag !== 'Payloadless' && input === skipToken) {
-      return {
-        ...options,
-        queryFn: skipToken,
-        queryKey: infiniteOperationKey,
-        queryKeyHashFn: hashCanonicalKey,
-      }
-    }
+    const supplied = prepareQueryOptions(rpc, argument, infiniteOperationKey)
+    if (supplied._tag === 'Skipped') return supplied.options
+    const { input, options } = supplied
 
     const initialPageParam = options['initialPageParam']
     const inputForPage =
@@ -342,22 +361,9 @@ const createUnaryLeaf = (
   const queryKey = (input?: unknown) => prepareQuery(rpc, input, queryOperationKey, keyEncoder).key
 
   const queryOptions = (argument?: unknown) => {
-    const options = {
-      ...(argument === skipToken
-        ? { input: skipToken }
-        : (argument as Record<string, unknown> | undefined)),
-    }
-    const input = options['input']
-    delete options['input']
-
-    if (rpc.keyPayload._tag !== 'Payloadless' && input === skipToken) {
-      return {
-        ...options,
-        queryFn: skipToken,
-        queryKey: queryOperationKey,
-        queryKeyHashFn: hashCanonicalKey,
-      }
-    }
+    const supplied = prepareQueryOptions(rpc, argument, queryOperationKey)
+    if (supplied._tag === 'Skipped') return supplied.options
+    const { input, options } = supplied
 
     const prepared = prepareQuery(rpc, input, queryOperationKey, keyEncoder)
 
@@ -403,26 +409,13 @@ const createStreamingLeaf = (
 
   const buildOptions = (argument: unknown, operation: 'live' | 'streamed') => {
     const operationKey = operation === 'live' ? liveOperationKey : streamedOperationKey
-    const options = {
-      ...(argument === skipToken
-        ? { input: skipToken }
-        : (argument as Record<string, unknown> | undefined)),
-    }
-    const input = options['input']
+    const supplied = prepareQueryOptions(rpc, argument, operationKey)
+    const { options } = supplied
     const refetchMode = options['refetchMode'] as 'append' | 'replace' | 'reset' | undefined
-    delete options['input']
     delete options['refetchMode']
+    if (supplied._tag === 'Skipped') return options
 
-    if (rpc.keyPayload._tag !== 'Payloadless' && input === skipToken) {
-      return {
-        ...options,
-        queryFn: skipToken,
-        queryKey: operationKey,
-        queryKeyHashFn: hashCanonicalKey,
-      }
-    }
-
-    const prepared = prepareQuery(rpc, input, operationKey, keyEncoder)
+    const prepared = prepareQuery(rpc, supplied.input, operationKey, keyEncoder)
 
     const queryFn = makeStreamQuery({
       input: prepared.input,

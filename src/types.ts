@@ -176,17 +176,21 @@ export type RpcQueryOptions<
   readonly queryKeyHashFn: QueryKeyHashFunction<ConcreteQueryKey<Prefix, R, ClientError>>
 }
 
+/** Retains the initial-data guarantee through a generated options overload. */
+export type WithDefinedInitialData<Options, Data> = Omit<Options, 'initialData'> & {
+  readonly initialData: NonUndefinedGuard<Data> | (() => NonUndefinedGuard<Data>)
+}
+
 /** Query input whose initial value is known to be present. */
 export type DefinedQueryInputOptions<
   R extends Rpc.Any,
   Prefix extends readonly JsonValue[],
   ClientError,
   Selected,
-> = Omit<QueryInputOptions<R, Prefix, ClientError, Selected>, 'initialData'> & {
-  readonly initialData:
-    | NonUndefinedGuard<QueryData<Rpc.Success<R>>>
-    | (() => NonUndefinedGuard<QueryData<Rpc.Success<R>>>)
-}
+> = WithDefinedInitialData<
+  QueryInputOptions<R, Prefix, ClientError, Selected>,
+  QueryData<Rpc.Success<R>>
+>
 
 /** Query input with no guaranteed initial value. */
 export type UndefinedQueryInputOptions<
@@ -207,13 +211,10 @@ export type DefinedRpcQueryOptions<
   Prefix extends readonly JsonValue[],
   ClientError,
   Selected,
-> = Omit<RpcQueryOptions<R, Prefix, ClientError, Selected>, 'initialData'> &
-  Pick<DefinedQueryInputOptions<R, Prefix, ClientError, Selected>, 'initialData'>
-
-/** Retains the initial-data guarantee through a generated options overload. */
-export type WithDefinedInitialData<Options, Data> = Omit<Options, 'initialData'> & {
-  readonly initialData: NonUndefinedGuard<Data> | (() => NonUndefinedGuard<Data>)
-}
+> = WithDefinedInitialData<
+  RpcQueryOptions<R, Prefix, ClientError, Selected>,
+  QueryData<Rpc.Success<R>>
+>
 
 /** Query Core options returned when a payload-bearing query uses `skipToken`. */
 export type SkippedRpcQueryOptions<
@@ -482,11 +483,7 @@ export type DefinedStreamedInputOptions<
   Prefix extends readonly JsonValue[],
   ClientError,
   Selected,
-> = Omit<StreamedInputOptions<R, Prefix, ClientError, Selected>, 'initialData'> & {
-  readonly initialData:
-    | NonUndefinedGuard<StreamedData<R>>
-    | (() => NonUndefinedGuard<StreamedData<R>>)
-}
+> = WithDefinedInitialData<StreamedInputOptions<R, Prefix, ClientError, Selected>, StreamedData<R>>
 
 export type UndefinedStreamedInputOptions<
   R extends Rpc.Any,
@@ -516,8 +513,7 @@ export type DefinedRpcStreamedOptions<
   Prefix extends readonly JsonValue[],
   ClientError,
   Selected,
-> = Omit<RpcStreamedOptions<R, Prefix, ClientError, Selected>, 'initialData'> &
-  Pick<DefinedStreamedInputOptions<R, Prefix, ClientError, Selected>, 'initialData'>
+> = WithDefinedInitialData<RpcStreamedOptions<R, Prefix, ClientError, Selected>, StreamedData<R>>
 
 export type SkippedRpcStreamedOptions<
   R extends Rpc.Any,
@@ -606,11 +602,7 @@ export type DefinedLiveInputOptions<
   Prefix extends readonly JsonValue[],
   ClientError,
   Selected,
-> = Omit<LiveInputOptions<R, Prefix, ClientError, Selected>, 'initialData'> & {
-  readonly initialData:
-    | NonUndefinedGuard<Rpc.SuccessChunk<R>>
-    | (() => NonUndefinedGuard<Rpc.SuccessChunk<R>>)
-}
+> = WithDefinedInitialData<LiveInputOptions<R, Prefix, ClientError, Selected>, Rpc.SuccessChunk<R>>
 
 export type UndefinedLiveInputOptions<
   R extends Rpc.Any,
@@ -640,8 +632,7 @@ export type DefinedRpcLiveOptions<
   Prefix extends readonly JsonValue[],
   ClientError,
   Selected,
-> = Omit<RpcLiveOptions<R, Prefix, ClientError, Selected>, 'initialData'> &
-  Pick<DefinedLiveInputOptions<R, Prefix, ClientError, Selected>, 'initialData'>
+> = WithDefinedInitialData<RpcLiveOptions<R, Prefix, ClientError, Selected>, Rpc.SuccessChunk<R>>
 
 export type SkippedRpcLiveOptions<
   R extends Rpc.Any,

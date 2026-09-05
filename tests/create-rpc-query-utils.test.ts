@@ -147,14 +147,23 @@ describe('createRpcQueryUtils', () => {
       })
       expect(skipped.queryKeyHashFn(skipped.queryKey)).toBe(JSON.stringify(skipped.queryKey))
 
-      const skippedInfinite = utils.users.get.infiniteOptions({
+      const infiniteCallerOptions = {
         getNextPageParam: () => undefined,
         initialPageParam: 0,
+        initialData: { pages: [{ id: 1, locale: 'en', name: 'Ada' }], pageParams: [0] },
+        select: (data: { pages: ReadonlyArray<{ name: string }> }) => data.pages[0]?.name,
+        staleTime: 30_000,
+        meta: { source: 'conditional' },
+      }
+      const skippedInfinite = utils.users.get.infiniteOptions({
+        ...infiniteCallerOptions,
         input: skipToken,
       })
-      expect(skippedInfinite).toMatchObject({
+      expect(skippedInfinite).toEqual({
+        ...infiniteCallerOptions,
         queryFn: queryCoreSkipToken,
         queryKey: ['app', 'users', 'get', 'infinite'],
+        queryKeyHashFn: skipped.queryKeyHashFn,
       })
       expect(skippedInfinite.queryKeyHashFn(skippedInfinite.queryKey)).toBe(
         JSON.stringify(skippedInfinite.queryKey),
