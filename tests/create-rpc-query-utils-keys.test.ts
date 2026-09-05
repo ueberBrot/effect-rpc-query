@@ -24,7 +24,7 @@ describe('createRpcQueryUtils semantic keys', () => {
         })
         const options = utils.users.get.queryOptions({ input: { id: 1 } })
         const queryClient = new QueryClient()
-        const user = yield* Effect.promise(() => queryClient.fetchQuery(options))
+        const user = yield* Effect.promise(() => queryClient.query(options))
         expect(queryClient.getQueryData(options.queryKey)).toEqual(user)
         queryClient.setQueryData(options.queryKey, { ...user, name: 'Updated' })
         expect(

@@ -33,7 +33,10 @@ can then fill the cache used by its component:
 ```tsx
 export const Route = createFileRoute('/')({
   loader: async ({ context }) => {
-    await context.queryClient.ensureQueryData(context.rpcQuery.users.list.queryOptions())
+    await context.queryClient.query({
+      ...context.rpcQuery.users.list.queryOptions(),
+      staleTime: 'static',
+    })
   },
   component: UsersRoute,
 })
@@ -75,7 +78,7 @@ const fetchStreamSnapshot = async (queryClient, options) => {
     stopWatching = queryClient.getQueryCache().subscribe(inspect)
     inspect()
   })
-  const fetching = queryClient.fetchQuery(options)
+  const fetching = queryClient.query(options)
 
   try {
     await snapshotReady

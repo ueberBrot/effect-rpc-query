@@ -8,7 +8,7 @@ description: Supported runtimes, frameworks, RPC shapes, and stability boundarie
 The first npm release targets `0.1.0`; until then, the repository manifest remains at `0.0.0`.
 
 - Effect `4.0.0-rc.112` is the currently tested version.
-- TanStack Query Core `>=5.102.0 <5.103.0` is the supported peer range. Packed consumers verify
+- TanStack Query Core `>=5.102.0 <6` is the supported peer range. Packed consumers exercise
   `5.102.0` as the lower bound and `5.102.8` as the development version.
 - Query Core, React Query, React Router loaders, and TanStack Start are covered by repository tests
   or executable applications.
@@ -44,21 +44,22 @@ The first npm release targets `0.1.0`; until then, the repository manifest remai
 - `isEffectRpcQueryError` uses `instanceof` and recognizes errors from the same JavaScript realm.
 - CommonJS consumers are unsupported.
 
-## Expanding Query Core support
+## Maintaining Query Core support
 
-Query Core's streamed-query interface is experimental, so a new minor line must earn support. To
-expand the peer range:
+Query Core's streamed-query interface is experimental. Before publishing against a newer v5
+development version:
 
 1. Update the Query Core and React Query development catalog entries together and regenerate the
    lockfile.
-2. Widen the peer ceiling to include only the new verified minor line.
-3. Run `vp run packed-package`. The task inspects the packed manifest, installs isolated consumers
+2. Run `vp run packed-package`. The task inspects the packed manifest, installs isolated consumers
    at the lower bound and development version, compiles the ordinary, infinite, accumulated-stream,
    and live builder contract with both supported TypeScript compilers, and executes every builder
    through the consumer's Query Core runtime.
-4. Run the complete release validation before publishing.
+3. Run the complete release validation before publishing.
 
-Keep the existing range when either the declarations or runtime checks fail.
+If either the declarations or runtime checks fail, fix the incompatibility or narrow the peer range
+before publishing. Expand the major-version ceiling only after the same checks pass against the new
+major.
 
 The package is under active development before its first stable release. Review release notes before
 upgrading between minor versions.

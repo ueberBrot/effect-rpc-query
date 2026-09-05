@@ -26,8 +26,14 @@ export const Route = createFileRoute('/')({
   component: UsersPage,
   loader: async ({ context }) => {
     await Promise.all([
-      context.queryClient.ensureQueryData(context.rpcQuery.users.list.queryOptions()),
-      context.queryClient.ensureInfiniteQueryData(userPagesOptions(context.rpcQuery)),
+      context.queryClient.query({
+        ...context.rpcQuery.users.list.queryOptions(),
+        staleTime: 'static',
+      }),
+      context.queryClient.infiniteQuery({
+        ...userPagesOptions(context.rpcQuery),
+        staleTime: 'static',
+      }),
       fetchStreamSnapshot(context.queryClient, streamedDiagnosticsOptions(context.rpcQuery)),
       fetchStreamSnapshot(context.queryClient, liveDiagnosticOptions(context.rpcQuery)),
     ])

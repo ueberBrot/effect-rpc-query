@@ -9,10 +9,10 @@ Query Client, and lifecycle.
 ## Install
 
 ```sh
-pnpm add effect-rpc-query effect @tanstack/query-core@5.102
+pnpm add effect-rpc-query effect @tanstack/query-core
 ```
 
-The current source targets Effect 4, TanStack Query 5.102, strict TypeScript, ESM, and ES2022. The
+The current source targets Effect 4, TanStack Query 5, strict TypeScript, ESM, and ES2022. The
 package is under active development before its first stable release.
 
 ## Use

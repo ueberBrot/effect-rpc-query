@@ -63,7 +63,7 @@ describe('createRpcQueryUtils execution boundaries', () => {
         staleTime: Number.POSITIVE_INFINITY,
       })
 
-      const first = yield* Effect.promise(() => queryClient.fetchInfiniteQuery(options))
+      const first = yield* Effect.promise(() => queryClient.infiniteQuery(options))
       expect(first).toEqual({
         pageParams: [0],
         pages: [{ cursor: 0, nextCursor: 1, values: [0, 1] }],
@@ -86,7 +86,7 @@ describe('createRpcQueryUtils execution boundaries', () => {
         queryClient.invalidateQueries({ queryKey: utils.pages.list.infiniteKey({ cursor: 0 }) }),
       )
       yield* Effect.promise(() => queryClient.refetchQueries({ queryKey: options.queryKey }))
-      yield* Effect.promise(() => new QueryClient().prefetchInfiniteQuery(options))
+      yield* Effect.promise(() => new QueryClient().infiniteQuery(options))
       expect(executedCursors).toEqual([0, 1, 0, 1, 0])
     }),
   )
@@ -343,7 +343,7 @@ describe('createRpcQueryUtils execution boundaries', () => {
         input: (cursor: number) => ({ cursor }),
       })
 
-      const query = queryClient.fetchInfiniteQuery(options)
+      const query = queryClient.infiniteQuery(options)
       yield* Deferred.await(started)
       yield* Effect.promise(() => queryClient.cancelQueries({ queryKey: options.queryKey }))
       yield* Deferred.await(interrupted)
@@ -472,7 +472,7 @@ describe('createRpcQueryUtils execution boundaries', () => {
           directExit: yield* Effect.exit(client('pages.declared', undefined as never)),
           query: () =>
             new QueryClient({ defaultOptions: { queries: { retry: false } } })
-              .fetchInfiniteQuery(
+              .infiniteQuery(
                 utils.pages.declared.infiniteOptions({
                   getNextPageParam: () => undefined,
                   initialPageParam: 0,
@@ -485,7 +485,7 @@ describe('createRpcQueryUtils execution boundaries', () => {
           directExit: yield* Effect.exit(client('pages.defect', undefined as never)),
           query: () =>
             new QueryClient({ defaultOptions: { queries: { retry: false } } })
-              .fetchInfiniteQuery(
+              .infiniteQuery(
                 utils.pages.defect.infiniteOptions({
                   getNextPageParam: () => undefined,
                   initialPageParam: 0,

@@ -3,13 +3,13 @@ title: Compatibility and Stability
 description: Check the supported package versions, module format, and pre-1.0 policy.
 ---
 
-The current source is tested with the Effect `4.0.0-rc.112` release candidate. Query Core `5.102.0`
-is the verified lower bound, and `5.102.8` is the verified development version. The published Query
-Core peer range is `>=5.102.0 <5.103.0`.
+The current source is tested with the Effect `4.0.0-rc.112` release candidate. The published Query
+Core peer range is `>=5.102.0 <6`. Packed consumers exercise `5.102.0` as the lower bound and
+`5.102.8` as the development version.
 
-The package uses Query Core's experimental streamed-query interface. A later Query Core minor line
-becomes supported only after its declarations and runtime behavior pass the same packed-consumer
-checks at the lower bound and development version.
+The package uses Query Core's experimental streamed-query interface. Later compatible v5 releases
+remain installable under the peer range; the lower-bound and development-version checks catch known
+type and runtime incompatibilities before release.
 
 Strict TypeScript 5.9 is the compiler floor. Packed consumers are checked with TypeScript 5.9 and 7.
 The documentation package uses TypeScript 6 because Astro's checker does not yet support the

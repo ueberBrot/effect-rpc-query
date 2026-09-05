@@ -7,7 +7,9 @@ import { PageLayout, Panel } from '../components/page-layout.tsx'
 export const Route = createFileRoute('/failure')({
   component: FailurePage,
   loader: ({ context }) =>
-    context.queryClient.prefetchQuery(context.rpcQuery.diagnostics.fail.queryOptions()),
+    context.queryClient
+      .query(context.rpcQuery.diagnostics.fail.queryOptions())
+      .catch(() => undefined),
 })
 
 function FailurePage() {

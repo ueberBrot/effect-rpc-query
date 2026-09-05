@@ -116,16 +116,14 @@ deepStrictEqual(declarationNames, [
 ])
 
 const queryCoreCompatibilityCases = () => {
-  const supportedPeerRange = '>=5.102.0 <5.103.0'
+  const supportedPeerRange = '>=5.102.0 <6'
   deepStrictEqual(packedManifest.peerDependencies, {
     '@tanstack/query-core': supportedPeerRange,
     effect: testedVersion('effect'),
   })
 
-  const range = /^>=(?<minimum>\d+\.\d+\.\d+) <(?<nextMinor>\d+\.\d+\.0)$/u.exec(
-    supportedPeerRange,
-  )?.groups
-  if (range?.['minimum'] === undefined || range['nextMinor'] === undefined) {
+  const range = /^>=(?<minimum>\d+\.\d+\.\d+) <(?<nextMajor>\d+)$/u.exec(supportedPeerRange)?.groups
+  if (range?.['minimum'] === undefined || range['nextMajor'] === undefined) {
     throw new Error(`Unsupported Query Core peer range: ${supportedPeerRange}`)
   }
 
@@ -134,31 +132,31 @@ const queryCoreCompatibilityCases = () => {
   equal(currentReact, current)
   deepStrictEqual(lockedVersions('@tanstack/query-core'), [current])
   deepStrictEqual(lockedVersions('@tanstack/react-query'), [currentReact])
+  const [currentMajor] = current.split('.')
   equal(
-    current === range['minimum'],
-    false,
-    'Current Query Core must be newer than the lower bound',
+    range['nextMajor'],
+    String(Number(currentMajor) + 1),
+    'The Query Core peer range must stop before the next major',
   )
 
-  const [currentMajor, currentMinor] = current.split('.')
-  equal(
-    range['nextMinor'],
-    `${currentMajor}.${String(Number(currentMinor) + 1)}.0`,
-    'The Query Core peer range must stop before the next unverified minor',
-  )
-
-  return [
-    {
-      label: 'query-core-lower-bound',
-      queryCoreVersion: range['minimum'],
-      reactQueryVersion: range['minimum'],
-    },
-    {
-      label: 'query-core-current',
-      queryCoreVersion: current,
-      reactQueryVersion: currentReact,
-    },
-  ] as const
+  const lowerBound = {
+    label:
+      current === range['minimum']
+        ? 'query-core-lower-bound-and-current'
+        : 'query-core-lower-bound',
+    queryCoreVersion: range['minimum'],
+    reactQueryVersion: range['minimum'],
+  }
+  return current === range['minimum']
+    ? [lowerBound]
+    : [
+        lowerBound,
+        {
+          label: 'query-core-current',
+          queryCoreVersion: current,
+          reactQueryVersion: currentReact,
+        },
+      ]
 }
 
 const packedFiles = execFileSync('tar', ['-tzf', tarballPath], { encoding: 'utf8' })

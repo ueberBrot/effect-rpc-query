@@ -38,7 +38,7 @@ describe('TanStack Start hydration and client navigation', () => {
     )
     serverApplication = await startTanStackStartApplication({ rpcUrl: server.rpcUrl })
     const serverOptions = serverApplication.rpcQuery.users.list.queryOptions()
-    await serverApplication.queryClient.ensureQueryData(serverOptions)
+    await serverApplication.queryClient.query({ ...serverOptions, staleTime: 'static' })
 
     browserApplication = await startTanStackStartApplication({ rpcUrl: server.rpcUrl })
     const router = await createTanStackStartRouter({

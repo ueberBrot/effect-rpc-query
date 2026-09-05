@@ -87,13 +87,13 @@ await Effect.runPromise(
 
       equal(
         yield* Effect.promise(() =>
-          queryClient.fetchQuery(rpcUtilityTree.compatibility.read.queryOptions()),
+          queryClient.query(rpcUtilityTree.compatibility.read.queryOptions()),
         ),
         'ordinary',
       )
       deepStrictEqual(
         yield* Effect.promise(() =>
-          queryClient.fetchInfiniteQuery(
+          queryClient.infiniteQuery(
             rpcUtilityTree.compatibility.page.infiniteOptions({
               getNextPageParam: () => undefined,
               initialPageParam: 0,
@@ -105,13 +105,13 @@ await Effect.runPromise(
       )
       deepStrictEqual(
         yield* Effect.promise(() =>
-          queryClient.fetchQuery(rpcUtilityTree.compatibility.watch.streamedOptions()),
+          queryClient.query(rpcUtilityTree.compatibility.watch.streamedOptions()),
         ),
         ['first', 'second'],
       )
       equal(
         yield* Effect.promise(() =>
-          queryClient.fetchQuery(rpcUtilityTree.compatibility.watch.liveOptions()),
+          queryClient.query(rpcUtilityTree.compatibility.watch.liveOptions()),
         ),
         'second',
       )

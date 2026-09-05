@@ -43,10 +43,10 @@ describe('createRpcQueryUtils streaming execution', () => {
       })
 
       const streamed = yield* Effect.promise(() =>
-        queryClient.fetchQuery(utils.events.watch.streamedOptions({ input: { channel: 'news' } })),
+        queryClient.query(utils.events.watch.streamedOptions({ input: { channel: 'news' } })),
       )
       const live = yield* Effect.promise(() =>
-        queryClient.fetchQuery(utils.events.watch.liveOptions({ input: { channel: 'news' } })),
+        queryClient.query(utils.events.watch.liveOptions({ input: { channel: 'news' } })),
       )
 
       expect(streamed).toEqual(['news:en:first', 'news:en:second'])
@@ -75,7 +75,7 @@ describe('createRpcQueryUtils streaming execution', () => {
 
       const error = yield* Effect.promise(() =>
         new QueryClient({ defaultOptions: { queries: { retry: false } } })
-          .fetchQuery(utils.events.empty.liveOptions())
+          .query(utils.events.empty.liveOptions())
           .catch((cause: unknown) => cause),
       )
 
@@ -107,7 +107,7 @@ describe('createRpcQueryUtils streaming execution', () => {
       })
 
       const fetch = (refetchMode: 'append' | 'replace' | 'reset') =>
-        queryClient.fetchQuery(utils.events.watch.streamedOptions({ refetchMode }))
+        queryClient.query(utils.events.watch.streamedOptions({ refetchMode }))
 
       expect(yield* Effect.promise(() => fetch('reset'))).toEqual(['run-1-first', 'run-1-second'])
       expect(yield* Effect.promise(() => fetch('append'))).toEqual([
@@ -150,19 +150,19 @@ describe('createRpcQueryUtils streaming execution', () => {
       const cases = [
         {
           direct: yield* Effect.exit(Stream.runCollect(client('events.declared', undefined))),
-          fetch: () => queryClient.fetchQuery(utils.events.declared.streamedOptions()),
+          fetch: () => queryClient.query(utils.events.declared.streamedOptions()),
           operation: 'streamed',
           tag: 'events.declared',
         },
         {
           direct: yield* Effect.exit(Stream.runCollect(client('events.stream-failure', undefined))),
-          fetch: () => queryClient.fetchQuery(utils.events['stream-failure'].streamedOptions()),
+          fetch: () => queryClient.query(utils.events['stream-failure'].streamedOptions()),
           operation: 'streamed',
           tag: 'events.stream-failure',
         },
         {
           direct: yield* Effect.exit(Stream.runCollect(client('events.defect', undefined))),
-          fetch: () => queryClient.fetchQuery(utils.events.defect.liveOptions()),
+          fetch: () => queryClient.query(utils.events.defect.liveOptions()),
           operation: 'live',
           tag: 'events.defect',
         },
@@ -198,7 +198,7 @@ describe('createRpcQueryUtils streaming execution', () => {
       })
 
       const result = yield* Effect.promise(() =>
-        new QueryClient().fetchQuery(utils.events.watch.streamedOptions()),
+        new QueryClient().query(utils.events.watch.streamedOptions()),
       )
 
       expect(result).toEqual(['first', 'second'])
@@ -233,7 +233,7 @@ describe('createRpcQueryUtils streaming execution', () => {
     })
     const options = utils.events.watch.streamedOptions()
 
-    const query = queryClient.fetchQuery(options).catch((cause: unknown) => cause)
+    const query = queryClient.query(options).catch((cause: unknown) => cause)
     await Effect.runPromise(Deferred.await(waiting))
     await queryClient.cancelQueries({ queryKey: options.queryKey })
     await new Promise<void>((resolve) => globalThis.setTimeout(resolve, 10))
@@ -309,7 +309,7 @@ describe('createRpcQueryUtils streaming execution', () => {
         keyPrefix: ['app'] as const,
       }).events.watch.streamedOptions()
 
-      const firstFetch = queryClient.fetchQuery(options).catch((cause: unknown) => cause)
+      const firstFetch = queryClient.query(options).catch((cause: unknown) => cause)
       yield* Deferred.await(firstStarted)
       const refetch = queryClient
         .refetchQueries({ exact: true, queryKey: options.queryKey })

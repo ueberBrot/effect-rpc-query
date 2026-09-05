@@ -30,7 +30,7 @@ describe('TanStack Start application ownership', () => {
     if (ownedApplication === undefined) return
 
     const options = ownedApplication.rpcQuery.users.list.queryOptions()
-    const users = await ownedApplication.queryClient.ensureQueryData(options)
+    const users = await ownedApplication.queryClient.query({ ...options, staleTime: 'static' })
 
     expect(users).toHaveLength(12)
     expect(users[0]?.name).toBe('Ada Lovelace')
