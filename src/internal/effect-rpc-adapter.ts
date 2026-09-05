@@ -2,6 +2,8 @@ import { Function, Predicate, Schema, SchemaAST } from 'effect'
 import type { Effect, Stream } from 'effect'
 import { Rpc, RpcClient, RpcGroup, RpcSchema } from 'effect/unstable/rpc'
 
+import type { StreamingRpcOptions, UnaryRpcOptions } from '../types'
+
 export type AdaptedKeyPayload =
   | {
       readonly _tag: 'Payloadless'
@@ -28,7 +30,10 @@ export interface AdaptedUnaryRpc {
   readonly tag: string
 
   /** Calls the ready flat client without exposing its unstable signature. */
-  readonly invoke: (input: unknown) => Effect.Effect<unknown, unknown, unknown>
+  readonly invoke: (
+    input: unknown,
+    options?: UnaryRpcOptions,
+  ) => Effect.Effect<unknown, unknown, unknown>
 
   /** Selects the unary utility interface. */
   readonly kind: 'Unary'
@@ -46,7 +51,10 @@ export interface AdaptedStreamingRpc {
   readonly tag: string
 
   /** Calls the ready flat client without exposing its unstable signature. */
-  readonly invoke: (input: unknown) => Stream.Stream<unknown, unknown, unknown>
+  readonly invoke: (
+    input: unknown,
+    options?: StreamingRpcOptions,
+  ) => Stream.Stream<unknown, unknown, unknown>
 }
 
 export type AdaptedRpc = AdaptedStreamingRpc | AdaptedUnaryRpc
@@ -125,14 +133,16 @@ export const extractRpcs = <Rpcs extends Rpc.Any, ClientError>(
         keyPayload,
         kind: 'Streaming',
         tag: definition._tag,
-        invoke: (input) => client(definition._tag as never, input as never) as never,
+        invoke: (input, options) =>
+          client(definition._tag as never, input as never, options as never) as never,
       })
     } else {
       rpcs.push({
         keyPayload,
         kind: 'Unary',
         tag: definition._tag,
-        invoke: (input) => client(definition._tag as never, input as never) as never,
+        invoke: (input, options) =>
+          client(definition._tag as never, input as never, options as never) as never,
       })
     }
   }

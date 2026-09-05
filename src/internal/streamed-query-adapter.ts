@@ -2,7 +2,7 @@ import { experimental_streamedQuery, type QueryFunctionContext } from '@tanstack
 import { Cause, Exit, Stream } from 'effect'
 
 import { EffectRpcQueryEmptyStreamError, EffectRpcQueryError } from '../errors'
-import type { RunPromiseExit, StreamRefetchMode } from '../types'
+import type { RunPromiseExit, StreamRefetchMode, StreamingRpcOptions } from '../types'
 import type { AdaptedStreamingRpc } from './effect-rpc-adapter'
 
 export type StreamQueryPolicy =
@@ -14,6 +14,7 @@ export type StreamQueryPolicy =
   | { readonly _tag: 'Live' }
 
 export interface MakeStreamQueryOptions {
+  readonly rpcOptions: StreamingRpcOptions | undefined
   readonly input: unknown
   readonly policy: StreamQueryPolicy
   readonly rpc: AdaptedStreamingRpc
@@ -90,30 +91,26 @@ const requireFirstValue = <A>(source: AsyncIterable<A>, rpcTag: string): AsyncIt
   },
 })
 
-const makeAsyncIterable = async (
-  rpc: AdaptedStreamingRpc,
-  operation: 'live' | 'streamed',
-  input: unknown,
-  runPromiseExit: RunPromiseExit<unknown>,
-  signal: AbortSignal,
-): Promise<AsyncIterable<unknown>> => {
-  const stream = rpc.invoke(input).pipe(
-    Stream.catchCauseIf(
-      (cause) => !Cause.hasInterruptsOnly(cause),
-      (cause) => Stream.fail(new EffectRpcQueryError(rpc.tag, operation, cause)),
-    ),
-  )
-  // Capture the runner's Context so iterator pulls use the caller-owned runtime.
-  const exit = await runPromiseExit(Stream.toAsyncIterableEffect(stream), { signal })
-  if (Exit.isFailure(exit)) throw new EffectRpcQueryError(rpc.tag, operation, exit.cause)
-  return abortableAsyncIterable(exit.value, signal)
-}
-
 /** Adapts one Effect stream invocation to an accumulated or latest-value Query Core function. */
-export const makeStreamQuery = ({ input, policy, rpc, runPromiseExit }: MakeStreamQueryOptions) => {
+export const makeStreamQuery = ({
+  input,
+  policy,
+  rpc,
+  rpcOptions,
+  runPromiseExit,
+}: MakeStreamQueryOptions) => {
   const operation = policy._tag === 'Live' ? 'live' : 'streamed'
   const streamFn = async ({ signal }: { readonly signal: AbortSignal }) => {
-    const iterable = await makeAsyncIterable(rpc, operation, input, runPromiseExit, signal)
+    const stream = rpc.invoke(input, rpcOptions).pipe(
+      Stream.catchCauseIf(
+        (cause) => !Cause.hasInterruptsOnly(cause),
+        (cause) => Stream.fail(new EffectRpcQueryError(rpc.tag, operation, cause)),
+      ),
+    )
+    // Capture the runner's Context so iterator pulls use the caller-owned runtime.
+    const exit = await runPromiseExit(Stream.toAsyncIterableEffect(stream), { signal })
+    if (Exit.isFailure(exit)) throw new EffectRpcQueryError(rpc.tag, operation, exit.cause)
+    const iterable = abortableAsyncIterable(exit.value, signal)
     return policy._tag === 'Live' ? requireFirstValue(iterable, rpc.tag) : iterable
   }
 

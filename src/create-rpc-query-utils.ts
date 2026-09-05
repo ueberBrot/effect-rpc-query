@@ -23,6 +23,8 @@ import type {
   RpcQueryUtils,
   RunPromiseExit,
   StreamRefetchMode,
+  UnaryRpcOptions,
+  StreamingRpcOptions,
 } from './types'
 
 const reservedPathSegments = new Set([
@@ -253,9 +255,10 @@ const execute = async (
   operation: Extract<RpcOperation, 'infinite' | 'mutation' | 'query'>,
   input: unknown,
   runPromiseExit: RunPromiseExit<unknown>,
+  rpcOptions?: UnaryRpcOptions,
   signal?: AbortSignal,
 ) => {
-  const effect = rpc.invoke(input)
+  const effect = rpc.invoke(input, rpcOptions)
   // Await outside the Exit branch so a runner rejection passes through untouched.
   const exit = await runPromiseExit(effect, signal === undefined ? undefined : { signal })
 
@@ -302,6 +305,8 @@ const prepareQueryOptions = (
   }
   const input = options['input']
   delete options['input']
+  const rpcOptions = options['rpcOptions'] as StreamingRpcOptions | undefined
+  delete options['rpcOptions']
 
   if (rpc.keyPayload._tag !== 'Payloadless' && input === skipToken) {
     return {
@@ -315,7 +320,7 @@ const prepareQueryOptions = (
     }
   }
 
-  return { _tag: 'Executable' as const, input, options }
+  return { _tag: 'Executable' as const, input, options, rpcOptions }
 }
 
 const createUnaryLeaf = (
@@ -335,7 +340,7 @@ const createUnaryLeaf = (
   const infiniteOptions = (argument: Record<string, unknown>) => {
     const supplied = prepareQueryOptions(rpc, argument, infiniteOperationKey)
     if (supplied._tag === 'Skipped') return supplied.options
-    const { input, options } = supplied
+    const { input, options, rpcOptions } = supplied
 
     const initialPageParam = options['initialPageParam']
     const inputForPage =
@@ -357,7 +362,7 @@ const createUnaryLeaf = (
         const pageInput = inputForPage(pageParam)
         const normalizedInput =
           rpc.keyPayload._tag === 'Payloadless' ? undefined : rpc.keyPayload.make(pageInput)
-        return execute(rpc, 'infinite', normalizedInput, runPromiseExit, signal)
+        return execute(rpc, 'infinite', normalizedInput, runPromiseExit, rpcOptions, signal)
       },
       queryKey: prepared.key,
       queryKeyHashFn: hashCanonicalKey,
@@ -369,7 +374,7 @@ const createUnaryLeaf = (
   const queryOptions = (argument?: unknown) => {
     const supplied = prepareQueryOptions(rpc, argument, queryOperationKey)
     if (supplied._tag === 'Skipped') return supplied.options
-    const { input, options } = supplied
+    const { input, options, rpcOptions } = supplied
 
     const prepared = prepareQuery(rpc, input, queryOperationKey, keyEncoder)
 
@@ -377,17 +382,27 @@ const createUnaryLeaf = (
       // Owned fields follow user options so callers cannot replace keys or runners.
       ...options,
       queryFn: ({ signal }: { readonly signal: AbortSignal }) =>
-        execute(rpc, 'query', prepared.input, runPromiseExit, signal),
+        execute(rpc, 'query', prepared.input, runPromiseExit, rpcOptions, signal),
       queryKey: prepared.key,
       queryKeyHashFn: hashCanonicalKey,
     }
   }
 
-  const mutationOptions = (options: Record<string, unknown> = {}) => ({
-    ...options,
-    mutationFn: (variables: unknown) => execute(rpc, 'mutation', variables, runPromiseExit),
-    mutationKey,
-  })
+  const mutationOptions = (argument: Record<string, unknown> = {}) => {
+    const { rpcOptions, ...options } = argument
+    return {
+      ...options,
+      mutationFn: (variables: unknown) =>
+        execute(
+          rpc,
+          'mutation',
+          variables,
+          runPromiseExit,
+          rpcOptions as UnaryRpcOptions | undefined,
+        ),
+      mutationKey,
+    }
+  }
 
   return Object.freeze({
     infiniteKey,
@@ -434,6 +449,7 @@ const createStreamingLeaf = (
 
     const queryFn = makeStreamQuery({
       input: prepared.input,
+      rpcOptions: supplied.rpcOptions,
       policy:
         operation === 'live'
           ? { _tag: 'Live' }

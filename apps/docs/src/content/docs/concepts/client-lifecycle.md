@@ -18,3 +18,14 @@ Use a separate application boundary per server request. In a browser, retain one
 application lifetime. This prevents request data and scoped services from leaking between owners.
 
 The factory has no React, router, transport, provider, or server-rendering lifecycle of its own.
+
+## Request-local configuration
+
+Use a builder's `rpcOptions` for metadata or configuration specific to one request, such as a
+request-source header or streaming buffer size. The `context` value is local to Effect RPC client
+processing; it is not a serialized server Context and does not replace the supplied Effect runner.
+
+Keep ordinary authentication, middleware, transport setup, runtime services, and Scope ownership
+in the application-owned client and runtime. Both executable examples retain their authorization
+header in the shared client runner and add `x-request-source: diagnostics-panel` only to the
+failure diagnostic's generated mutation options.

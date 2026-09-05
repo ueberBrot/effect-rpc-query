@@ -53,6 +53,14 @@ The bounded replay supplies `maxChunks: 2` to `streamedOptions`. Both controls r
 streamed key: the bound changes retention policy, not RPC identity. The application keeps the selected
 policy for subsequent refetches. TanStack Start also demonstrates this after hydrating its server snapshot.
 
+## Inspect request-local metadata
+
+In either application's diagnostics panel, choose **Trigger declared failure**. Its generated
+mutation options supply the `x-request-source: diagnostics-panel` RPC header. Application-wide
+authorization still comes from the shared client runner. The same `rpcOptions` input works with
+queries, infinite queries, and both stream builders; see
+[Generated Builders](/effect-rpc-query/reference/generated-builders/#request-local-rpc-options).
+
 ## Build the examples
 
 Build either application without starting it:

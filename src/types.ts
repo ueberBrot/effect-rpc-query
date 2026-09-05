@@ -10,10 +10,30 @@ import type {
   QueryObserverOptions,
   SkipToken,
 } from '@tanstack/query-core'
-import type { Effect, Exit, Redacted, Schema } from 'effect'
+import type { Context, Effect, Exit, Redacted, Schema } from 'effect'
+import type { Headers } from 'effect/unstable/http'
 import type { Rpc, RpcClient, RpcGroup, RpcSchema } from 'effect/unstable/rpc'
 
 import type { EffectRpcQueryEmptyStreamError, EffectRpcQueryError } from './errors'
+
+/** Request-local options for unary queries, infinite queries, and mutations. */
+export interface UnaryRpcOptions {
+  readonly headers?: Headers.Input | undefined
+  readonly context?: Context.Context<never> | undefined
+  /** The generated query or mutation requires the RPC result. */
+  readonly discard?: never
+  /** Stream adaptation belongs to the package. */
+  readonly asQueue?: never
+}
+
+/** Request-local options for accumulated-stream and live queries. */
+export interface StreamingRpcOptions extends UnaryRpcOptions {
+  readonly streamBufferSize?: number | undefined
+}
+
+export type RpcOptionsInput<Options = UnaryRpcOptions> = {
+  readonly rpcOptions?: Options
+}
 
 /** A JSON scalar accepted in key prefixes and canonical key payloads. */
 export type JsonPrimitive = boolean | null | number | string
@@ -156,7 +176,8 @@ export type QueryInputOptions<
     ConcreteQueryKey<Prefix, R, ClientError>
   >,
   OwnedQueryOption
->
+> &
+  RpcOptionsInput
 
 /** Query Observer options generated for one concrete unary RPC request. */
 export type RpcQueryOptions<
@@ -164,7 +185,7 @@ export type RpcQueryOptions<
   Prefix extends readonly JsonValue[],
   ClientError,
   Selected = QueryData<Rpc.Success<R>>,
-> = QueryInputOptions<R, Prefix, ClientError, Selected> & {
+> = Omit<QueryInputOptions<R, Prefix, ClientError, Selected>, 'rpcOptions'> & {
   /** Runs the RPC and returns cacheable query data. */
   readonly queryFn: QueryFunction<
     QueryData<Rpc.Success<R>>,
@@ -321,7 +342,8 @@ export type QueryOptionsBuilder<
           options: WithDefinedInitialData<
             Omit<SkippedRpcQueryOptions<R, Prefix, ClientError, Selected>, OwnedQueryOption>,
             QueryData<Rpc.Success<R>>
-          > & { readonly input: SkipToken },
+          > &
+            RpcOptionsInput & { readonly input: SkipToken },
         ): WithDefinedInitialData<
           SkippedRpcQueryOptions<R, Prefix, ClientError, Selected>,
           QueryData<Rpc.Success<R>>
@@ -330,15 +352,17 @@ export type QueryOptionsBuilder<
           options: Omit<
             SkippedRpcQueryOptions<R, Prefix, ClientError, Selected>,
             OwnedQueryOption
-          > & {
-            readonly input: SkipToken
-          },
+          > &
+            RpcOptionsInput & {
+              readonly input: SkipToken
+            },
         ): SkippedRpcQueryOptions<R, Prefix, ClientError, Selected>
         <Selected = QueryData<Rpc.Success<R>>>(
           options: WithDefinedInitialData<
             Omit<ConditionalRpcQueryOptions<R, Prefix, ClientError, Selected>, OwnedQueryOption>,
             QueryData<Rpc.Success<R>>
-          > & { readonly input: Rpc.PayloadConstructor<R> | SkipToken },
+          > &
+            RpcOptionsInput & { readonly input: Rpc.PayloadConstructor<R> | SkipToken },
         ): WithDefinedInitialData<
           ConditionalRpcQueryOptions<R, Prefix, ClientError, Selected>,
           QueryData<Rpc.Success<R>>
@@ -347,9 +371,10 @@ export type QueryOptionsBuilder<
           options: Omit<
             ConditionalRpcQueryOptions<R, Prefix, ClientError, Selected>,
             OwnedQueryOption
-          > & {
-            readonly input: Rpc.PayloadConstructor<R> | SkipToken
-          },
+          > &
+            RpcOptionsInput & {
+              readonly input: Rpc.PayloadConstructor<R> | SkipToken
+            },
         ): ConditionalRpcQueryOptions<R, Prefix, ClientError, Selected>
         (token: SkipToken): SkippedRpcQueryOptions<R, Prefix, ClientError>
       }
@@ -391,7 +416,8 @@ export type InfiniteInputOptions<
     PageParam
   >,
   OwnedInfiniteOption
->
+> &
+  RpcOptionsInput
 
 /** Infinite-query options generated for one unary RPC. */
 export type RpcInfiniteOptions<
@@ -400,7 +426,7 @@ export type RpcInfiniteOptions<
   ClientError,
   Selected,
   PageParam,
-> = InfiniteInputOptions<R, Prefix, ClientError, Selected, PageParam> & {
+> = Omit<InfiniteInputOptions<R, Prefix, ClientError, Selected, PageParam>, 'rpcOptions'> & {
   /** Runs one RPC page derived from TanStack's current page parameter. */
   readonly queryFn: QueryFunction<
     QueryData<Rpc.Success<R>>,
@@ -460,9 +486,10 @@ export type InfiniteOptionsBuilder<
           options: Omit<
             SkippedRpcInfiniteOptions<R, Prefix, ClientError, PageParam, Selected>,
             OwnedInfiniteOption
-          > & {
-            readonly input: SkipToken
-          },
+          > &
+            RpcOptionsInput & {
+              readonly input: SkipToken
+            },
         ): SkippedRpcInfiniteOptions<R, Prefix, ClientError, PageParam, Selected>
       }
 
@@ -528,7 +555,8 @@ export type StreamedInputOptions<
   >,
   OwnedQueryOption
 > &
-  StreamedPolicyOptions
+  StreamedPolicyOptions &
+  RpcOptionsInput<StreamingRpcOptions>
 
 export type DefinedStreamedInputOptions<
   R extends Rpc.Any,
@@ -554,7 +582,10 @@ export type RpcStreamedOptions<
   Prefix extends readonly JsonValue[],
   ClientError,
   Selected = StreamedData<R>,
-> = Omit<StreamedInputOptions<R, Prefix, ClientError, Selected>, keyof StreamedPolicyOptions> & {
+> = Omit<
+  StreamedInputOptions<R, Prefix, ClientError, Selected>,
+  keyof StreamedPolicyOptions | 'rpcOptions'
+> & {
   readonly queryFn: QueryFunction<StreamedData<R>, ConcreteStreamedKey<Prefix, R, ClientError>>
   readonly queryKey: ConcreteStreamedKey<Prefix, R, ClientError>
   readonly queryKeyHashFn: QueryKeyHashFunction<ConcreteStreamedKey<Prefix, R, ClientError>>
@@ -617,7 +648,8 @@ export type StreamedOptionsBuilder<
             Omit<SkippedRpcStreamedOptions<R, Prefix, ClientError, Selected>, OwnedQueryOption>,
             StreamedData<R>
           > &
-            StreamedPolicyOptions & { readonly input: SkipToken },
+            StreamedPolicyOptions &
+            RpcOptionsInput<StreamingRpcOptions> & { readonly input: SkipToken },
         ): WithDefinedInitialData<
           SkippedRpcStreamedOptions<R, Prefix, ClientError, Selected>,
           StreamedData<R>
@@ -627,7 +659,8 @@ export type StreamedOptionsBuilder<
             SkippedRpcStreamedOptions<R, Prefix, ClientError, Selected>,
             OwnedQueryOption
           > &
-            StreamedPolicyOptions & { readonly input: SkipToken },
+            StreamedPolicyOptions &
+            RpcOptionsInput<StreamingRpcOptions> & { readonly input: SkipToken },
         ): SkippedRpcStreamedOptions<R, Prefix, ClientError, Selected>
         (token: SkipToken): SkippedRpcStreamedOptions<R, Prefix, ClientError>
       }
@@ -646,7 +679,8 @@ export type LiveInputOptions<
     ConcreteLiveKey<Prefix, R, ClientError>
   >,
   OwnedQueryOption
->
+> &
+  RpcOptionsInput<StreamingRpcOptions>
 
 export type DefinedLiveInputOptions<
   R extends Rpc.Any,
@@ -672,7 +706,7 @@ export type RpcLiveOptions<
   Prefix extends readonly JsonValue[],
   ClientError,
   Selected = Rpc.SuccessChunk<R>,
-> = LiveInputOptions<R, Prefix, ClientError, Selected> & {
+> = Omit<LiveInputOptions<R, Prefix, ClientError, Selected>, 'rpcOptions'> & {
   readonly queryFn: QueryFunction<Rpc.SuccessChunk<R>, ConcreteLiveKey<Prefix, R, ClientError>>
   readonly queryKey: ConcreteLiveKey<Prefix, R, ClientError>
   readonly queryKeyHashFn: QueryKeyHashFunction<ConcreteLiveKey<Prefix, R, ClientError>>
@@ -734,18 +768,17 @@ export type LiveOptionsBuilder<
           options: WithDefinedInitialData<
             Omit<SkippedRpcLiveOptions<R, Prefix, ClientError, Selected>, OwnedQueryOption>,
             Rpc.SuccessChunk<R>
-          > & { readonly input: SkipToken },
+          > &
+            RpcOptionsInput<StreamingRpcOptions> & { readonly input: SkipToken },
         ): WithDefinedInitialData<
           SkippedRpcLiveOptions<R, Prefix, ClientError, Selected>,
           Rpc.SuccessChunk<R>
         >
         <Selected = Rpc.SuccessChunk<R>>(
-          options: Omit<
-            SkippedRpcLiveOptions<R, Prefix, ClientError, Selected>,
-            OwnedQueryOption
-          > & {
-            readonly input: SkipToken
-          },
+          options: Omit<SkippedRpcLiveOptions<R, Prefix, ClientError, Selected>, OwnedQueryOption> &
+            RpcOptionsInput<StreamingRpcOptions> & {
+              readonly input: SkipToken
+            },
         ): SkippedRpcLiveOptions<R, Prefix, ClientError, Selected>
         (token: SkipToken): SkippedRpcLiveOptions<R, Prefix, ClientError>
       }
@@ -802,7 +835,8 @@ export interface RpcQueryLeaf<R extends Rpc.Any, Prefix extends readonly JsonVal
         OnMutateResult
       >,
       OwnedMutationOption
-    >,
+    > &
+      RpcOptionsInput,
   ) => RpcMutationOptions<R, Prefix, ClientError, OnMutateResult>
 
   /** Builds a semantic, data-tagged query key from constructor input. */

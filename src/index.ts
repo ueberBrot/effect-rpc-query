@@ -30,6 +30,8 @@ export type {
   // fallow-ignore-next-line unused-type
   RpcQueryUtils,
   RunPromiseExit,
+  StreamingRpcOptions,
+  UnaryRpcOptions,
 } from './types'
 
 /** The type of Query Core's exact skip sentinel. @api public */
