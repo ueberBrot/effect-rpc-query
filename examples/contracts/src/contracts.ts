@@ -40,6 +40,36 @@ export class ExampleAuthorization extends RpcMiddleware.Service<ExampleAuthoriza
   { error: ExampleAuthorizationError },
 ) {}
 
+export class CommandStatus extends Schema.Class<CommandStatus>('CommandStatus')({
+  operationId: Schema.String,
+  state: Schema.Literals(['running', 'completed', 'cancelled']),
+  completedSteps: Schema.Int,
+  totalSteps: Schema.Int,
+}) {}
+
+const CommandsStart = Rpc.make('commands.start', {
+  payload: {
+    operationId: Schema.String,
+    steps: Schema.Int.check(Schema.isBetween({ minimum: 1, maximum: 100 })).pipe(
+      Schema.optionalKey,
+      Schema.withConstructorDefault(Effect.succeed(40)),
+    ),
+  },
+  success: CommandStatus,
+})
+
+const CommandsStatus = Rpc.make('commands.status', {
+  payload: { operationId: Schema.String },
+  success: Schema.NullOr(CommandStatus),
+})
+
+const CommandsCancel = Rpc.make('commands.cancel', {
+  payload: { operationId: Schema.String },
+  success: CommandStatus,
+})
+
+export type CommandInput = Rpc.PayloadConstructor<typeof CommandsStart>
+
 const UsersGet = Rpc.make('users.get', {
   payload: {
     id: Schema.Int,
@@ -125,6 +155,9 @@ const DiagnosticsStream = Rpc.make('diagnostics.stream', {
 })
 
 export const exampleRpcGroup = RpcGroup.make(
+  CommandsStart,
+  CommandsStatus,
+  CommandsCancel,
   UsersGet,
   UsersList,
   UsersPage,
