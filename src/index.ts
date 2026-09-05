@@ -2,7 +2,7 @@
 export { skipToken } from '@tanstack/query-core'
 
 /** Creates the public RPC utility tree. @api public */
-export { createRpcQueryUtils } from './create-rpc-query-utils'
+export { createRpcQueryUtils } from './internal/rpc/create-rpc-query-utils'
 /** Errors and guards raised by the public runtime API. @api public */
 export {
   EffectRpcQueryConfigError,
@@ -32,7 +32,7 @@ export type {
   RunPromiseExit,
   StreamingRpcOptions,
   UnaryRpcOptions,
-} from './types'
+} from './internal/rpc/types'
 
 /** The type of Query Core's exact skip sentinel. @api public */
 // fallow-ignore-next-line unused-type
