@@ -317,7 +317,7 @@ const streamedHookData: string | undefined = streamedHook.data
 streamedHook.error satisfies EffectRpcQueryError<
   'unauthorized' | 'watch-failure' | 'watch-rpc-failure'
 > | null
-const streamedResult: Promise<ReadonlyArray<string>> = queryClient.fetchQuery(streamedOptions)
+const streamedResult: Promise<string> = queryClient.query(streamedOptions)
 const streamedKey = utils.events.watch.streamedKey({ channel: 'news' })
 streamedKey satisfies readonly ['app', 'events', 'watch', 'streamed', JsonValue]
 const cachedStream = queryClient.getQueryData(utils.events.watch.streamedKey({ channel: 'news' }))
@@ -336,7 +336,7 @@ liveHook.error satisfies
   | EffectRpcQueryEmptyStreamError
   | EffectRpcQueryError<'unauthorized' | 'watch-failure' | 'watch-rpc-failure'>
   | null
-const liveResult: Promise<string> = queryClient.fetchQuery(liveOptions)
+const liveResult: Promise<number> = queryClient.query(liveOptions)
 const liveKey = utils.events.watch.liveKey({ channel: 'news' })
 liveKey satisfies readonly ['app', 'events', 'watch', 'live', JsonValue]
 const cachedLive = queryClient.getQueryData(liveKey)
@@ -388,8 +388,8 @@ useSuspenseQuery(skippedLive)
 
 const payloadlessStreamed = utils.events.audit.watch.streamedOptions()
 const payloadlessLive = utils.events.audit.watch.liveOptions()
-queryClient.fetchQuery(payloadlessStreamed)
-queryClient.fetchQuery(payloadlessLive)
+queryClient.query(payloadlessStreamed)
+queryClient.query(payloadlessLive)
 
 // @ts-expect-error payload-bearing streaming queries require input or skipToken
 utils.events.watch.streamedOptions({})
@@ -450,7 +450,7 @@ const fetchedPages: Promise<
     },
     number
   >
-> = queryClient.fetchInfiniteQuery(fetchableInfiniteOptions)
+> = queryClient.infiniteQuery(fetchableInfiniteOptions)
 void fetchedPages
 usePrefetchInfiniteQuery(fetchableInfiniteOptions)
 
@@ -484,7 +484,7 @@ const payloadlessInfinite = utils.health.ping.infiniteOptions({
   initialPageParam: 0,
 })
 const payloadlessPages: Promise<InfiniteData<null, number>> =
-  queryClient.fetchInfiniteQuery(payloadlessInfinite)
+  queryClient.infiniteQuery(payloadlessInfinite)
 void payloadlessPages
 
 // @ts-expect-error payload-bearing infinite queries require an input mapper or skipToken

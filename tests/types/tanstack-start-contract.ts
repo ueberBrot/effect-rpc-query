@@ -38,12 +38,22 @@ const indexRoute = createRoute({
   getParentRoute: () => rootRoute,
   loader: async ({ context }) => {
     await Promise.all([
-      context.queryClient.ensureQueryData(
-        context.rpcQuery.users.get.queryOptions({ input: { id: 1 } }),
-      ),
-      context.queryClient.ensureInfiniteQueryData(userPagesOptions(context.rpcQuery)),
-      context.queryClient.ensureQueryData(context.rpcQuery.events.audit.watch.streamedOptions()),
-      context.queryClient.ensureQueryData(context.rpcQuery.projects.watch.liveOptions()),
+      context.queryClient.query({
+        ...context.rpcQuery.users.get.queryOptions({ input: { id: 1 } }),
+        staleTime: 'static',
+      }),
+      context.queryClient.infiniteQuery({
+        ...userPagesOptions(context.rpcQuery),
+        staleTime: 'static',
+      }),
+      context.queryClient.query({
+        ...context.rpcQuery.events.audit.watch.streamedOptions(),
+        staleTime: 'static',
+      }),
+      context.queryClient.query({
+        ...context.rpcQuery.projects.watch.liveOptions(),
+        staleTime: 'static',
+      }),
     ])
   },
   path: '/',

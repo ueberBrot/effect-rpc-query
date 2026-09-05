@@ -1,6 +1,6 @@
 import {
   defaultShouldDehydrateQuery,
-  type FetchQueryOptions,
+  type QueryExecuteOptions,
   hydrate as hydrateQueryClient,
   type DehydratedState,
   type QueryClient,
@@ -20,7 +20,7 @@ interface DehydratedRouterQueryState {
  */
 export const fetchStreamSnapshot = async <TQueryFnData, TError, TData, TQueryKey extends QueryKey>(
   queryClient: QueryClient,
-  options: FetchQueryOptions<TQueryFnData, TError, TData, TQueryKey>,
+  options: QueryExecuteOptions<TQueryFnData, TError, TData, TQueryFnData, TQueryKey>,
 ): Promise<TData> => {
   let stopWatching = () => {}
   const snapshotReady = new Promise<void>((resolve, reject) => {
@@ -32,7 +32,7 @@ export const fetchStreamSnapshot = async <TQueryFnData, TError, TData, TQueryKey
     stopWatching = queryClient.getQueryCache().subscribe(inspect)
     inspect()
   })
-  const fetching = queryClient.fetchQuery(options)
+  const fetching = queryClient.query(options)
 
   try {
     await snapshotReady

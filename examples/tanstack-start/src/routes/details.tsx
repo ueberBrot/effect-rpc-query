@@ -8,9 +8,10 @@ const featuredUserInput = { id: 1 } as const
 export const Route = createFileRoute('/details')({
   component: FeaturedUserPage,
   loader: async ({ context }) => {
-    await context.queryClient.ensureQueryData(
-      context.rpcQuery.users.get.queryOptions({ input: featuredUserInput }),
-    )
+    await context.queryClient.query({
+      ...context.rpcQuery.users.get.queryOptions({ input: featuredUserInput }),
+      staleTime: 'static',
+    })
   },
 })
 

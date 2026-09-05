@@ -1,5 +1,6 @@
-import { skipToken } from '@tanstack/query-core'
+import { QueryClient, skipToken } from '@tanstack/query-core'
 import { skipToken as reactQuerySkipToken } from '@tanstack/react-query'
+import { Effect, Schema, Stream } from 'effect'
 import * as rpcQuery from 'effect-rpc-query'
 import type {
   CreateRpcQueryUtilsOptions,
@@ -12,9 +13,10 @@ import type {
   RunPromiseExit,
   SkipToken,
 } from 'effect-rpc-query'
+import { Rpc, RpcGroup, RpcTest } from 'effect/unstable/rpc'
 // fallow-ignore-file unused-file
 // The packed-package verifier copies and executes this fixture in temporary consumers.
-import { equal } from 'node:assert/strict'
+import { deepStrictEqual, equal } from 'node:assert/strict'
 
 type PublicTypes = [
   CreateRpcQueryUtilsOptions<any, readonly [JsonValue, ...JsonValue[]]>,
@@ -56,4 +58,63 @@ equal(
   resolveFrom('effect', packageEntry),
   resolveFrom('effect'),
   'The package must resolve the consumer Effect runtime',
+)
+
+const Read = Rpc.make('compatibility.read', { success: Schema.String })
+const Page = Rpc.make('compatibility.page', {
+  payload: { cursor: Schema.Int },
+  success: Schema.Int,
+})
+const Watch = Rpc.make('compatibility.watch', { success: Schema.String, stream: true })
+const group = RpcGroup.make(Read, Page, Watch)
+const handlers = group.of({
+  'compatibility.page': Effect.fn('CompatibilityRpc.page')(({ cursor }) => Effect.succeed(cursor)),
+  'compatibility.read': Effect.fn('CompatibilityRpc.read')(() => Effect.succeed('ordinary')),
+  'compatibility.watch': () => Stream.make('first', 'second'),
+})
+
+await Effect.runPromise(
+  Effect.scoped(
+    Effect.gen(function* () {
+      const client = yield* RpcTest.makeClient(group, { flatten: true }).pipe(
+        Effect.provide(group.toLayer(handlers)),
+      )
+      const queryClient = new QueryClient()
+      const rpcUtilityTree = rpcQuery.createRpcQueryUtils(group, {
+        client,
+        keyPrefix: ['compatibility'] as const,
+      })
+
+      equal(
+        yield* Effect.promise(() =>
+          queryClient.query(rpcUtilityTree.compatibility.read.queryOptions()),
+        ),
+        'ordinary',
+      )
+      deepStrictEqual(
+        yield* Effect.promise(() =>
+          queryClient.infiniteQuery(
+            rpcUtilityTree.compatibility.page.infiniteOptions({
+              getNextPageParam: () => undefined,
+              initialPageParam: 0,
+              input: (cursor) => ({ cursor }),
+            }),
+          ),
+        ),
+        { pageParams: [0], pages: [0] },
+      )
+      deepStrictEqual(
+        yield* Effect.promise(() =>
+          queryClient.query(rpcUtilityTree.compatibility.watch.streamedOptions()),
+        ),
+        ['first', 'second'],
+      )
+      equal(
+        yield* Effect.promise(() =>
+          queryClient.query(rpcUtilityTree.compatibility.watch.liveOptions()),
+        ),
+        'second',
+      )
+    }),
+  ),
 )

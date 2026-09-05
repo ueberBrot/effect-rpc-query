@@ -1,5 +1,5 @@
 import { useMutation } from '@tanstack/react-query'
-import { type FormEvent, useState } from 'react'
+import { type SubmitEvent, useState } from 'react'
 
 import type { ViteReactApplication } from '../../lib/application.ts'
 import { ActionButton } from '../ui/action-button.tsx'
@@ -15,7 +15,7 @@ export const CreateUserForm = ({ application }: { readonly application: ViteReac
     }),
   )
 
-  const submitUser = (event: FormEvent<HTMLFormElement>) => {
+  const submitUser = (event: SubmitEvent<HTMLFormElement>) => {
     event.preventDefault()
     const userName = name.trim()
     const userLocale = locale.trim()
