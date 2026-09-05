@@ -1096,13 +1096,14 @@ type OutputKeys<T> = T extends unknown ? keyof T : never
 true satisfies Assert<Equal<Extract<OutputKeys<RequestOutputs>, 'rpcOptions'>, never>>
 // @ts-expect-error unary requests do not have a stream buffer
 utils.users.get.queryOptions({ input: { id: 1 }, rpcOptions: { streamBufferSize: 8 } })
-utils.users.pages.infiniteOptions({
+const discardedInfiniteRequest = {
   input: (cursor: number) => ({ cursor }),
   initialPageParam: 0,
   getNextPageParam: () => undefined,
-  // @ts-expect-error infinite requests require the unary result
   rpcOptions: { discard: true },
-})
+}
+// @ts-expect-error infinite requests require the unary result
+utils.users.pages.infiniteOptions(discardedInfiniteRequest)
 // @ts-expect-error mutation results cannot be discarded
 utils.users.get.mutationOptions({ rpcOptions: { discard: true } })
 // @ts-expect-error stream adaptation owns queue conversion

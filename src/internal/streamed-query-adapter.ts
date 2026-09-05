@@ -91,26 +91,6 @@ const requireFirstValue = <A>(source: AsyncIterable<A>, rpcTag: string): AsyncIt
   },
 })
 
-const makeAsyncIterable = async (
-  rpc: AdaptedStreamingRpc,
-  operation: 'live' | 'streamed',
-  input: unknown,
-  runPromiseExit: RunPromiseExit<unknown>,
-  signal: AbortSignal,
-  rpcOptions: StreamingRpcOptions | undefined,
-): Promise<AsyncIterable<unknown>> => {
-  const stream = rpc.invoke(input, rpcOptions).pipe(
-    Stream.catchCauseIf(
-      (cause) => !Cause.hasInterruptsOnly(cause),
-      (cause) => Stream.fail(new EffectRpcQueryError(rpc.tag, operation, cause)),
-    ),
-  )
-  // Capture the runner's Context so iterator pulls use the caller-owned runtime.
-  const exit = await runPromiseExit(Stream.toAsyncIterableEffect(stream), { signal })
-  if (Exit.isFailure(exit)) throw new EffectRpcQueryError(rpc.tag, operation, exit.cause)
-  return abortableAsyncIterable(exit.value, signal)
-}
-
 /** Adapts one Effect stream invocation to an accumulated or latest-value Query Core function. */
 export const makeStreamQuery = ({
   input,
@@ -121,14 +101,16 @@ export const makeStreamQuery = ({
 }: MakeStreamQueryOptions) => {
   const operation = policy._tag === 'Live' ? 'live' : 'streamed'
   const streamFn = async ({ signal }: { readonly signal: AbortSignal }) => {
-    const iterable = await makeAsyncIterable(
-      rpc,
-      operation,
-      input,
-      runPromiseExit,
-      signal,
-      rpcOptions,
+    const stream = rpc.invoke(input, rpcOptions).pipe(
+      Stream.catchCauseIf(
+        (cause) => !Cause.hasInterruptsOnly(cause),
+        (cause) => Stream.fail(new EffectRpcQueryError(rpc.tag, operation, cause)),
+      ),
     )
+    // Capture the runner's Context so iterator pulls use the caller-owned runtime.
+    const exit = await runPromiseExit(Stream.toAsyncIterableEffect(stream), { signal })
+    if (Exit.isFailure(exit)) throw new EffectRpcQueryError(rpc.tag, operation, exit.cause)
+    const iterable = abortableAsyncIterable(exit.value, signal)
     return policy._tag === 'Live' ? requireFirstValue(iterable, rpc.tag) : iterable
   }
 

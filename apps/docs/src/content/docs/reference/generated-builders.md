@@ -73,7 +73,7 @@ because the package adapts streams itself. Request options do not affect generat
 header changes the identity of the returned data, represent that identity in the RPC payload or
 an application-owned key prefix to keep cache entries separate.
 
-See [Client Lifecycle](../../concepts/client-lifecycle/) for application-wide configuration.
+See [Client Lifecycle](/effect-rpc-query/concepts/client-lifecycle/) for application-wide configuration.
 
 ## Build an infinite query
 

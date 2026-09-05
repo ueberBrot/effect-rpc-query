@@ -59,7 +59,7 @@ In either application's diagnostics panel, choose **Trigger declared failure**. 
 mutation options supply the `x-request-source: diagnostics-panel` RPC header. Application-wide
 authorization still comes from the shared client runner. The same `rpcOptions` input works with
 queries, infinite queries, and both stream builders; see
-[Generated Builders](../reference/generated-builders/#request-local-rpc-options).
+[Generated Builders](/effect-rpc-query/reference/generated-builders/#request-local-rpc-options).
 
 ## Build the examples
 

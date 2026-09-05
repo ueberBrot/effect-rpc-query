@@ -31,7 +31,7 @@ export interface StreamingRpcOptions extends UnaryRpcOptions {
   readonly streamBufferSize?: number | undefined
 }
 
-type RpcOptionsInput<Options = UnaryRpcOptions> = {
+export type RpcOptionsInput<Options = UnaryRpcOptions> = {
   readonly rpcOptions?: Options
 }
 

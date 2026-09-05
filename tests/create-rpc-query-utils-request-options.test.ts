@@ -4,7 +4,11 @@ import { Context, Effect, Schema, Stream } from 'effect'
 import type { Headers } from 'effect/unstable/http'
 import { Rpc, RpcGroup } from 'effect/unstable/rpc'
 
-import { createRpcQueryUtils } from '#effect-rpc-query'
+import {
+  createRpcQueryUtils,
+  type UnaryRpcOptions,
+  type StreamingRpcOptions,
+} from '#effect-rpc-query'
 
 import { makeRpcTestClient } from './fixtures/effect-rpc'
 
@@ -33,7 +37,10 @@ it.effect(
         return readyClient(tag, payload, options)
       }
       const utils = createRpcQueryUtils(group, { client, keyPrefix: ['requests'] })
-      const rpcOptions = { headers: { 'x-request-id': 'query' }, context: Context.empty() }
+      const rpcOptions = {
+        headers: { 'x-request-id': 'query' },
+        context: Context.empty(),
+      } satisfies UnaryRpcOptions
       const options = utils.read.queryOptions({ input: { page: 0 }, rpcOptions, staleTime: 0 })
       const queryClient = new QueryClient()
       expect(yield* Effect.promise(() => queryClient.query(options))).toBe('query')
@@ -89,7 +96,7 @@ it.effect(
       expect(yield* Effect.promise(() => observer.mutate({ page: 4 }))).toBe('pages:4')
       expect(requests.slice(2)).toEqual([rpcOptions, rpcOptions])
 
-      const streamOptions = { ...rpcOptions, streamBufferSize: 3 }
+      const streamOptions = { ...rpcOptions, streamBufferSize: 3 } satisfies StreamingRpcOptions
       const streamed = utils.watch.streamedOptions({
         input: { page: 0 },
         rpcOptions: streamOptions,
