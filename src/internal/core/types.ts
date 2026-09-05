@@ -8,7 +8,7 @@ import type {
   QueryKeyHashFunction,
   QueryObserverOptions,
 } from '@tanstack/query-core'
-import type { Effect, Exit } from 'effect'
+import type { Effect, Exit, Redacted } from 'effect'
 
 /** A JSON scalar accepted in key prefixes and canonical key payloads. */
 export type JsonPrimitive = boolean | null | number | string
@@ -97,3 +97,23 @@ export type MutationOptions<Data, Error, Input, Key extends QueryKey, OnMutateRe
   readonly mutationFn: (variables: Input) => Promise<Data>
   readonly mutationKey: Key
 }
+
+export type HasSeenType<A, Seen> = Seen extends unknown
+  ? (<T>() => T extends A ? 1 : 2) extends <T>() => T extends Seen ? 1 : 2
+    ? true
+    : false
+  : never
+
+/** Recursively detects explicit redacted values in a decoded value. */
+export type ContainsRedacted<A, Seen = never> =
+  A extends Redacted.Redacted<unknown>
+    ? true
+    : true extends HasSeenType<A, Seen>
+      ? false
+      : A extends readonly (infer Value)[]
+        ? ContainsRedacted<Value, Seen | A>
+        : A extends object
+          ? true extends { readonly [Key in keyof A]: ContainsRedacted<A[Key], Seen | A> }[keyof A]
+            ? true
+            : false
+          : false

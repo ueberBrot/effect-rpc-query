@@ -108,13 +108,21 @@ const declarationNames = declarationExport
   .map((name) => name.trim().replace(/^type /u, ''))
   .sort()
 deepStrictEqual(declarationNames, [
+  'CreateHttpApiQueryUtilsOptions',
   'CreateRpcQueryUtilsOptions',
+  'EffectHttpApiQueryConfigError',
+  'EffectHttpApiQueryConfigErrorCode',
+  'EffectHttpApiQueryError',
+  'EffectHttpApiQueryKeyError',
+  'EffectHttpApiQueryKeyErrorCode',
   'EffectRpcQueryConfigError',
   'EffectRpcQueryConfigErrorCode',
   'EffectRpcQueryEmptyStreamError',
   'EffectRpcQueryError',
   'EffectRpcQueryKeyError',
   'EffectRpcQueryKeyErrorCode',
+  'HttpApiKeyEncoder',
+  'HttpApiQueryUtils',
   'JsonValue',
   'KeyEncoder',
   'QueryData',
@@ -123,7 +131,9 @@ deepStrictEqual(declarationNames, [
   'SkipToken',
   'StreamingRpcOptions',
   'UnaryRpcOptions',
+  'createHttpApiQueryUtils',
   'createRpcQueryUtils',
+  'isEffectHttpApiQueryError',
   'isEffectRpcQueryError',
   'skipToken',
 ])
@@ -232,6 +242,10 @@ const verifyConsumer = (peer: (typeof peerCases)[number]): void => {
       join(typeFixtureDirectory, 'tanstack-start-contract.ts'),
       join(consumerDirectory, 'tanstack-start-contract.ts'),
     )
+    cpSync(
+      join(typeFixtureDirectory, 'http-contract.ts'),
+      join(consumerDirectory, 'http-contract.ts'),
+    )
     cpSync(join(typeFixtureDirectory, 'type-scale.ts'), join(consumerDirectory, 'type-scale.ts'))
 
     const manifestTemplate = readFileSync(join(consumerDirectory, 'package.template.json'), 'utf8')
@@ -272,10 +286,12 @@ const verifyConsumer = (peer: (typeof peerCases)[number]): void => {
       )
     }
 
-    execFileSync(process.execPath, ['--experimental-import-meta-resolve', 'runtime.mts'], {
-      cwd: consumerDirectory,
-      stdio: 'inherit',
-    })
+    for (const fixture of ['runtime.mts', 'http-runtime.mts']) {
+      execFileSync(process.execPath, ['--experimental-import-meta-resolve', fixture], {
+        cwd: consumerDirectory,
+        stdio: 'inherit',
+      })
+    }
   } finally {
     rmSync(consumerDirectory, { force: true, recursive: true })
   }

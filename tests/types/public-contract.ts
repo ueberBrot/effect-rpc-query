@@ -322,7 +322,7 @@ streamedHook.error satisfies EffectRpcQueryError<
 > | null
 const streamedResult: Promise<string> = queryClient.query(streamedOptions)
 const streamedKey = utils.events.watch.streamedKey({ channel: 'news' })
-streamedKey satisfies readonly ['app', 'events', 'watch', 'streamed', JsonValue]
+streamedKey satisfies readonly ['app', 'rpc', 'events', 'watch', 'streamed', JsonValue]
 const cachedStream = queryClient.getQueryData(utils.events.watch.streamedKey({ channel: 'news' }))
 cachedStream satisfies ReadonlyArray<string> | undefined
 queryClient.invalidateQueries({ queryKey: streamedKey })
@@ -341,7 +341,7 @@ liveHook.error satisfies
   | null
 const liveResult: Promise<number> = queryClient.query(liveOptions)
 const liveKey = utils.events.watch.liveKey({ channel: 'news' })
-liveKey satisfies readonly ['app', 'events', 'watch', 'live', JsonValue]
+liveKey satisfies readonly ['app', 'rpc', 'events', 'watch', 'live', JsonValue]
 const cachedLive = queryClient.getQueryData(liveKey)
 cachedLive satisfies string | undefined
 void [liveHookData, liveResult]
@@ -458,7 +458,7 @@ void fetchedPages
 usePrefetchInfiniteQuery(fetchableInfiniteOptions)
 
 const infiniteKey = utils.users.pages.infiniteKey({ cursor: 0 })
-infiniteKey satisfies readonly ['app', 'users', 'pages', 'infinite', JsonValue]
+infiniteKey satisfies readonly ['app', 'rpc', 'users', 'pages', 'infinite', JsonValue]
 const cachedPages = queryClient.getQueryData(fetchableInfiniteOptions.queryKey)
 cachedPages?.pageParams satisfies ReadonlyArray<number> | undefined
 cachedPages?.pages satisfies
@@ -629,7 +629,7 @@ const cachedUser: { readonly id: number; readonly name: string } | undefined =
 void cachedUser
 
 const concreteQueryKey = utils.users.get.queryKey({ id: 1 })
-concreteQueryKey satisfies readonly ['app', 'users', 'get', 'query', JsonValue]
+concreteQueryKey satisfies readonly ['app', 'rpc', 'users', 'get', 'query', JsonValue]
 const cachedState = queryClient.getQueryState(concreteQueryKey)
 cachedState?.error satisfies EffectRpcQueryError<'not-found'> | null | undefined
 
@@ -682,7 +682,7 @@ const getMutationOptions = utils.users.get.mutationOptions<{
     return false
   },
 })
-getMutationOptions.mutationKey satisfies readonly ['app', 'users', 'get', 'mutation']
+getMutationOptions.mutationKey satisfies readonly ['app', 'rpc', 'users', 'get', 'mutation']
 getMutationOptions.throwOnError satisfies
   | boolean
   | ((error: EffectRpcQueryError<'not-found'>) => boolean)
@@ -754,7 +754,7 @@ const skippedQueryObject = utils.users.get.queryOptions({
   input: skipToken,
   select: (user) => user.name,
   staleTime: (query) => {
-    query.queryKey satisfies readonly ['app', 'users', 'get', 'query']
+    query.queryKey satisfies readonly ['app', 'rpc', 'users', 'get', 'query']
     return 30_000
   },
   retry: (_count, error) => {
@@ -770,7 +770,7 @@ new QueryObserver(queryClient, skippedQueryObject).getCurrentResult().data satis
   | string
   | undefined
 skippedQueryObject.queryFn satisfies SkipToken
-skippedQueryObject.queryKey satisfies readonly ['app', 'users', 'get', 'query']
+skippedQueryObject.queryKey satisfies readonly ['app', 'rpc', 'users', 'get', 'query']
 // @ts-expect-error package input is consumed
 skippedQueryObject.input
 // @ts-expect-error suspense requires an executable query function
@@ -789,7 +789,7 @@ new QueryObserver(queryClient, skippedStreamObject).getCurrentResult().data sati
   | string
   | undefined
 skippedStreamObject.queryFn satisfies SkipToken
-skippedStreamObject.queryKey satisfies readonly ['app', 'events', 'watch', 'streamed']
+skippedStreamObject.queryKey satisfies readonly ['app', 'rpc', 'events', 'watch', 'streamed']
 // @ts-expect-error stream policy is consumed
 skippedStreamObject.refetchMode
 // @ts-expect-error package input is consumed
@@ -813,7 +813,7 @@ new QueryObserver(queryClient, skippedLiveObject).getCurrentResult().data satisf
   | number
   | undefined
 skippedLiveObject.queryFn satisfies SkipToken
-skippedLiveObject.queryKey satisfies readonly ['app', 'events', 'watch', 'live']
+skippedLiveObject.queryKey satisfies readonly ['app', 'rpc', 'events', 'watch', 'live']
 // @ts-expect-error package input is consumed
 skippedLiveObject.input
 // @ts-expect-error suspense requires an executable query function
@@ -968,8 +968,8 @@ const conditionalUserOptions = utils.users.get.queryOptions({
   input: conditionalUserId === undefined ? skipToken : { id: conditionalUserId },
   refetchInterval: (query) => {
     query.queryKey satisfies
-      | readonly ['app', 'users', 'get', 'query']
-      | readonly ['app', 'users', 'get', 'query', JsonValue]
+      | readonly ['app', 'rpc', 'users', 'get', 'query']
+      | readonly ['app', 'rpc', 'users', 'get', 'query', JsonValue]
     return false
   },
   select: (user) => user.name,

@@ -1,6 +1,6 @@
 # Target the Effect 4 release candidate
 
-Status: Accepted.
+Status: Accepted. Extended by [ADR 0022](0022-add-buffered-http-utilities-with-separate-key-roots.md).
 
 ## Context
 

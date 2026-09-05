@@ -1,6 +1,6 @@
 # Share utility construction through private modules
 
-Status: Accepted. Clarifies ADR 0003, ADR 0005–0007, and ADR 0009.
+Status: Accepted. Clarifies ADR 0003, ADR 0005–0007, and ADR 0009. Extended by [ADR 0022](0022-add-buffered-http-utilities-with-separate-key-roots.md).
 
 Core and protocol adapters stay private in one root package, with one public export and one
 artifact. The utility-tree module accepts operation descriptions and owns atomic validation,

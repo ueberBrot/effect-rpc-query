@@ -117,7 +117,7 @@ describe('createRpcQueryUtils streaming execution', () => {
         const group = RpcGroup.make(Watch)
         const queryClient = new QueryClient()
         const snapshots: unknown[] = []
-        const key = ['bounded', 'events', 'watch', 'streamed'] as const
+        const key = ['bounded', 'rpc', 'events', 'watch', 'streamed'] as const
         const client = yield* makeRpcTestClient(group, {
           'events.watch': () =>
             Stream.fromAsyncIterable(
@@ -578,7 +578,7 @@ describe('createRpcQueryUtils streaming execution', () => {
         expect(options).toMatchObject({
           ...callerOptions,
           queryFn: skipToken,
-          queryKey: ['app', 'events', 'watch', operation],
+          queryKey: ['app', 'rpc', 'events', 'watch', operation],
         })
         expect(options).not.toHaveProperty('input')
         expect(options).not.toHaveProperty('refetchMode')
@@ -615,11 +615,11 @@ describe('createRpcQueryUtils streaming execution', () => {
 
       expect(utils.events.watch.streamedOptions(skipToken)).toMatchObject({
         queryFn: skipToken,
-        queryKey: ['app', 'events', 'watch', 'streamed'],
+        queryKey: ['app', 'rpc', 'events', 'watch', 'streamed'],
       })
       expect(utils.events.watch.liveOptions(skipToken)).toMatchObject({
         queryFn: skipToken,
-        queryKey: ['app', 'events', 'watch', 'live'],
+        queryKey: ['app', 'rpc', 'events', 'watch', 'live'],
       })
     }),
   )

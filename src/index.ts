@@ -2,7 +2,29 @@
 export { skipToken } from '@tanstack/query-core'
 
 /** Creates the public RPC utility tree. @api public */
-export { createRpcQueryUtils } from './internal/rpc/create-rpc-query-utils'
+export { createRpcQueryUtils } from './internal/rpc/create-utils'
+/** Creates the public HTTP utility tree. @api public */
+export { createHttpApiQueryUtils } from './internal/http/create-utils'
+export {
+  EffectHttpApiQueryConfigError,
+  EffectHttpApiQueryError,
+  EffectHttpApiQueryKeyError,
+  isEffectHttpApiQueryError,
+} from './internal/http/errors'
+export type {
+  // fallow-ignore-next-line unused-type
+  EffectHttpApiQueryConfigErrorCode,
+  // fallow-ignore-next-line unused-type
+  EffectHttpApiQueryKeyErrorCode,
+} from './internal/http/errors'
+export type {
+  // fallow-ignore-next-line unused-type
+  CreateHttpApiQueryUtilsOptions,
+  // fallow-ignore-next-line unused-type
+  HttpApiKeyEncoder,
+  // fallow-ignore-next-line unused-type
+  HttpApiQueryUtils,
+} from './internal/http/types'
 /** Errors and guards raised by the public runtime API. @api public */
 export {
   EffectRpcQueryConfigError,
@@ -10,14 +32,14 @@ export {
   EffectRpcQueryError,
   EffectRpcQueryKeyError,
   isEffectRpcQueryError,
-} from './errors'
+} from './internal/rpc/errors'
 /** Stable error metadata exposed to downstream consumers. @api public */
 export type {
   // fallow-ignore-next-line unused-type
   EffectRpcQueryConfigErrorCode,
   // fallow-ignore-next-line unused-type
   EffectRpcQueryKeyErrorCode,
-} from './errors'
+} from './internal/rpc/errors'
 export type {
   JsonValue,
   // fallow-ignore-next-line unused-type

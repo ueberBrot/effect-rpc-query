@@ -30,11 +30,16 @@ type PublicTypes = [
 ]
 
 const expectedExports = [
+  'EffectHttpApiQueryConfigError',
+  'EffectHttpApiQueryError',
+  'EffectHttpApiQueryKeyError',
   'EffectRpcQueryConfigError',
   'EffectRpcQueryEmptyStreamError',
   'EffectRpcQueryError',
   'EffectRpcQueryKeyError',
+  'createHttpApiQueryUtils',
   'createRpcQueryUtils',
+  'isEffectHttpApiQueryError',
   'isEffectRpcQueryError',
   'skipToken',
 ] as const satisfies ReadonlyArray<keyof typeof rpcQuery>

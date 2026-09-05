@@ -1,6 +1,6 @@
 # Effect RPC Query
 
-This glossary defines the project-specific language for deriving TanStack Query utilities from Effect RPC contracts.
+This glossary defines the project-specific language for deriving TanStack Query utilities from Effect RPC and HTTP contracts.
 
 ## Generated API
 
@@ -8,8 +8,12 @@ This glossary defines the project-specific language for deriving TanStack Query 
 A nested object derived from literal Effect RPC tags. Branches represent RPC namespaces; unary and streaming leaves provide their typed key and option builders.
 _Avoid_: Router, generated client
 
+**HTTP utility tree**:
+A nested object derived from an Effect HttpApi's literal group and endpoint identifiers. Buffered endpoints provide typed key and option builders; top-level groups place their endpoints at the root.
+_Avoid_: RPC utility tree, generated client
+
 **Query data**:
-The successful RPC value presented to TanStack Query. A successful runtime `undefined` becomes `null`; mutation data remains unchanged.
+The successful decoded RPC or HTTP value presented to TanStack Query. A successful runtime `undefined` becomes `null`; mutation data remains unchanged.
 _Avoid_: RPC success value when it is `undefined`
 
 **Accumulated streamed query**:
@@ -21,6 +25,10 @@ A streaming RPC view that caches only the latest emitted value. Completion prese
 _Avoid_: Accumulated streamed query, subscription
 
 ## Payloads and keys
+
+**HTTP request input**:
+The decoded request parts accepted by a ready HTTP API client: declared params, query, headers, and payload. It excludes response controls and carries no RPC payload-constructor semantics.
+_Avoid_: Payload constructor input, wire request
 
 **Payload constructor input**:
 The call-site value accepted by an RPC payload Schema constructor. It may omit fields supplied by constructor defaults.
@@ -39,7 +47,7 @@ The immutable, JSON-safe representation of a normalized payload used for cache i
 _Avoid_: Wire payload, raw input
 
 **Key prefix**:
-A caller-supplied, non-empty tuple of JSON-safe values that namespaces every key from one RPC utility tree.
+A caller-supplied, non-empty tuple of JSON-safe values that namespaces a utility tree. Generated roots append an adapter discriminator and, for HTTP, the API identifier.
 _Avoid_: Automatic namespace, client identity
 
 ## Execution and failures
@@ -52,14 +60,22 @@ _Avoid_: Mutation cancellation, rollback
 A flat, tag-first Effect RPC client acquired within a Scope that remains alive while an RPC utility tree uses it. The caller owns the Scope and disposal.
 _Avoid_: Client factory, owned client
 
+**Ready HTTP API client**:
+An acquired Effect HttpApiClient whose transport, middleware, runtime, and resource lifetime belong to the caller.
+_Avoid_: URL client, client factory, owned client
+
 **RPC execution error**:
 An `Error` produced when an RPC Effect returns a failed `Exit`. It identifies the RPC and operation and preserves the complete Effect `Cause` without retaining the input.
 _Avoid_: Catch-all adapter error, configuration error
 
+**HTTP execution error**:
+An `Error` produced when an HTTP Effect returns a failed `Exit`. It identifies the declared API, group, endpoint, method, and operation and preserves the complete Effect `Cause`.
+_Avoid_: Sanitized Cause, configuration error
+
 **Configuration error**:
-A synchronous error that rejects invalid configuration for an RPC utility tree or its option builders.
+A synchronous error that rejects invalid configuration for a utility tree or its option builders.
 _Avoid_: RPC execution error
 
 **Key-generation error**:
-A synchronous error produced while deriving a canonical key payload from query input.
+A synchronous error produced while deriving canonical cache identity from query input.
 _Avoid_: RPC execution error, configuration error

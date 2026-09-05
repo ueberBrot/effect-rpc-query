@@ -1,6 +1,6 @@
 # Use flat prefix-matchable key tuples
 
-Status: Amended by ADR 0018 and ADR 0020.
+Status: Amended by ADR 0018 and ADR 0020. Extended by [ADR 0022](0022-add-buffered-http-utilities-with-separate-key-roots.md).
 
 ## Context
 

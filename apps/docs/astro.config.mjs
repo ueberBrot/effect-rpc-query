@@ -87,6 +87,7 @@ export default defineConfig({
           label: 'Reference',
           items: [
             { label: 'Factory', slug: 'reference/factory' },
+            { label: 'HTTP Factory', slug: 'reference/http-factory' },
             { label: 'Generated Builders', slug: 'reference/generated-builders' },
             { label: 'Errors', slug: 'reference/errors' },
             { label: 'Public Exports', slug: 'reference/public-exports' },

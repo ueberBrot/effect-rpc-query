@@ -321,8 +321,7 @@ const createUnaryLeaf = (
   }
 
   return Object.freeze({
-    infiniteKey,
-    infiniteOptions,
+    ...(description.supportsInfinite === false ? {} : { infiniteKey, infiniteOptions }),
     key: () => operationKey,
     mutationKey: () => mutationKey,
     mutationOptions,
@@ -457,12 +456,16 @@ export const createUtilityTree = (
   operations: readonly OperationDescription[],
   options: {
     readonly keyPrefix: readonly [JsonValue, ...JsonValue[]]
+    readonly keyNamespace: readonly string[]
     readonly keyEncoders: ReadonlyMap<string, RuntimeKeyEncoder>
     readonly runPromiseExit: RunPromiseExit<unknown> | undefined
     readonly errors: TreeErrors
   },
 ): Record<string, unknown> => {
-  const prefix = normalizePrefix(options.keyPrefix, options.errors)
+  const prefix = freezeKey([
+    ...normalizePrefix(options.keyPrefix, options.errors),
+    ...options.keyNamespace,
+  ])
   const paths = planPaths(operations, options.errors)
   validateKeyEncoders(operations, options.keyEncoders, options.errors)
   const runner = options.runPromiseExit ?? (Effect.runPromiseExit as RunPromiseExit<unknown>)

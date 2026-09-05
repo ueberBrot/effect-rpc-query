@@ -30,6 +30,7 @@ export interface OperationIdentity {
 
 export interface UnaryOperation extends OperationIdentity {
   readonly kind: 'Unary'
+  readonly supportsInfinite?: boolean
   readonly invoke: (input: unknown, options: unknown) => Effect.Effect<unknown, unknown, unknown>
   readonly executionError: (operation: UnaryQueryOperation, cause: Cause.Cause<unknown>) => Error
 }

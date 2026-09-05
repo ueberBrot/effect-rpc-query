@@ -41,7 +41,7 @@ describe('createRpcQueryUtils configuration', () => {
       keyPrefix: ['app'],
       keyEncoders: { toString: ({ id }) => id },
     })
-    expect(utils.toString.queryKey({ id: 1 })).toEqual(['app', 'toString', 'query', 1])
+    expect(utils.toString.queryKey({ id: 1 })).toEqual(['app', 'rpc', 'toString', 'query', 1])
   })
 
   it('does not accept an inherited encoder for redacted payloads', () => {
@@ -239,7 +239,7 @@ describe('createRpcQueryUtils configuration', () => {
       const key = utils.users.get.queryKey({ id: 1 })
 
       expect(receivedPayload).toEqual({ id: 1, locale: 'en' })
-      expect(key).toEqual(['app', 'users', 'get', 'query', { id: 1, locale: 'en' }])
+      expect(key).toEqual(['app', 'rpc', 'users', 'get', 'query', { id: 1, locale: 'en' }])
       expect(Object.isFrozen(key.at(-1))).toBe(true)
     }),
   )
@@ -314,7 +314,7 @@ describe('createRpcQueryUtils configuration', () => {
       const key = utils.secrets.read.queryKey({ secret: Redacted.make('do-not-key') })
 
       expect(receivedRedacted).toBe(true)
-      expect(key).toEqual(['app', 'secrets', 'read', 'query', { subject: 'current-user' }])
+      expect(key).toEqual(['app', 'rpc', 'secrets', 'read', 'query', { subject: 'current-user' }])
       expect(JSON.stringify(key)).not.toContain('do-not-key')
     }),
   )
@@ -361,6 +361,7 @@ describe('createRpcQueryUtils configuration', () => {
       utils.read.queryKey({ name: 'root', children: [{ name: 'leaf', children: [] }] }),
     ).toEqual([
       'app',
+      'rpc',
       'read',
       'query',
       { name: 'root', children: [{ name: 'leaf', children: [] }] },
@@ -409,6 +410,7 @@ describe('createRpcQueryUtils configuration', () => {
 
       expect(utils.encoding.serviceful.queryKey({ value: 'safe' })).toEqual([
         'app',
+        'rpc',
         'encoding',
         'serviceful',
         'query',
@@ -443,6 +445,7 @@ describe('createRpcQueryUtils configuration', () => {
 
       expect(utils.decoding.only.queryKey({ value: 'safe' })).toEqual([
         'app',
+        'rpc',
         'decoding',
         'only',
         'query',

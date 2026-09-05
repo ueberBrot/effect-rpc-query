@@ -1,8 +1,8 @@
 import { experimental_streamedQuery, type QueryFunctionContext } from '@tanstack/query-core'
 import { Cause, Exit, Stream } from 'effect'
 
-import { EffectRpcQueryEmptyStreamError, EffectRpcQueryError } from '../../errors'
 import type { RunPromiseExit } from '../core/types'
+import { EffectRpcQueryEmptyStreamError, EffectRpcQueryError } from './errors'
 import type { StreamRefetchMode, StreamingRpcOptions } from './types'
 
 export type StreamQueryPolicy =
