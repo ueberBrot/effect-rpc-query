@@ -15,8 +15,6 @@ export type OperationInput =
         input: unknown,
         encoder: RuntimeKeyEncoder | undefined,
       ) => { readonly input: unknown; readonly keyValue: unknown }
-      /** Prepares later page requests without deriving another cache identity. */
-      readonly pageInput: (input: unknown) => unknown
       readonly invalidKey: (cause: unknown) => Error
     }
 
@@ -30,9 +28,13 @@ export interface OperationIdentity {
 
 export interface UnaryOperation extends OperationIdentity {
   readonly kind: 'Unary'
-  readonly supportsInfinite?: boolean
+  readonly infinite?: {
+    /** Prepares later page requests without deriving another cache identity. */
+    readonly pageInput: (input: unknown) => unknown
+    readonly executionError: (operation: 'infinite', cause: Cause.Cause<unknown>) => Error
+  }
   readonly invoke: (input: unknown, options: unknown) => Effect.Effect<unknown, unknown, unknown>
-  readonly executionError: (operation: UnaryQueryOperation, cause: Cause.Cause<unknown>) => Error
+  readonly executionError: (operation: 'query' | 'mutation', cause: Cause.Cause<unknown>) => Error
 }
 
 export interface StreamingOperation extends OperationIdentity {

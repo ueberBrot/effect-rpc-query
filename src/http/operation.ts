@@ -106,7 +106,6 @@ export const extractHttpEndpoints = (
         id: JSON.stringify([group.identifier, endpoint.identifier]),
         path: group.topLevel ? [endpoint.identifier] : [group.identifier, endpoint.identifier],
         kind: 'Unary',
-        supportsInfinite: false,
         input:
           schema === undefined
             ? { _tag: 'Inputless' }
@@ -118,7 +117,6 @@ export const extractHttpEndpoints = (
                     0,
                   ) > 1 || containsUnsafeKeyEncoding(schema.ast),
                 prepare: (input, encoder) => prepareRequest(identity, schema, input, encoder),
-                pageInput: (input) => input,
                 invalidKey: (cause) =>
                   new EffectHttpApiQueryKeyError(
                     'InvalidKeyValue',
@@ -134,7 +132,7 @@ export const extractHttpEndpoints = (
             responseMode: 'decoded-only',
           }),
         executionError: (operation, cause) =>
-          new EffectHttpApiQueryError(identity, operation as 'query' | 'mutation', cause),
+          new EffectHttpApiQueryError(identity, operation, cause),
       })
     }
   }

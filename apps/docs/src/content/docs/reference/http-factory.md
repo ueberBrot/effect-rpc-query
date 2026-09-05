@@ -21,7 +21,8 @@ properties. Every retained branch and endpoint has `key()`; buffered endpoints a
 | `keyEncoders`    | Synchronous encoders keyed first by declaration group identifier, then endpoint identifier, including top-level groups.     |
 
 A key encoder receives the complete decoded HTTP request input and returns `JsonValue`. Request
-encoding services and explicit redacted values require an encoder. An encoder does not provide
+encoding services, explicit redacted values, and multiple payload alternatives require an encoder.
+For alternatives, preserve every result-affecting body and content-type distinction. An encoder does not provide
 execution services; the runner remains independently required.
 
 ## Request and result contract

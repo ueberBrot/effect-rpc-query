@@ -2,21 +2,21 @@
 export { skipToken } from '@tanstack/query-core'
 
 /** Creates the public RPC utility tree. @api public */
-export { createRpcQueryUtils } from './internal/rpc/create-utils'
+export { createRpcQueryUtils } from './rpc/create-utils'
 /** Creates the public HTTP utility tree. @api public */
-export { createHttpApiQueryUtils } from './internal/http/create-utils'
+export { createHttpApiQueryUtils } from './http/create-utils'
 export {
   EffectHttpApiQueryConfigError,
   EffectHttpApiQueryError,
   EffectHttpApiQueryKeyError,
   isEffectHttpApiQueryError,
-} from './internal/http/errors'
+} from './http/errors'
 export type {
   // fallow-ignore-next-line unused-type
   EffectHttpApiQueryConfigErrorCode,
   // fallow-ignore-next-line unused-type
   EffectHttpApiQueryKeyErrorCode,
-} from './internal/http/errors'
+} from './http/errors'
 export type {
   // fallow-ignore-next-line unused-type
   CreateHttpApiQueryUtilsOptions,
@@ -24,7 +24,7 @@ export type {
   HttpApiKeyEncoder,
   // fallow-ignore-next-line unused-type
   HttpApiQueryUtils,
-} from './internal/http/types'
+} from './http/types'
 /** Errors and guards raised by the public runtime API. @api public */
 export {
   EffectRpcQueryConfigError,
@@ -32,20 +32,20 @@ export {
   EffectRpcQueryError,
   EffectRpcQueryKeyError,
   isEffectRpcQueryError,
-} from './internal/rpc/errors'
+} from './rpc/errors'
 /** Stable error metadata exposed to downstream consumers. @api public */
 export type {
   // fallow-ignore-next-line unused-type
   EffectRpcQueryConfigErrorCode,
   // fallow-ignore-next-line unused-type
   EffectRpcQueryKeyErrorCode,
-} from './internal/rpc/errors'
+} from './rpc/errors'
 export type {
   JsonValue,
   // fallow-ignore-next-line unused-type
   QueryData,
   RunPromiseExit,
-} from './internal/core/types'
+} from './core/types'
 /** Types for annotating generated utilities and custom adapters. @api public */
 export type {
   // fallow-ignore-next-line unused-type
@@ -56,7 +56,7 @@ export type {
   RpcQueryUtils,
   StreamingRpcOptions,
   UnaryRpcOptions,
-} from './internal/rpc/types'
+} from './rpc/types'
 
 /** The type of Query Core's exact skip sentinel. @api public */
 // fallow-ignore-next-line unused-type

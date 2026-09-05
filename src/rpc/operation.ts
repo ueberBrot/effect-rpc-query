@@ -112,7 +112,6 @@ const describeRpc = <Rpcs extends Rpc.Any, ClientError>(
             requiresEncoder: keyPayload._tag === 'CustomEncodingRequired',
             prepare: (input: unknown, encoder: RuntimeKeyEncoder | undefined) =>
               preparePayload(rpcTag, keyPayload, input, encoder),
-            pageInput: keyPayload.make,
             invalidKey: (cause: unknown) =>
               new EffectRpcQueryKeyError(
                 'InvalidKeyValue',
@@ -127,6 +126,10 @@ const describeRpc = <Rpcs extends Rpc.Any, ClientError>(
     return {
       ...identity,
       kind: 'Unary',
+      infinite: {
+        pageInput: keyPayload._tag === 'Payloadless' ? () => undefined : keyPayload.make,
+        executionError: (operation, cause) => new EffectRpcQueryError(rpcTag, operation, cause),
+      },
       invoke: (input, options) =>
         client(rpcTag as never, input as never, options as never) as Effect.Effect<
           unknown,
