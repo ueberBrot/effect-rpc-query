@@ -20,6 +20,9 @@ aliases resolve to the same root package.
 `EFFECT_RPC_QUERY_TARBALL`. When neither is set, the verifier derives the archive name from the
 root manifest. The release workflow passes its selected archive through `EFFECT_API_QUERY_TARBALL`.
 
+After #72 completes the upstream cutover, #73 removes this inventory and replaces the link in
+ADR 0016 with the completed #62 issue. Lasting decisions remain in the ADRs.
+
 ## Intentional old names
 
 Repository and documentation URLs still point to `ueberBrot/effect-rpc-query`. Keep these URLs
