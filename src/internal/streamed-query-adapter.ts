@@ -7,6 +7,7 @@ import type { AdaptedStreamingRpc } from './effect-rpc-adapter'
 
 export type StreamQueryPolicy =
   | {
+      readonly maxChunks?: number
       readonly _tag: 'Accumulated'
       readonly refetchMode?: 'append' | 'replace' | 'reset'
     }
@@ -116,6 +117,7 @@ export const makeStreamQuery = ({ input, policy, rpc, runPromiseExit }: MakeStre
     return policy._tag === 'Live' ? requireFirstValue(iterable, rpc.tag) : iterable
   }
 
+  const maxChunks = policy._tag === 'Accumulated' ? policy.maxChunks : undefined
   return policy._tag === 'Live'
     ? experimental_streamedQuery({
         initialValue: undefined,
@@ -124,6 +126,15 @@ export const makeStreamQuery = ({ input, policy, rpc, runPromiseExit }: MakeStre
       })
     : experimental_streamedQuery({
         ...(policy.refetchMode === undefined ? {} : { refetchMode: policy.refetchMode }),
+        ...(maxChunks === undefined
+          ? {}
+          : {
+              initialValue: [] as unknown[],
+              reducer: (values: unknown[], value: unknown) => [
+                ...values.slice(Math.max(0, values.length + 1 - maxChunks)),
+                value,
+              ],
+            }),
         streamFn,
       })
 }

@@ -413,6 +413,15 @@ const createStreamingLeaf = (
     const { options } = supplied
     const refetchMode = options['refetchMode'] as 'append' | 'replace' | 'reset' | undefined
     delete options['refetchMode']
+    const maxChunks = options['maxChunks'] as number | undefined
+    delete options['maxChunks']
+    if (maxChunks !== undefined && (!Number.isSafeInteger(maxChunks) || maxChunks <= 0)) {
+      throw new EffectRpcQueryConfigError(
+        'InvalidMaxChunks',
+        'maxChunks must be a positive safe integer',
+        { rpcTag: rpc.tag },
+      )
+    }
     if (supplied._tag === 'Skipped') return options
 
     const prepared = prepareQuery(rpc, supplied.input, operationKey, keyEncoder)
@@ -422,7 +431,11 @@ const createStreamingLeaf = (
       policy:
         operation === 'live'
           ? { _tag: 'Live' }
-          : { _tag: 'Accumulated', ...(refetchMode === undefined ? {} : { refetchMode }) },
+          : {
+              _tag: 'Accumulated',
+              ...(refetchMode === undefined ? {} : { refetchMode }),
+              ...(maxChunks === undefined ? {} : { maxChunks }),
+            },
       rpc,
       runPromiseExit,
     })

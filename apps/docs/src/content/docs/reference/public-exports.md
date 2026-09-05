@@ -9,7 +9,7 @@ All supported imports come from `effect-rpc-query`.
 | -------------------------------- | ------------------------------------------------------------------ |
 | `createRpcQueryUtils`            | Build the RPC utility tree.                                        |
 | `skipToken`                      | Query Core’s exact sentinel for disabling payload-bearing queries. |
-| `EffectRpcQueryConfigError`      | Invalid factory configuration.                                     |
+| `EffectRpcQueryConfigError`      | Invalid factory or builder configuration.                          |
 | `EffectRpcQueryKeyError`         | Payload or key preparation failure.                                |
 | `EffectRpcQueryError`            | Failed RPC `Exit` with its Effect `Cause`.                         |
 | `EffectRpcQueryEmptyStreamError` | Live stream completed without a value.                             |

@@ -5,8 +5,9 @@ description: Configuration, key-generation, and RPC execution errors.
 
 ## `EffectRpcQueryConfigError`
 
-Thrown while constructing the utility tree. Its `code` is one of:
+Thrown synchronously while configuring the utility tree or an option builder. Its `code` is one of:
 
+- `InvalidMaxChunks`: a streamed-query bound is not a positive safe integer.
 - `InvalidKeyPrefix`
 - `InvalidRpcPath`
 - `RpcPathCollision`

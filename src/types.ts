@@ -476,6 +476,8 @@ export type StreamedInputOptions<
 > & {
   /** Controls whether a refetch clears, appends to, or replaces accumulated data. */
   readonly refetchMode?: StreamRefetchMode
+  /** Retains at most this many newest elements; must be a positive safe integer. */
+  readonly maxChunks?: number
 }
 
 export type DefinedStreamedInputOptions<
@@ -502,7 +504,7 @@ export type RpcStreamedOptions<
   Prefix extends readonly JsonValue[],
   ClientError,
   Selected = StreamedData<R>,
-> = Omit<StreamedInputOptions<R, Prefix, ClientError, Selected>, 'refetchMode'> & {
+> = Omit<StreamedInputOptions<R, Prefix, ClientError, Selected>, 'refetchMode' | 'maxChunks'> & {
   readonly queryFn: QueryFunction<StreamedData<R>, ConcreteStreamedKey<Prefix, R, ClientError>>
   readonly queryKey: ConcreteStreamedKey<Prefix, R, ClientError>
   readonly queryKeyHashFn: QueryKeyHashFunction<ConcreteStreamedKey<Prefix, R, ClientError>>
@@ -564,7 +566,11 @@ export type StreamedOptionsBuilder<
           options: WithDefinedInitialData<
             Omit<SkippedRpcStreamedOptions<R, Prefix, ClientError, Selected>, OwnedQueryOption>,
             StreamedData<R>
-          > & { readonly input: SkipToken; readonly refetchMode?: StreamRefetchMode },
+          > & {
+            readonly input: SkipToken
+            readonly refetchMode?: StreamRefetchMode
+            readonly maxChunks?: number
+          },
         ): WithDefinedInitialData<
           SkippedRpcStreamedOptions<R, Prefix, ClientError, Selected>,
           StreamedData<R>
@@ -576,6 +582,7 @@ export type StreamedOptionsBuilder<
           > & {
             readonly input: SkipToken
             readonly refetchMode?: StreamRefetchMode
+            readonly maxChunks?: number
           },
         ): SkippedRpcStreamedOptions<R, Prefix, ClientError, Selected>
         (token: SkipToken): SkippedRpcStreamedOptions<R, Prefix, ClientError>

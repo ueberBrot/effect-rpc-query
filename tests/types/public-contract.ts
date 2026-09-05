@@ -250,7 +250,7 @@ const classKeyEncoder: KeyEncoder<typeof ClassRead> = (payload) => {
 }
 const runPromiseExit: RunPromiseExit = Effect.runPromiseExit
 const queryData: QueryData<void> = null
-const configCode: EffectRpcQueryConfigErrorCode = 'InvalidRpcPath'
+const configCode: EffectRpcQueryConfigErrorCode = 'InvalidMaxChunks'
 const keyCode: EffectRpcQueryKeyErrorCode = 'InvalidKeyValue'
 void [jsonValue, keyEncoder, classKeyEncoder, runPromiseExit, queryData, configCode, keyCode]
 
@@ -304,6 +304,7 @@ createRpcQueryUtils(group, {
 const queryClient = new QueryClient()
 
 const streamedOptions = utils.events.watch.streamedOptions({
+  maxChunks: 50,
   input: { channel: 'news' },
   meta: { source: 'fixture' },
   networkMode: 'offlineFirst',
@@ -778,6 +779,7 @@ useSuspenseQuery(skippedQueryObject)
 usePrefetchQuery(skippedQueryObject)
 
 const skippedStreamObject = utils.events.watch.streamedOptions({
+  maxChunks: 50,
   input: skipToken,
   refetchMode: 'append',
   select: (values) => values.join(', '),
@@ -947,3 +949,16 @@ useQuery(initializedSkippedQuery).data satisfies { readonly id: number; readonly
 useQuery(initializedSkippedStream).data satisfies ReadonlyArray<string>
 // @ts-expect-error React Query's defined-data overload excludes skipToken
 useQuery(initializedSkippedLive).data satisfies string
+
+// @ts-expect-error accumulated-stream policy is consumed before returning Query Core options
+streamedOptions.maxChunks
+// @ts-expect-error skipped options also consume the accumulation bound
+skippedStreamObject.maxChunks
+// @ts-expect-error live queries retain only the latest value
+utils.events.watch.liveOptions({ input: { channel: 'news' }, maxChunks: 2 })
+// @ts-expect-error skipped live queries have no accumulation policy
+utils.events.watch.liveOptions({ input: skipToken, maxChunks: 2 })
+// @ts-expect-error accumulation bounds are numeric
+utils.events.watch.streamedOptions({ input: { channel: 'news' }, maxChunks: '2' })
+utils.events.audit.watch.streamedOptions({ maxChunks: 2, initialData: [] })
+utils.events.watch.streamedOptions({ input: skipToken, maxChunks: 2, initialData: [] })

@@ -13,7 +13,7 @@ The successful RPC value presented to TanStack Query. A successful runtime `unde
 _Avoid_: RPC success value when it is `undefined`
 
 **Accumulated streamed query**:
-A streaming RPC view that caches every emitted value in order. Refetches may reset, append to, or replace the cached sequence.
+A streaming RPC view that caches emitted values in order, optionally retaining only a bounded recent history. Refetches may reset, append to, or replace the cached sequence.
 _Avoid_: Live query, infinite query
 
 **Live query**:
@@ -53,7 +53,7 @@ An `Error` produced when an RPC Effect returns a failed `Exit`. It identifies th
 _Avoid_: Catch-all adapter error, configuration error
 
 **Configuration error**:
-A synchronous error that prevents construction of an RPC utility tree, such as an invalid path or a missing key encoder.
+A synchronous error that rejects invalid configuration for an RPC utility tree or its option builders.
 _Avoid_: RPC execution error
 
 **Key-generation error**:
