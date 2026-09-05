@@ -33,7 +33,7 @@ import {
   type RpcQueryUtils,
   type RunPromiseExit,
   type SkipToken,
-} from 'effect-rpc-query'
+} from 'effect-api-query'
 import { Rpc, RpcClient, RpcGroup, RpcMiddleware } from 'effect/unstable/rpc'
 
 class AuthMiddleware extends RpcMiddleware.Service<AuthMiddleware>()('AuthMiddleware', {
@@ -1001,11 +1001,11 @@ useQuery(initializedConditionalUser).data satisfies string | undefined
 const unaryRpcOptions = {
   headers: { 'x-request-id': 'fixture' },
   context: Context.empty(),
-} satisfies import('effect-rpc-query').UnaryRpcOptions
+} satisfies import('effect-api-query').UnaryRpcOptions
 const streamingRpcOptions = {
   ...unaryRpcOptions,
   streamBufferSize: 8,
-} satisfies import('effect-rpc-query').StreamingRpcOptions
+} satisfies import('effect-api-query').StreamingRpcOptions
 const requestQuery = utils.users.get.queryOptions({
   input: { id: 1 },
   rpcOptions: unaryRpcOptions,

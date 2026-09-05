@@ -1,7 +1,7 @@
 import { QueryClient, skipToken } from '@tanstack/query-core'
 import { skipToken as reactQuerySkipToken } from '@tanstack/react-query'
 import { Effect, Schema, Stream } from 'effect'
-import * as rpcQuery from 'effect-rpc-query'
+import * as rpcQuery from 'effect-api-query'
 import type {
   CreateRpcQueryUtilsOptions,
   EffectRpcQueryConfigErrorCode,
@@ -12,7 +12,7 @@ import type {
   RpcQueryUtils,
   RunPromiseExit,
   SkipToken,
-} from 'effect-rpc-query'
+} from 'effect-api-query'
 import { Rpc, RpcGroup, RpcTest } from 'effect/unstable/rpc'
 // fallow-ignore-file unused-file
 // The packed-package verifier copies and executes this fixture in temporary consumers.
@@ -47,7 +47,7 @@ if (rpcQuery.skipToken !== skipToken || rpcQuery.skipToken !== reactQuerySkipTok
 }
 
 const resolveFrom = import.meta.resolve as (specifier: string, parent?: string) => string
-const packageEntry = resolveFrom('effect-rpc-query')
+const packageEntry = resolveFrom('effect-api-query')
 
 equal(
   resolveFrom('@tanstack/query-core', packageEntry),

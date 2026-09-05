@@ -124,7 +124,7 @@ jobs:
             echo "::error::Expected one release archive, found ${#archives[@]}."
             exit 1
           fi
-          echo "EFFECT_RPC_QUERY_TARBALL=${archives[0]}" >> "$GITHUB_ENV"
+          echo "EFFECT_API_QUERY_TARBALL=${archives[0]}" >> "$GITHUB_ENV"
 
       - name: Install browser engines and system dependencies
         if: github.event_name == 'push'

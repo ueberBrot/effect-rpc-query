@@ -1,5 +1,5 @@
 {
-  "name": "effect-rpc-query",
+  "name": "effect-api-query",
   "version": "0.0.0",
   "description": "Type-safe TanStack Query utilities generated from Effect RPC definitions.",
   "homepage": "https://github.com/ueberBrot/effect-rpc-query#readme",
@@ -21,6 +21,8 @@
   "module": "./dist/index.mjs",
   "types": "./dist/index.d.mts",
   "imports": {
+    "#effect-api-query": "./src/index.ts",
+    "#effect-api-query/*": "./src/*.ts",
     "#effect-rpc-query": "./src/index.ts",
     "#effect-rpc-query/*": "./src/*.ts"
   },

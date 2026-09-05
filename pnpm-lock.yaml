@@ -216,7 +216,7 @@ importers:
         specifier: 'catalog:'
         version: 4.0.0-rc.112
       effect-rpc-query:
-        specifier: workspace:*
+        specifier: workspace:effect-api-query@*
         version: link:../..
       react:
         specifier: 'catalog:'
@@ -268,7 +268,7 @@ importers:
         specifier: 'catalog:'
         version: 4.0.0-rc.112
       effect-rpc-query:
-        specifier: workspace:*
+        specifier: workspace:effect-api-query@*
         version: link:../..
       react:
         specifier: 'catalog:'
