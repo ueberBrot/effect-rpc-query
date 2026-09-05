@@ -15,7 +15,7 @@
     "@tanstack/react-router-ssr-query": "catalog:",
     "@tanstack/react-start": "catalog:",
     "effect": "catalog:",
-    "effect-rpc-query": "workspace:*",
+    "effect-rpc-query": "workspace:effect-api-query@*",
     "react": "catalog:",
     "react-dom": "catalog:"
   },

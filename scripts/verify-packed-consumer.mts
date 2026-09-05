@@ -19,7 +19,10 @@ const workspaceConfig = readFileSync(workspaceConfigPath, 'utf8')
 const defaultTarballName = `${repositoryManifest.name.replace(/^@/, '').replaceAll('/', '-')}-${repositoryManifest.version}.tgz`
 const tarballPath = resolve(
   repositoryRoot,
-  process.env['EFFECT_RPC_QUERY_TARBALL'] ?? join(artifactDirectory, defaultTarballName),
+  process.env['EFFECT_API_QUERY_TARBALL'] ??
+    // Remove the legacy override after the rename migration (#71).
+    process.env['EFFECT_RPC_QUERY_TARBALL'] ??
+    join(artifactDirectory, defaultTarballName),
 )
 
 if (!existsSync(tarballPath)) {
@@ -29,6 +32,14 @@ if (!existsSync(tarballPath)) {
 const packedManifest = JSON.parse(
   execFileSync('tar', ['-xOzf', tarballPath, 'package/package.json'], { encoding: 'utf8' }),
 ) as typeof repositoryManifest
+
+equal(packedManifest.name, 'effect-api-query')
+equal(
+  packedManifest.version,
+  repositoryManifest.version,
+  'The packed version must match the root manifest',
+)
+equal('dependencies' in packedManifest, false)
 
 const testedVersion = (dependency: keyof typeof repositoryManifest.devDependencies): string => {
   const specifier = repositoryManifest.devDependencies[dependency]
@@ -209,7 +220,7 @@ const runTypeScript = (
 }
 
 const verifyConsumer = (peer: (typeof peerCases)[number]): void => {
-  const consumerDirectory = mkdtempSync(join(tmpdir(), `effect-rpc-query-${peer.label}-`))
+  const consumerDirectory = mkdtempSync(join(tmpdir(), `effect-api-query-${peer.label}-`))
 
   try {
     cpSync(consumerFixtureDirectory, consumerDirectory, { recursive: true })

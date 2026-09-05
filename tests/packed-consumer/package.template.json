@@ -1,5 +1,5 @@
 {
-  "name": "effect-rpc-query-packed-consumer-__LABEL__",
+  "name": "effect-api-query-packed-consumer-__LABEL__",
   "private": true,
   "type": "module",
   "dependencies": {
@@ -12,7 +12,7 @@
     "@types/react": "__REACT_TYPES_VERSION__",
     "@types/react-dom": "__REACT_DOM_TYPES_VERSION__",
     "effect": "__EFFECT_VERSION__",
-    "effect-rpc-query": "__PACKAGE_TARBALL__",
+    "effect-api-query": "__PACKAGE_TARBALL__",
     "react": "__REACT_VERSION__",
     "react-dom": "__REACT_DOM_VERSION__"
   }

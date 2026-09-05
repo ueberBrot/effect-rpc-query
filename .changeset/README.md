@@ -14,5 +14,5 @@ an advisory pull-request comment when changes to `src/**` or the root `package.j
 Documentation, examples, tests, internal tooling, and CI do not require a Changeset. Do not add an
 empty Changeset as a process marker; explain an intentional omission during review instead.
 
-Only the root `effect-rpc-query` package is versioned and published. The private example workspace
+Only the root `effect-api-query` package is versioned and published. The private example workspace
 packages remain unversioned.

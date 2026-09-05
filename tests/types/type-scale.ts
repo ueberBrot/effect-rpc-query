@@ -1,5 +1,5 @@
 import { Schema } from 'effect'
-import { createRpcQueryUtils, type RpcQueryUtils } from 'effect-rpc-query'
+import { createRpcQueryUtils, type RpcQueryUtils } from 'effect-api-query'
 import { Rpc, RpcClient, RpcGroup } from 'effect/unstable/rpc'
 
 // Reviewable baseline for TypeScript 7.0.2 with Query Core 5.102.2:

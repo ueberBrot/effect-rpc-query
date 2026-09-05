@@ -11,7 +11,7 @@
     "@effect-rpc-query/contracts": "workspace:*",
     "@tanstack/react-query": "catalog:",
     "effect": "catalog:",
-    "effect-rpc-query": "workspace:*",
+    "effect-rpc-query": "workspace:effect-api-query@*",
     "react": "catalog:",
     "react-dom": "catalog:"
   },
