@@ -48,7 +48,7 @@ const testedVersion = (dependency: keyof typeof repositoryManifest.devDependenci
 const lockedVersions = (dependency: string): ReadonlyArray<string> => {
   const escapedDependency = dependency.replaceAll('/', '\\/')
   const matches = readFileSync(lockfilePath, 'utf8').matchAll(
-    new RegExp(`^  ${escapedDependency}@(?<version>[^(:]+)`, 'gmu'),
+    new RegExp(`^  ['"]?${escapedDependency}@(?<version>[^('":]+)`, 'gmu'),
   )
   return [...new Set(Array.from(matches, (match) => match.groups?.['version']))]
     .filter((version): version is string => version !== undefined)
@@ -68,10 +68,6 @@ deepStrictEqual(packedManifest.exports, {
     types: './dist/index.d.mts',
     import: './dist/index.mjs',
   },
-})
-deepStrictEqual(packedManifest.peerDependencies, {
-  '@tanstack/query-core': '>=5.102.0 <6',
-  effect: testedVersion('effect'),
 })
 equal('engines' in packedManifest, false)
 
@@ -119,22 +115,51 @@ deepStrictEqual(declarationNames, [
   'skipToken',
 ])
 
-const queryCorePeerRange = packedManifest.peerDependencies['@tanstack/query-core']
-const queryCoreMinimum = /^>=(?<minimum>\d+\.\d+\.\d+) <6$/u.exec(queryCorePeerRange)?.groups?.[
-  'minimum'
-]
-if (queryCoreMinimum === undefined) {
-  throw new Error(`Unsupported Query Core peer range: ${queryCorePeerRange}`)
-}
+const queryCoreCompatibilityCases = () => {
+  const supportedPeerRange = '>=5.102.0 <5.103.0'
+  deepStrictEqual(packedManifest.peerDependencies, {
+    '@tanstack/query-core': supportedPeerRange,
+    effect: testedVersion('effect'),
+  })
 
-const testedQueryCoreVersion = testedVersion('@tanstack/query-core')
-const testedReactQueryVersion = testedVersion('@tanstack/react-query')
-equal(testedReactQueryVersion, testedQueryCoreVersion)
-equal(
-  testedQueryCoreVersion === queryCoreMinimum,
-  false,
-  'The tested current Query Core must be newer than the peer lower bound',
-)
+  const range = /^>=(?<minimum>\d+\.\d+\.\d+) <(?<nextMinor>\d+\.\d+\.0)$/u.exec(
+    supportedPeerRange,
+  )?.groups
+  if (range?.['minimum'] === undefined || range['nextMinor'] === undefined) {
+    throw new Error(`Unsupported Query Core peer range: ${supportedPeerRange}`)
+  }
+
+  const current = testedVersion('@tanstack/query-core')
+  const currentReact = testedVersion('@tanstack/react-query')
+  equal(currentReact, current)
+  deepStrictEqual(lockedVersions('@tanstack/query-core'), [current])
+  deepStrictEqual(lockedVersions('@tanstack/react-query'), [currentReact])
+  equal(
+    current === range['minimum'],
+    false,
+    'Current Query Core must be newer than the lower bound',
+  )
+
+  const [currentMajor, currentMinor] = current.split('.')
+  equal(
+    range['nextMinor'],
+    `${currentMajor}.${String(Number(currentMinor) + 1)}.0`,
+    'The Query Core peer range must stop before the next unverified minor',
+  )
+
+  return [
+    {
+      label: 'query-core-lower-bound',
+      queryCoreVersion: range['minimum'],
+      reactQueryVersion: range['minimum'],
+    },
+    {
+      label: 'query-core-current',
+      queryCoreVersion: current,
+      reactQueryVersion: currentReact,
+    },
+  ] as const
+}
 
 const packedFiles = execFileSync('tar', ['-tzf', tarballPath], { encoding: 'utf8' })
   .trim()
@@ -160,18 +185,7 @@ const compilerCases = [
   },
 ] as const
 
-const peerCases = [
-  {
-    label: 'query-core-lower-bound',
-    queryCoreVersion: queryCoreMinimum,
-    reactQueryVersion: queryCoreMinimum,
-  },
-  {
-    label: 'query-core-current',
-    queryCoreVersion: testedQueryCoreVersion,
-    reactQueryVersion: testedReactQueryVersion,
-  },
-] as const
+const peerCases = queryCoreCompatibilityCases()
 
 const runTypeScript = (
   consumerDirectory: string,

@@ -8,7 +8,8 @@ description: Supported runtimes, frameworks, RPC shapes, and stability boundarie
 The first npm release targets `0.1.0`; until then, the repository manifest remains at `0.0.0`.
 
 - Effect `4.0.0-rc.112` is the currently tested version.
-- TanStack Query Core `>=5.102.0 <6` is the supported peer range.
+- TanStack Query Core `>=5.102.0 <5.103.0` is the supported peer range. Packed consumers verify
+  `5.102.0` as the lower bound and `5.102.8` as the development version.
 - Query Core, React Query, React Router loaders, and TanStack Start are covered by repository tests
   or executable applications.
 - Strict TypeScript 5.9 is the compiler floor. The packed package contract is verified with
@@ -42,6 +43,22 @@ The first npm release targets `0.1.0`; until then, the repository manifest remai
   successful server snapshot before route loading and dehydration can finish.
 - `isEffectRpcQueryError` uses `instanceof` and recognizes errors from the same JavaScript realm.
 - CommonJS consumers are unsupported.
+
+## Expanding Query Core support
+
+Query Core's streamed-query interface is experimental, so a new minor line must earn support. To
+expand the peer range:
+
+1. Update the Query Core and React Query development catalog entries together and regenerate the
+   lockfile.
+2. Widen the peer ceiling to include only the new verified minor line.
+3. Run `vp run packed-package`. The task inspects the packed manifest, installs isolated consumers
+   at the lower bound and development version, compiles the ordinary, infinite, accumulated-stream,
+   and live builder contract with both supported TypeScript compilers, and executes every builder
+   through the consumer's Query Core runtime.
+4. Run the complete release validation before publishing.
+
+Keep the existing range when either the declarations or runtime checks fail.
 
 The package is under active development before its first stable release. Review release notes before
 upgrading between minor versions.

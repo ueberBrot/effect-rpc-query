@@ -6,13 +6,13 @@ description: Install effect-rpc-query and its peer dependencies.
 Install the package with Effect and TanStack Query Core:
 
 ```sh
-pnpm add effect-rpc-query effect @tanstack/query-core
+pnpm add effect-rpc-query effect @tanstack/query-core@5.102
 ```
 
 React applications also need the React adapter:
 
 ```sh
-pnpm add @tanstack/react-query
+pnpm add @tanstack/react-query@5.102
 ```
 
 Continue with the [quick start](/effect-rpc-query/getting-started/quick-start/). Before adopting the
