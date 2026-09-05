@@ -63,7 +63,7 @@ it('cancels a pending command, reconciles cached progress, and isolates another 
       state: 'completed',
       completedSteps: 10,
     })
-    expect(await queryClient.fetchQuery(statusOptions)).toEqual(cancelled)
+    expect(await queryClient.fetchQuery({ ...statusOptions, staleTime: 0 })).toEqual(cancelled)
   } finally {
     unsubscribe()
     await application.dispose()
@@ -95,6 +95,33 @@ it('keeps command IDs idempotent across early cancellation, completion, and rese
     expect(duplicate).toEqual(completed)
     expect(await cancel.mutate(input)).toEqual(completed)
     expect(await start.mutate({ ...input, steps: 100 })).toEqual(completed)
+  } finally {
+    await application.dispose()
+    await Effect.runPromise(Scope.close(scope, Exit.void))
+  }
+})
+
+it('resets running commands before allowing their operation IDs to be reused', async () => {
+  const scope = await Effect.runPromise(Scope.make())
+  const server = await Effect.runPromise(startExampleRpcServer().pipe(Scope.provide(scope)))
+  const application = await startViteReactApplication({ rpcUrl: server.rpcUrl })
+  const { queryClient, rpcQuery } = application
+  const input = { operationId: 'reset-running' }
+  const options = rpcQuery.commands.status.queryOptions({ input })
+  try {
+    const start = new MutationObserver(queryClient, rpcQuery.commands.start.mutationOptions())
+    const running = start.mutate(input)
+    await expect
+      .poll(async () => (await queryClient.fetchQuery(options))?.completedSteps ?? 0)
+      .toBeGreaterThan(0)
+    const reset = new MutationObserver(queryClient, rpcQuery.testing.reset.mutationOptions())
+    await reset.mutate(undefined)
+    expect(await running).toMatchObject({ state: 'cancelled', totalSteps: 40 })
+    expect(await queryClient.fetchQuery(options)).toBeNull()
+    expect(await start.mutate({ ...input, steps: 1 })).toMatchObject({
+      state: 'completed',
+      completedSteps: 1,
+    })
   } finally {
     await application.dispose()
     await Effect.runPromise(Scope.close(scope, Exit.void))

@@ -62,7 +62,9 @@ const Command = ({
       <p>Cancel mutation: {cancel.status}</p>
       <p>Server state: {command?.state ?? 'not started'}</p>
       <p>
-        Progress: {command?.completedSteps ?? 0} / {command?.totalSteps ?? 40}
+        {command == null
+          ? 'Progress: waiting for server'
+          : `Progress: ${String(command.completedSteps)} / ${String(command.totalSteps)}`}
       </p>
       <EffectErrorDetails error={start.error ?? cancel.error ?? status.error} />
     </section>

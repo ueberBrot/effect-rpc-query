@@ -1,4 +1,4 @@
-import { type CommandInput, CommandStatus } from '@effect-rpc-query/contracts'
+import { type CommandPayload, CommandStatus } from '@effect-rpc-query/contracts'
 import { Deferred, Effect, Scope } from 'effect'
 
 interface Command {
@@ -44,25 +44,38 @@ export const makeCommands = Effect.fn('ExampleRpc.makeCommands')(function* () {
     (effect, command) => effect.pipe(Effect.onInterrupt(() => finish(command, 'cancelled'))),
   )
 
+  // Reserve the ID and attach its worker atomically with respect to interruption.
+  const getOrCreate = Effect.fn('ExampleRpc.Commands.getOrCreate')(function* (
+    operationId: string,
+    steps: number,
+  ) {
+    const existing = commands.get(operationId)
+    if (existing !== undefined) return existing
+    const command: Command = {
+      status: new CommandStatus({
+        operationId,
+        state: steps === 0 ? 'cancelled' : 'running',
+        completedSteps: 0,
+        totalSteps: steps,
+      }),
+      cancellation: Deferred.makeUnsafe<void>(),
+      done: Deferred.makeUnsafe<CommandStatus>(),
+    }
+    commands.set(operationId, command)
+    if (steps === 0) {
+      // A cancel request may arrive before its start request.
+      yield* Deferred.succeed(command.done, command.status)
+    } else {
+      yield* Effect.forkIn(work(command), scope, { uninterruptible: false })
+    }
+    return command
+  }, Effect.uninterruptible)
+
   const start = Effect.fn('ExampleRpc.Commands.start')(function* ({
     operationId,
-    steps = 40,
-  }: CommandInput) {
-    let command = commands.get(operationId)
-    if (command === undefined) {
-      command = {
-        status: new CommandStatus({
-          operationId,
-          state: 'running',
-          completedSteps: 0,
-          totalSteps: steps,
-        }),
-        cancellation: Deferred.makeUnsafe<void>(),
-        done: Deferred.makeUnsafe<CommandStatus>(),
-      }
-      commands.set(operationId, command)
-      yield* Effect.forkIn(work(command), scope)
-    }
+    steps,
+  }: CommandPayload) {
+    const command = yield* getOrCreate(operationId, steps)
     return yield* Deferred.await(command.done)
   })
 
@@ -71,22 +84,7 @@ export const makeCommands = Effect.fn('ExampleRpc.makeCommands')(function* () {
   }: {
     readonly operationId: string
   }) {
-    let command = commands.get(operationId)
-    if (command === undefined) {
-      // A cancel request may arrive before its start request.
-      command = {
-        status: new CommandStatus({
-          operationId,
-          state: 'cancelled',
-          completedSteps: 0,
-          totalSteps: 0,
-        }),
-        cancellation: Deferred.makeUnsafe<void>(),
-        done: Deferred.makeUnsafe<CommandStatus>(),
-      }
-      commands.set(operationId, command)
-      yield* Deferred.succeed(command.done, command.status)
-    }
+    const command = yield* getOrCreate(operationId, 0)
     yield* Deferred.succeed(command.cancellation, undefined)
     return yield* Deferred.await(command.done)
   })

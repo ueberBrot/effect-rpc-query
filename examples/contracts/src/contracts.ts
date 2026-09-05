@@ -51,7 +51,6 @@ const CommandsStart = Rpc.make('commands.start', {
   payload: {
     operationId: Schema.String,
     steps: Schema.Int.check(Schema.isBetween({ minimum: 1, maximum: 100 })).pipe(
-      Schema.optionalKey,
       Schema.withConstructorDefault(Effect.succeed(40)),
     ),
   },
@@ -68,7 +67,7 @@ const CommandsCancel = Rpc.make('commands.cancel', {
   success: CommandStatus,
 })
 
-export type CommandInput = Rpc.PayloadConstructor<typeof CommandsStart>
+export type CommandPayload = Rpc.Payload<typeof CommandsStart>
 
 const UsersGet = Rpc.make('users.get', {
   payload: {

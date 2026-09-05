@@ -8,4 +8,4 @@ export {
   User,
   UserPage,
 } from './contracts.ts'
-export type { CommandInput, DiagnosticStatus, SlowDiagnosticInput } from './contracts.ts'
+export type { CommandPayload, DiagnosticStatus, SlowDiagnosticInput } from './contracts.ts'
