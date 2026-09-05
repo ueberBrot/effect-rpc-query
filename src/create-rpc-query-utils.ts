@@ -17,7 +17,13 @@ import {
   type AdaptedUnaryRpc,
 } from './internal/effect-rpc-adapter'
 import { makeStreamQuery } from './internal/streamed-query-adapter'
-import type { CreateRpcQueryUtilsOptions, JsonValue, RpcQueryUtils, RunPromiseExit } from './types'
+import type {
+  CreateRpcQueryUtilsOptions,
+  JsonValue,
+  RpcQueryUtils,
+  RunPromiseExit,
+  StreamRefetchMode,
+} from './types'
 
 const reservedPathSegments = new Set([
   '__proto__',
@@ -411,7 +417,7 @@ const createStreamingLeaf = (
     const operationKey = operation === 'live' ? liveOperationKey : streamedOperationKey
     const supplied = prepareQueryOptions(rpc, argument, operationKey)
     const { options } = supplied
-    const refetchMode = options['refetchMode'] as 'append' | 'replace' | 'reset' | undefined
+    const refetchMode = options['refetchMode'] as StreamRefetchMode | undefined
     delete options['refetchMode']
     const maxChunks = options['maxChunks'] as number | undefined
     delete options['maxChunks']

@@ -962,3 +962,37 @@ utils.events.watch.liveOptions({ input: skipToken, maxChunks: 2 })
 utils.events.watch.streamedOptions({ input: { channel: 'news' }, maxChunks: '2' })
 utils.events.audit.watch.streamedOptions({ maxChunks: 2, initialData: [] })
 utils.events.watch.streamedOptions({ input: skipToken, maxChunks: 2, initialData: [] })
+
+declare const conditionalUserId: number | undefined
+const conditionalUserOptions = utils.users.get.queryOptions({
+  input: conditionalUserId === undefined ? skipToken : { id: conditionalUserId },
+  refetchInterval: (query) => {
+    query.queryKey satisfies
+      | readonly ['app', 'users', 'get', 'query']
+      | readonly ['app', 'users', 'get', 'query', JsonValue]
+    return false
+  },
+  select: (user) => user.name,
+  staleTime: 30_000,
+})
+useQuery(conditionalUserOptions).data satisfies string | undefined
+new QueryObserver(queryClient, conditionalUserOptions).getCurrentResult().data satisfies
+  | string
+  | undefined
+// @ts-expect-error conditional query functions may be skipped
+useSuspenseQuery(conditionalUserOptions)
+// @ts-expect-error conditional query functions may be skipped
+usePrefetchQuery(conditionalUserOptions)
+
+// @ts-expect-error package input is consumed for conditional options
+conditionalUserOptions.input
+useQuery(conditionalUserOptions).error satisfies EffectRpcQueryError<'not-found'> | null
+const initializedConditionalUser = utils.users.get.queryOptions({
+  input: conditionalUserId === undefined ? skipToken : { id: conditionalUserId },
+  initialData: { id: 1, name: 'Ada' },
+  select: (user) => user.name,
+})
+initializedConditionalUser.initialData satisfies
+  | { readonly id: number; readonly name: string }
+  | (() => { readonly id: number; readonly name: string })
+useQuery(initializedConditionalUser).data satisfies string | undefined

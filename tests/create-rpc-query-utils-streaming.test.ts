@@ -64,7 +64,7 @@ describe('createRpcQueryUtils streaming execution', () => {
 
   it.effect('retains only the newest accumulated values after each emission', () =>
     Effect.gen(function* () {
-      const Watch = Rpc.make('events.watch', { success: Schema.Number, stream: true })
+      const Watch = Rpc.make('events.watch', { success: Schema.Finite, stream: true })
       const group = RpcGroup.make(Watch)
       const client = yield* makeRpcTestClient(group, {
         'events.watch': () => Stream.make(1, 2, 3, 4),
@@ -113,7 +113,7 @@ describe('createRpcQueryUtils streaming execution', () => {
     'bounds $refetchMode refetches through QueryClient',
     ({ refetchMode, during, start }) =>
       Effect.gen(function* () {
-        const Watch = Rpc.make('events.watch', { success: Schema.Number, stream: true })
+        const Watch = Rpc.make('events.watch', { success: Schema.Finite, stream: true })
         const group = RpcGroup.make(Watch)
         const queryClient = new QueryClient()
         const snapshots: unknown[] = []
@@ -149,11 +149,56 @@ describe('createRpcQueryUtils streaming execution', () => {
       }),
   )
 
+  it.effect.each([
+    { maxChunks: 1, expected: [4] },
+    { maxChunks: Number.MAX_SAFE_INTEGER, expected: [1, 2, 3, 4] },
+  ])('accepts the boundary value $maxChunks', ({ maxChunks, expected }) =>
+    Effect.gen(function* () {
+      const Watch = Rpc.make('events.watch', { success: Schema.Finite, stream: true })
+      const group = RpcGroup.make(Watch)
+      const client = yield* makeRpcTestClient(group, {
+        'events.watch': () => Stream.make(1, 2, 3, 4),
+      })
+      const utils = createRpcQueryUtils(group, { client, keyPrefix: ['bounded'] })
+      const queryClient = new QueryClient()
+      try {
+        const options = utils.events.watch.streamedOptions({ maxChunks })
+        expect(yield* Effect.promise(() => queryClient.query(options))).toEqual(expected)
+      } finally {
+        queryClient.clear()
+      }
+    }),
+  )
+
+  it.effect('resets bounded accumulation independently of initial data', () =>
+    Effect.gen(function* () {
+      let values = [1]
+      const Watch = Rpc.make('events.watch', { success: Schema.Finite, stream: true })
+      const group = RpcGroup.make(Watch)
+      const client = yield* makeRpcTestClient(group, {
+        'events.watch': () => Stream.fromIterable(values),
+      })
+      const utils = createRpcQueryUtils(group, { client, keyPrefix: ['bounded'] })
+      const options = utils.events.watch.streamedOptions({ initialData: [9], maxChunks: 2 })
+      const queryClient = new QueryClient()
+      try {
+        expect(yield* Effect.promise(() => queryClient.query(options))).toEqual([9, 1])
+        values = [2]
+        expect(yield* Effect.promise(() => queryClient.query(options))).toEqual([2])
+        values = []
+        expect(yield* Effect.promise(() => queryClient.query(options))).toEqual([])
+        expect(queryClient.getQueryData(options.queryKey)).toEqual([])
+      } finally {
+        queryClient.clear()
+      }
+    }),
+  )
+
   it.effect('rejects invalid bounds synchronously, including skipped queries', () =>
     Effect.gen(function* () {
       const Watch = Rpc.make('events.watch', {
         payload: { channel: Schema.String },
-        success: Schema.Number,
+        success: Schema.Finite,
         stream: true,
       })
       const group = RpcGroup.make(Watch)
@@ -161,16 +206,14 @@ describe('createRpcQueryUtils streaming execution', () => {
       const utils = createRpcQueryUtils(group, { client, keyPrefix: ['bounded'] })
       for (const maxChunks of [0, -1, 1.5, NaN, Infinity, -Infinity, Number.MAX_SAFE_INTEGER + 1]) {
         for (const input of [{ channel: 'news' }, skipToken] as const) {
-          expect(() =>
+          const buildOptions = () =>
             input === skipToken
               ? utils.events.watch.streamedOptions({ input, maxChunks })
-              : utils.events.watch.streamedOptions({ input, maxChunks }),
-          ).toThrow(EffectRpcQueryConfigError)
-          expect(() =>
-            input === skipToken
-              ? utils.events.watch.streamedOptions({ input, maxChunks })
-              : utils.events.watch.streamedOptions({ input, maxChunks }),
-          ).toThrow(expect.objectContaining({ code: 'InvalidMaxChunks', rpcTag: 'events.watch' }))
+              : utils.events.watch.streamedOptions({ input, maxChunks })
+          expect(buildOptions).toThrow(EffectRpcQueryConfigError)
+          expect(buildOptions).toThrow(
+            expect.objectContaining({ code: 'InvalidMaxChunks', rpcTag: 'events.watch' }),
+          )
         }
       }
       const skipped = utils.events.watch.streamedOptions({ input: skipToken, maxChunks: 1 })

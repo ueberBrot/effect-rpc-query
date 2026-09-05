@@ -240,6 +240,36 @@ export type SkippedRpcQueryOptions<
   readonly queryKeyHashFn: QueryKeyHashFunction<QueryOperationKey<Prefix, R>>
 }
 
+/** A conditional unary query may use either its operation prefix or its concrete payload key. */
+export type ConditionalQueryKey<
+  Prefix extends readonly JsonValue[],
+  R extends Rpc.Any,
+  ClientError,
+> = ConcreteQueryKey<Prefix, R, ClientError> | QueryOperationKey<Prefix, R>
+
+/** One observer option type for an input that may be skipped at runtime. */
+export type ConditionalRpcQueryOptions<
+  R extends Rpc.Any,
+  Prefix extends readonly JsonValue[],
+  ClientError,
+  Selected,
+> = Omit<
+  QueryObserverOptions<
+    QueryData<Rpc.Success<R>>,
+    EffectRpcQueryError<RpcFailure<R, ClientError>>,
+    Selected,
+    QueryData<Rpc.Success<R>>,
+    ConditionalQueryKey<Prefix, R, ClientError>
+  >,
+  OwnedQueryOption
+> & {
+  readonly queryFn:
+    | QueryFunction<QueryData<Rpc.Success<R>>, ConditionalQueryKey<Prefix, R, ClientError>>
+    | SkipToken
+  readonly queryKey: ConditionalQueryKey<Prefix, R, ClientError>
+  readonly queryKeyHashFn: QueryKeyHashFunction<ConditionalQueryKey<Prefix, R, ClientError>>
+}
+
 /** Mutation options generated for one unary RPC. */
 export type RpcMutationOptions<
   R extends Rpc.Any,
@@ -304,6 +334,23 @@ export type QueryOptionsBuilder<
             readonly input: SkipToken
           },
         ): SkippedRpcQueryOptions<R, Prefix, ClientError, Selected>
+        <Selected = QueryData<Rpc.Success<R>>>(
+          options: WithDefinedInitialData<
+            Omit<ConditionalRpcQueryOptions<R, Prefix, ClientError, Selected>, OwnedQueryOption>,
+            QueryData<Rpc.Success<R>>
+          > & { readonly input: Rpc.PayloadConstructor<R> | SkipToken },
+        ): WithDefinedInitialData<
+          ConditionalRpcQueryOptions<R, Prefix, ClientError, Selected>,
+          QueryData<Rpc.Success<R>>
+        >
+        <Selected = QueryData<Rpc.Success<R>>>(
+          options: Omit<
+            ConditionalRpcQueryOptions<R, Prefix, ClientError, Selected>,
+            OwnedQueryOption
+          > & {
+            readonly input: Rpc.PayloadConstructor<R> | SkipToken
+          },
+        ): ConditionalRpcQueryOptions<R, Prefix, ClientError, Selected>
         (token: SkipToken): SkippedRpcQueryOptions<R, Prefix, ClientError>
       }
 
@@ -459,6 +506,13 @@ export type ConcreteLiveKey<
 
 export type StreamRefetchMode = 'append' | 'replace' | 'reset'
 
+export type StreamedPolicyOptions = {
+  /** Controls whether a refetch clears, appends to, or replaces accumulated data. */
+  readonly refetchMode?: StreamRefetchMode
+  /** Retains at most this many newest elements; must be a positive safe integer. */
+  readonly maxChunks?: number
+}
+
 export type StreamedInputOptions<
   R extends Rpc.Any,
   Prefix extends readonly JsonValue[],
@@ -473,12 +527,8 @@ export type StreamedInputOptions<
     ConcreteStreamedKey<Prefix, R, ClientError>
   >,
   OwnedQueryOption
-> & {
-  /** Controls whether a refetch clears, appends to, or replaces accumulated data. */
-  readonly refetchMode?: StreamRefetchMode
-  /** Retains at most this many newest elements; must be a positive safe integer. */
-  readonly maxChunks?: number
-}
+> &
+  StreamedPolicyOptions
 
 export type DefinedStreamedInputOptions<
   R extends Rpc.Any,
@@ -504,7 +554,7 @@ export type RpcStreamedOptions<
   Prefix extends readonly JsonValue[],
   ClientError,
   Selected = StreamedData<R>,
-> = Omit<StreamedInputOptions<R, Prefix, ClientError, Selected>, 'refetchMode' | 'maxChunks'> & {
+> = Omit<StreamedInputOptions<R, Prefix, ClientError, Selected>, keyof StreamedPolicyOptions> & {
   readonly queryFn: QueryFunction<StreamedData<R>, ConcreteStreamedKey<Prefix, R, ClientError>>
   readonly queryKey: ConcreteStreamedKey<Prefix, R, ClientError>
   readonly queryKeyHashFn: QueryKeyHashFunction<ConcreteStreamedKey<Prefix, R, ClientError>>
@@ -566,11 +616,8 @@ export type StreamedOptionsBuilder<
           options: WithDefinedInitialData<
             Omit<SkippedRpcStreamedOptions<R, Prefix, ClientError, Selected>, OwnedQueryOption>,
             StreamedData<R>
-          > & {
-            readonly input: SkipToken
-            readonly refetchMode?: StreamRefetchMode
-            readonly maxChunks?: number
-          },
+          > &
+            StreamedPolicyOptions & { readonly input: SkipToken },
         ): WithDefinedInitialData<
           SkippedRpcStreamedOptions<R, Prefix, ClientError, Selected>,
           StreamedData<R>
@@ -579,11 +626,8 @@ export type StreamedOptionsBuilder<
           options: Omit<
             SkippedRpcStreamedOptions<R, Prefix, ClientError, Selected>,
             OwnedQueryOption
-          > & {
-            readonly input: SkipToken
-            readonly refetchMode?: StreamRefetchMode
-            readonly maxChunks?: number
-          },
+          > &
+            StreamedPolicyOptions & { readonly input: SkipToken },
         ): SkippedRpcStreamedOptions<R, Prefix, ClientError, Selected>
         (token: SkipToken): SkippedRpcStreamedOptions<R, Prefix, ClientError>
       }

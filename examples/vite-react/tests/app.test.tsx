@@ -108,6 +108,7 @@ describe('plain Vite React integration', () => {
   it('disposes its client Scope and runtime idempotently', async () => {
     const ownedApplication = application
     expect(ownedApplication).toBeDefined()
+    cleanup()
     await Promise.all([ownedApplication?.dispose(), ownedApplication?.dispose()])
 
     await waitFor(() => {

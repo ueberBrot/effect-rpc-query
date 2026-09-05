@@ -1,15 +1,15 @@
-import { experimental_streamedQuery } from '@tanstack/query-core'
+import { experimental_streamedQuery, type QueryFunctionContext } from '@tanstack/query-core'
 import { Cause, Exit, Stream } from 'effect'
 
 import { EffectRpcQueryEmptyStreamError, EffectRpcQueryError } from '../errors'
-import type { RunPromiseExit } from '../types'
+import type { RunPromiseExit, StreamRefetchMode } from '../types'
 import type { AdaptedStreamingRpc } from './effect-rpc-adapter'
 
 export type StreamQueryPolicy =
   | {
       readonly maxChunks?: number
       readonly _tag: 'Accumulated'
-      readonly refetchMode?: 'append' | 'replace' | 'reset'
+      readonly refetchMode?: StreamRefetchMode
     }
   | { readonly _tag: 'Live' }
 
@@ -117,24 +117,34 @@ export const makeStreamQuery = ({ input, policy, rpc, runPromiseExit }: MakeStre
     return policy._tag === 'Live' ? requireFirstValue(iterable, rpc.tag) : iterable
   }
 
-  const maxChunks = policy._tag === 'Accumulated' ? policy.maxChunks : undefined
-  return policy._tag === 'Live'
-    ? experimental_streamedQuery({
-        initialValue: undefined,
-        reducer: (_latest: unknown, value: unknown) => value,
-        streamFn,
-      })
-    : experimental_streamedQuery({
-        ...(policy.refetchMode === undefined ? {} : { refetchMode: policy.refetchMode }),
-        ...(maxChunks === undefined
-          ? {}
-          : {
-              initialValue: [] as unknown[],
-              reducer: (values: unknown[], value: unknown) => [
-                ...values.slice(Math.max(0, values.length + 1 - maxChunks)),
-                value,
-              ],
-            }),
-        streamFn,
-      })
+  if (policy._tag === 'Live') {
+    return experimental_streamedQuery({
+      initialValue: undefined,
+      reducer: (_latest: unknown, value: unknown) => value,
+      streamFn,
+    })
+  }
+
+  const { maxChunks, refetchMode = 'reset' } = policy
+  if (maxChunks === undefined) return experimental_streamedQuery({ refetchMode, streamFn })
+
+  return async (context: QueryFunctionContext) => {
+    const reset =
+      refetchMode === 'reset' &&
+      context.client.getQueryCache().find({ queryKey: context.queryKey, exact: true })?.isFetched()
+    let emitted = false
+    const queryFn = experimental_streamedQuery({
+      initialValue: [] as unknown[],
+      reducer: (values: unknown[], value: unknown) => {
+        // Query Core restores initialData on reset; a refetch starts a fresh accumulation.
+        const history = reset && !emitted ? [] : values
+        emitted = true
+        return [...history.slice(Math.max(0, history.length + 1 - maxChunks)), value]
+      },
+      refetchMode,
+      streamFn,
+    })
+    const result = await queryFn(context)
+    return reset && !emitted ? [] : result
+  }
 }

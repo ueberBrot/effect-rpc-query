@@ -106,10 +106,12 @@ const options = utils.events.watch.streamedOptions({
 })
 ```
 
-After each emission, the accumulated array contains at most `maxChunks` elements. `reset` starts
-an empty accumulation; `append` trims the combined cached and new history; `replace` builds a
-bounded replacement and publishes it when the stream completes. Existing cached or initial data
-is not trimmed until an element arrives. An empty append refetch therefore preserves existing data.
+After each emission, the accumulated array contains at most `maxChunks` elements. On refetch,
+`reset` starts an empty accumulation, even when `initialData` was supplied; `append` trims the
+combined cached and new history; `replace` builds a bounded replacement and publishes it when
+the stream completes. Initial fetches and append refetches trim existing data only when an element
+arrives. An empty append refetch preserves existing data; empty reset and replace refetches finish
+with an empty array.
 The bound controls element count, not byte size, and discards older history. Without it, accumulation
 remains unbounded. Use `liveOptions` when only the latest value matters.
 

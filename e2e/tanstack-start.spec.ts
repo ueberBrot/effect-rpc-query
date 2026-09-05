@@ -91,6 +91,16 @@ test.describe('TanStack Start application', () => {
   test('hydrates stream snapshots and refetches their remaining values', async ({ page }) => {
     await expect(page.getByText('4 updates retained')).toBeVisible()
     await expect(page.getByText('Current state: Ready')).toBeVisible()
+
+    const history = page.getByRole('region', { name: 'Accumulated stream history' })
+    await page.getByRole('button', { name: 'Replay newest 2' }).click()
+    await expect(history.getByRole('listitem')).toHaveText([/Workspace synchronized$/, /Ready$/])
+    await expect(page.getByText('2 updates retained')).toBeVisible()
+    await expect(page.getByText('Current state: Ready')).toBeVisible()
+
+    await page.getByRole('button', { name: 'Replay full history' }).click()
+    await expect(page.getByText('4 updates retained')).toBeVisible()
+    await expect(history.getByRole('listitem')).toHaveCount(4)
   })
 
   test('navigates on the client and reuses the hydrated cache', async ({ page }) => {
